@@ -258,6 +258,50 @@
 
                 submitButton.disabled = isSubmitting;
                 submitButton.textContent = isSubmitting ? "Creating account..." : "Create Account";
+
+                // Disable / enable all interactive elements in the signup form
+                // so users cannot modify inputs while the request is in-flight.
+                const fullNameInput        = document.getElementById("signup_full_name");
+                const emailInput           = document.getElementById("signup_email");
+                const usernameInput        = document.getElementById("signup_username");
+                const passwordField        = document.getElementById("signup_password");
+                const confirmPasswordField = document.getElementById("signup_confirm_password");
+                const passwordToggles      = signupForm.querySelectorAll("[data-password-toggle-target]");
+                const googleBtn            = document.querySelector(".auth-google-btn");
+
+                if (fullNameInput)        fullNameInput.disabled        = isSubmitting;
+                if (emailInput)           emailInput.disabled           = isSubmitting;
+                if (usernameInput)        usernameInput.disabled        = isSubmitting;
+                if (passwordField) {
+                    passwordField.disabled = isSubmitting;
+                    const parent = passwordField.closest(".auth-password-field");
+                    if (parent) {
+                        parent.classList.toggle("is-disabled", isSubmitting);
+                    }
+                }
+                if (confirmPasswordField) {
+                    confirmPasswordField.disabled = isSubmitting;
+                    const parent = confirmPasswordField.closest(".auth-password-field");
+                    if (parent) {
+                        parent.classList.toggle("is-disabled", isSubmitting);
+                    }
+                }
+
+                passwordToggles.forEach((toggle) => {
+                    toggle.disabled = isSubmitting;
+                });
+
+                if (googleBtn) {
+                    if (isSubmitting) {
+                        googleBtn.style.pointerEvents = "none";
+                        googleBtn.style.opacity = "0.6";
+                        googleBtn.setAttribute("tabindex", "-1");
+                    } else {
+                        googleBtn.style.pointerEvents = "";
+                        googleBtn.style.opacity = "";
+                        googleBtn.removeAttribute("tabindex");
+                    }
+                }
             };
 
             const getPasswordStatus = (password) => {

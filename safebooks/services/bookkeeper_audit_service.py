@@ -16,6 +16,8 @@ ACTION_LABELS = {
     BookkeeperAuditLog.ACTION_CLIENT_DETAILS_LOCK_CHANGED: "Changed client details lock",
     BookkeeperAuditLog.ACTION_CLIENT_EMAILS_CHANGED: "Changed client record emails",
     BookkeeperAuditLog.ACTION_DEACTIVATION_REQUESTED: "Requested account deactivation",
+    BookkeeperAuditLog.ACTION_TWO_FACTOR_ENABLED: "Enabled two-factor authentication",
+    BookkeeperAuditLog.ACTION_TWO_FACTOR_DISABLED: "Disabled two-factor authentication",
 }
 
 ACTION_GROUPS = {
@@ -38,6 +40,8 @@ ACTION_GROUPS = {
         BookkeeperAuditLog.ACTION_LOGIN_ALERTS_CHANGED,
         BookkeeperAuditLog.ACTION_CLIENT_DETAILS_LOCK_CHANGED,
         BookkeeperAuditLog.ACTION_CLIENT_EMAILS_CHANGED,
+        BookkeeperAuditLog.ACTION_TWO_FACTOR_ENABLED,
+        BookkeeperAuditLog.ACTION_TWO_FACTOR_DISABLED,
     },
 }
 
@@ -112,7 +116,7 @@ def list_bookkeeper_audit_logs(bookkeeper, action: str | None, search: str | Non
     else:
         queryset = queryset.order_by("-created_at", "-id")
 
-    logs = list(queryset[:100])
+    logs = list(queryset[:500])
     return {
         "ok": True,
         "total_count": queryset.count(),

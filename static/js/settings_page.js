@@ -35,6 +35,9 @@
     const clientRecordEmailNotificationsUrl = String(urls.clientRecordEmailNotificationsApi || "");
     const securityClientDetailsAccessPreferenceUrl = String(urls.securityClientDetailsAccessPreferenceApi || "");
     const deactivationRequestUrl = String(urls.deactivationRequestApi || "");
+    const twoFactorSetupUrl = String(urls.twoFactorSetupApi || "");
+    const twoFactorConfirmUrl = String(urls.twoFactorConfirmApi || "");
+    const twoFactorDisableUrl = String(urls.twoFactorDisableApi || "");
 
     const changePasswordForm = document.getElementById("settingsChangePasswordForm");
     const changePasswordStatus = document.getElementById("settingsChangePasswordStatus");
@@ -66,6 +69,25 @@
     const deactivationPasswordInput = document.getElementById("settingsDeactivationPassword");
     const openDeactivationRequestButton = document.getElementById("settingsOpenDeactivationRequestModal");
     const deactivationRequestHint = document.getElementById("settingsDeactivationRequestHint");
+    const twoFactorPanel = document.getElementById("settingsTwoFactorPanel");
+    const twoFactorStatus = document.getElementById("settingsTwoFactorStatus");
+    const twoFactorOpenBtn = document.getElementById("settingsOpenTwoFactorModal");
+    const twoFactorOpenDisableBtn = document.getElementById("settingsOpenDisableTwoFactorModal");
+    const twoFactorModalElement = document.getElementById("settingsTwoFactorModal");
+    const twoFactorQrContainer = document.getElementById("settingsTwoFactorQrContainer");
+    const twoFactorQrImage = document.getElementById("settingsTwoFactorQrImage");
+    const twoFactorQrSpinner = document.getElementById("settingsTwoFactorQrSpinner");
+    const twoFactorKeyInput = document.getElementById("settingsTwoFactorKeyPreview");
+    const twoFactorCopyBtn = document.getElementById("settingsTwoFactorCopyBtn");
+    const twoFactorCodeInput = document.getElementById("settingsTwoFactorCodePreview");
+    const twoFactorSubmitBtn = document.getElementById("settingsTwoFactorSubmitBtn");
+    const twoFactorModalFeedback = document.getElementById("settingsTwoFactorModalFeedback");
+
+    const twoFactorDisableModalElement = document.getElementById("settingsDisableTwoFactorModal");
+    const twoFactorDisableForm = document.getElementById("settingsDisableTwoFactorForm");
+    const twoFactorDisablePasswordInput = document.getElementById("settingsDisableTwoFactorPassword");
+    const twoFactorDisableSubmitBtn = document.getElementById("settingsDisableTwoFactorSubmitBtn");
+    const twoFactorDisableFeedback = document.getElementById("settingsDisableTwoFactorFeedback");
 
     if (!body || !uiToastContainer || !settingsSections.length) {
         return;
@@ -273,6 +295,8 @@
 
     let changePasswordModal = null;
     let deactivationRequestModal = null;
+    let twoFactorModal = null;
+    let twoFactorDisableModal = null;
 
     const getPasswordRequirementState = () => {
         const currentValue = currentPasswordInput ? currentPasswordInput.value : "";
@@ -642,9 +666,18 @@
         }
         if (clientDetailsLockPasswordInput) {
             clientDetailsLockPasswordInput.disabled = isLoading;
+            const parentField = clientDetailsLockPasswordInput.closest(".auth-password-field");
+            if (parentField) {
+                parentField.classList.toggle("is-disabled", isLoading);
+            }
         }
         if (clientDetailsLockSaveButton) {
             clientDetailsLockSaveButton.disabled = isLoading;
+        }
+        if (clientDetailsLockPanel) {
+            clientDetailsLockPanel.querySelectorAll(".auth-password-toggle").forEach((toggleBtn) => {
+                toggleBtn.disabled = isLoading;
+            });
         }
     };
 
@@ -704,7 +737,38 @@
         }
     };
 
+    const setDeactivationSubmittingState = (isSubmitting) => {
+        [deactivationReasonInput, deactivationPasswordInput].forEach((input) => {
+            if (!input) {
+                return;
+            }
+            input.disabled = isSubmitting;
+            const parentField = input.closest(".auth-password-field");
+            if (parentField) {
+                parentField.classList.toggle("is-disabled", isSubmitting);
+            }
+        });
+
+        if (deactivationRequestModalElement) {
+            deactivationRequestModalElement.querySelectorAll(".auth-password-toggle").forEach((toggleBtn) => {
+                toggleBtn.disabled = isSubmitting;
+            });
+
+            const cancelBtn = deactivationRequestModalElement.querySelector('[data-bs-dismiss="modal"]');
+            if (cancelBtn) {
+                cancelBtn.disabled = isSubmitting;
+            }
+
+            const closeBtn = deactivationRequestModalElement.querySelector(".btn-close");
+            if (closeBtn) {
+                closeBtn.disabled = isSubmitting;
+                closeBtn.style.pointerEvents = isSubmitting ? "none" : "";
+            }
+        }
+    };
+
     const resetDeactivationRequestInputs = () => {
+        setDeactivationSubmittingState(false);
         if (deactivationReasonInput) {
             deactivationReasonInput.value = "";
         }
@@ -745,6 +809,7 @@
 
         setButtonLoading(deactivationRequestButton, true, "Submitting...");
         setInlineStatus(deactivationRequestStatus, "Submitting request...", "warning");
+        setDeactivationSubmittingState(true);
         let submitted = false;
 
         try {
@@ -779,24 +844,50 @@
             setInlineStatus(deactivationRequestStatus, "Request failed", "danger");
             showToast(error && error.message ? String(error.message) : "Unable to submit deactivation request.", "danger");
         } finally {
-            if (submitted) {
-                markDeactivationRequestPending();
-            } else {
-                setButtonLoading(deactivationRequestButton, false);
+            setButtonLoading(deactivationRequestButton, false);
+            if (!submitted) {
+                setDeactivationSubmittingState(false);
+            }
+        }
+    };
+
+    const setChangePasswordSubmittingState = (isSubmitting) => {
+        [currentPasswordInput, newPasswordInput, confirmPasswordInput].forEach((input) => {
+            if (!input) {
+                return;
+            }
+            input.disabled = isSubmitting;
+            const parentField = input.closest(".auth-password-field");
+            if (parentField) {
+                parentField.classList.toggle("is-disabled", isSubmitting);
+            }
+        });
+
+        if (changePasswordModalElement) {
+            changePasswordModalElement.querySelectorAll(".auth-password-toggle").forEach((toggleBtn) => {
+                toggleBtn.disabled = isSubmitting;
+            });
+
+            const cancelBtn = changePasswordModalElement.querySelector('[data-bs-dismiss="modal"]');
+            if (cancelBtn) {
+                cancelBtn.disabled = isSubmitting;
+            }
+
+            const closeBtn = changePasswordModalElement.querySelector(".btn-close");
+            if (closeBtn) {
+                closeBtn.disabled = isSubmitting;
+                closeBtn.style.pointerEvents = isSubmitting ? "none" : "";
             }
         }
     };
 
     const resetChangePasswordInputs = () => {
-        if (currentPasswordInput) {
-            currentPasswordInput.value = "";
-        }
-        if (newPasswordInput) {
-            newPasswordInput.value = "";
-        }
-        if (confirmPasswordInput) {
-            confirmPasswordInput.value = "";
-        }
+        setChangePasswordSubmittingState(false);
+        [currentPasswordInput, newPasswordInput, confirmPasswordInput].forEach((input) => {
+            if (input) {
+                input.value = "";
+            }
+        });
         updatePasswordRequirementsUi();
     };
 
@@ -850,6 +941,7 @@
 
         setButtonLoading(changePasswordButton, true, "Updating...");
         setInlineStatus(changePasswordStatus, "Saving...", "success");
+        setChangePasswordSubmittingState(true);
 
         try {
             const response = await postJson(securityChangePasswordUrl, payload);
@@ -868,7 +960,7 @@
 
             resetChangePasswordInputs();
             setInlineStatus(changePasswordStatus, "Updated", "success");
-            showToast("Password updated successfully.", "success");
+            showToast(result.message || "Password updated successfully.", "success");
             if (changePasswordModal) {
                 changePasswordModal.hide();
             }
@@ -877,6 +969,7 @@
             showToast(error && error.message ? String(error.message) : "Unable to update password.", "danger");
         } finally {
             setButtonLoading(changePasswordButton, false);
+            setChangePasswordSubmittingState(false);
         }
     };
 
@@ -973,6 +1066,319 @@
                 clearInlineStatus(deactivationRequestStatus);
             });
         });
+
+        let isTwoFactorActive = Boolean(config.twoFactorEnabled);
+
+        const updateTwoFactorUiState = (enabled) => {
+            isTwoFactorActive = Boolean(enabled);
+            if (twoFactorStatus) {
+                twoFactorStatus.textContent = isTwoFactorActive ? "Enabled" : "Disabled";
+                twoFactorStatus.classList.toggle("is-enabled", isTwoFactorActive);
+                twoFactorStatus.classList.toggle("is-neutral", !isTwoFactorActive);
+            }
+            if (twoFactorOpenBtn) {
+                twoFactorOpenBtn.classList.toggle("d-none", isTwoFactorActive);
+            }
+            if (twoFactorOpenDisableBtn) {
+                twoFactorOpenDisableBtn.classList.toggle("d-none", !isTwoFactorActive);
+            }
+        };
+
+        const fetchTwoFactorSetupData = async () => {
+            if (!twoFactorSetupUrl) {
+                return;
+            }
+            if (twoFactorModalFeedback) {
+                twoFactorModalFeedback.classList.add("d-none");
+                twoFactorModalFeedback.textContent = "";
+            }
+            if (twoFactorQrImage) {
+                twoFactorQrImage.classList.add("d-none");
+                twoFactorQrImage.src = "";
+            }
+            if (twoFactorQrSpinner) {
+                twoFactorQrSpinner.classList.remove("d-none");
+            }
+            if (twoFactorKeyInput) {
+                twoFactorKeyInput.value = "Generating key...";
+            }
+            if (twoFactorCodeInput) {
+                twoFactorCodeInput.value = "";
+                twoFactorCodeInput.disabled = false;
+            }
+            if (twoFactorSubmitBtn) {
+                twoFactorSubmitBtn.disabled = false;
+            }
+
+            try {
+                const response = await postJson(twoFactorSetupUrl, {});
+                const result = await parseJsonSafe(response);
+
+                if (!response.ok || !result || !result.ok) {
+                    const message = result && result.message ? result.message : "Unable to generate 2FA setup key.";
+                    if (twoFactorModalFeedback) {
+                        twoFactorModalFeedback.textContent = message;
+                        twoFactorModalFeedback.classList.remove("d-none");
+                    }
+                    if (twoFactorKeyInput) {
+                        twoFactorKeyInput.value = "";
+                    }
+                    if (twoFactorQrSpinner) {
+                        twoFactorQrSpinner.classList.add("d-none");
+                    }
+                    return;
+                }
+
+                if (twoFactorKeyInput) {
+                    twoFactorKeyInput.value = result.secret || "";
+                }
+
+                if (result.qr_code_data_url && twoFactorQrImage) {
+                    twoFactorQrImage.src = result.qr_code_data_url;
+                    twoFactorQrImage.classList.remove("d-none");
+                    if (twoFactorQrSpinner) {
+                        twoFactorQrSpinner.classList.add("d-none");
+                    }
+                } else if (twoFactorQrSpinner) {
+                    twoFactorQrSpinner.classList.add("d-none");
+                }
+
+                if (twoFactorCodeInput) {
+                    window.setTimeout(() => twoFactorCodeInput.focus(), 250);
+                }
+            } catch (err) {
+                if (twoFactorModalFeedback) {
+                    twoFactorModalFeedback.textContent = "Network error. Please try again.";
+                    twoFactorModalFeedback.classList.remove("d-none");
+                }
+                if (twoFactorQrSpinner) {
+                    twoFactorQrSpinner.classList.add("d-none");
+                }
+            }
+        };
+
+        const bindTwoFactorActions = () => {
+            if (twoFactorModalElement) {
+                twoFactorModal = getModalInstance(twoFactorModalElement);
+                twoFactorModalElement.addEventListener("show.bs.modal", () => {
+                    fetchTwoFactorSetupData();
+                });
+                twoFactorModalElement.addEventListener("hidden.bs.modal", () => {
+                    if (twoFactorCodeInput) {
+                        twoFactorCodeInput.value = "";
+                    }
+                    if (twoFactorModalFeedback) {
+                        twoFactorModalFeedback.classList.add("d-none");
+                        twoFactorModalFeedback.textContent = "";
+                    }
+                });
+            }
+
+            if (twoFactorDisableModalElement) {
+                twoFactorDisableModal = getModalInstance(twoFactorDisableModalElement);
+                twoFactorDisableModalElement.addEventListener("hidden.bs.modal", () => {
+                    if (twoFactorDisableForm) {
+                        twoFactorDisableForm.reset();
+                    }
+                    if (twoFactorDisableFeedback) {
+                        twoFactorDisableFeedback.classList.add("d-none");
+                        twoFactorDisableFeedback.textContent = "";
+                    }
+                });
+            }
+
+            if (twoFactorCopyBtn && twoFactorKeyInput) {
+                twoFactorCopyBtn.addEventListener("click", async () => {
+                    const keyValue = String(twoFactorKeyInput.value || "").trim();
+                    if (!keyValue || keyValue === "Generating key...") {
+                        return;
+                    }
+
+                    try {
+                        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+                            await navigator.clipboard.writeText(keyValue);
+                        } else {
+                            twoFactorKeyInput.select();
+                            document.execCommand("copy");
+                        }
+
+                        const originalHtml = twoFactorCopyBtn.innerHTML;
+                        twoFactorCopyBtn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+                        twoFactorCopyBtn.classList.add("is-copied");
+
+                        showToast("Setup key copied to clipboard.", "success");
+
+                        window.setTimeout(() => {
+                            twoFactorCopyBtn.innerHTML = originalHtml;
+                            twoFactorCopyBtn.classList.remove("is-copied");
+                        }, 2000);
+                    } catch {
+                        showToast("Could not copy automatically. Please copy the key manually.", "warning");
+                    }
+                });
+            }
+
+            const handleEnableSubmit = async () => {
+                const enteredCode = twoFactorCodeInput ? String(twoFactorCodeInput.value || "").trim().replace(/\D+/g, "") : "";
+                if (!enteredCode || enteredCode.length !== 6) {
+                    if (twoFactorModalFeedback) {
+                        twoFactorModalFeedback.textContent = "Please enter the 6-digit verification code from your authenticator app.";
+                        twoFactorModalFeedback.classList.remove("d-none");
+                    }
+                    if (twoFactorCodeInput) {
+                        twoFactorCodeInput.focus();
+                    }
+                    return;
+                }
+
+                if (twoFactorModalFeedback) {
+                    twoFactorModalFeedback.classList.add("d-none");
+                    twoFactorModalFeedback.textContent = "";
+                }
+
+                const originalBtnHtml = twoFactorSubmitBtn ? twoFactorSubmitBtn.innerHTML : "";
+                if (twoFactorSubmitBtn) {
+                    twoFactorSubmitBtn.disabled = true;
+                    twoFactorSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+                }
+                if (twoFactorCodeInput) {
+                    twoFactorCodeInput.disabled = true;
+                }
+
+                try {
+                    const response = await postJson(twoFactorConfirmUrl, { code: enteredCode });
+                    const result = await parseJsonSafe(response);
+
+                    if (!response.ok || !result || !result.ok) {
+                        const message = result && result.message ? result.message : "Invalid verification code. Please check your app and try again.";
+                        if (twoFactorModalFeedback) {
+                            twoFactorModalFeedback.textContent = message;
+                            twoFactorModalFeedback.classList.remove("d-none");
+                        }
+                        if (twoFactorCodeInput) {
+                            twoFactorCodeInput.disabled = false;
+                            twoFactorCodeInput.select();
+                            twoFactorCodeInput.focus();
+                        }
+                        if (twoFactorSubmitBtn) {
+                            twoFactorSubmitBtn.disabled = false;
+                            twoFactorSubmitBtn.innerHTML = originalBtnHtml;
+                        }
+                        return;
+                    }
+
+                    updateTwoFactorUiState(true);
+                    showToast(result.message || "Two-factor authentication enabled successfully.", "success");
+
+                    if (twoFactorModal) {
+                        twoFactorModal.hide();
+                    }
+                } catch (err) {
+                    if (twoFactorModalFeedback) {
+                        twoFactorModalFeedback.textContent = "Something went wrong. Please try again.";
+                        twoFactorModalFeedback.classList.remove("d-none");
+                    }
+                    if (twoFactorCodeInput) {
+                        twoFactorCodeInput.disabled = false;
+                    }
+                    if (twoFactorSubmitBtn) {
+                        twoFactorSubmitBtn.disabled = false;
+                        twoFactorSubmitBtn.innerHTML = originalBtnHtml;
+                    }
+                }
+            };
+
+            if (twoFactorSubmitBtn) {
+                twoFactorSubmitBtn.addEventListener("click", handleEnableSubmit);
+            }
+
+            if (twoFactorCodeInput) {
+                twoFactorCodeInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleEnableSubmit();
+                    }
+                });
+            }
+
+            // Disable 2FA flow
+            if (twoFactorDisableForm) {
+                twoFactorDisableForm.addEventListener("submit", async (e) => {
+                    e.preventDefault();
+
+                    const currentPassword = twoFactorDisablePasswordInput ? twoFactorDisablePasswordInput.value : "";
+                    if (!currentPassword) {
+                        if (twoFactorDisableFeedback) {
+                            twoFactorDisableFeedback.textContent = "Current password is required.";
+                            twoFactorDisableFeedback.classList.remove("d-none");
+                        }
+                        if (twoFactorDisablePasswordInput) {
+                            twoFactorDisablePasswordInput.focus();
+                        }
+                        return;
+                    }
+
+                    if (twoFactorDisableFeedback) {
+                        twoFactorDisableFeedback.classList.add("d-none");
+                        twoFactorDisableFeedback.textContent = "";
+                    }
+
+                    const originalDisableHtml = twoFactorDisableSubmitBtn ? twoFactorDisableSubmitBtn.innerHTML : "";
+                    if (twoFactorDisableSubmitBtn) {
+                        twoFactorDisableSubmitBtn.disabled = true;
+                        twoFactorDisableSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Turning off...';
+                    }
+                    if (twoFactorDisablePasswordInput) {
+                        twoFactorDisablePasswordInput.disabled = true;
+                    }
+
+                    try {
+                        const response = await postJson(twoFactorDisableUrl, { current_password: currentPassword });
+                        const result = await parseJsonSafe(response);
+
+                        if (!response.ok || !result || !result.ok) {
+                            const message = result && result.message ? result.message : "Current password is incorrect.";
+                            if (twoFactorDisableFeedback) {
+                                twoFactorDisableFeedback.textContent = message;
+                                twoFactorDisableFeedback.classList.remove("d-none");
+                            }
+                            if (twoFactorDisablePasswordInput) {
+                                twoFactorDisablePasswordInput.disabled = false;
+                                twoFactorDisablePasswordInput.select();
+                                twoFactorDisablePasswordInput.focus();
+                            }
+                            if (twoFactorDisableSubmitBtn) {
+                                twoFactorDisableSubmitBtn.disabled = false;
+                                twoFactorDisableSubmitBtn.innerHTML = originalDisableHtml;
+                            }
+                            return;
+                        }
+
+                        updateTwoFactorUiState(false);
+                        showToast(result.message || "Two-factor authentication disabled successfully.", "success");
+
+                        if (twoFactorDisableModal) {
+                            twoFactorDisableModal.hide();
+                        }
+                    } catch (err) {
+                        if (twoFactorDisableFeedback) {
+                            twoFactorDisableFeedback.textContent = "Something went wrong. Please try again.";
+                            twoFactorDisableFeedback.classList.remove("d-none");
+                        }
+                        if (twoFactorDisablePasswordInput) {
+                            twoFactorDisablePasswordInput.disabled = false;
+                        }
+                        if (twoFactorDisableSubmitBtn) {
+                            twoFactorDisableSubmitBtn.disabled = false;
+                            twoFactorDisableSubmitBtn.innerHTML = originalDisableHtml;
+                        }
+                    }
+                });
+            }
+        };
+
+        bindTwoFactorActions();
+        updateTwoFactorUiState(isTwoFactorActive);
 
         updateLoginAlertsUiState(isLoginAlertsEnabled());
         updateClientRecordEmailsUiState(isClientRecordEmailsEnabled());

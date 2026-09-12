@@ -762,7 +762,7 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertEqual(projections[2]["expected_tax"], 18.0)
         self.assertEqual(projections[2]["expected_net"], 324.0)
 
-    def test_sarima_recovers_isolated_expense_frequency_and_generic_taxes_label(self):
+    def test_sarima_keeps_recorded_expense_frequency_and_generic_taxes_label(self):
         owner = self._create_bookkeeper("owner-sarima-quarterly")
         self._login_as(owner)
         client = self._create_client(
@@ -826,15 +826,71 @@ class AnalyticsSummaryApiTests(TestCase):
 
         self.assertTrue(forecast["has_forecast"])
         self.assertEqual(projections[0]["period_label"], "Jan 2026")
-        self.assertFalse(projections[0]["expected_expenses_applicable"])
+        self.assertTrue(projections[0]["expected_expenses_applicable"])
+        self.assertIsNone(projections[0]["expected_expenses"])
+        self.assertTrue(projections[0]["expenses_unreliable"])
         self.assertFalse(projections[0]["expected_tax_applicable"])
-        self.assertEqual(projections[0]["expenses_readiness_note"], "Not scheduled this period")
+        self.assertEqual(
+            projections[0]["expenses_readiness_note"],
+            "1 of 24 monthly records",
+        )
 
         self.assertEqual(projections[2]["period_label"], "Mar 2026")
         self.assertTrue(projections[2]["expected_expenses_applicable"])
-        self.assertIsNotNone(projections[2]["expected_expenses"])
-        self.assertEqual(projections[2]["expenses_readiness_note"], "SARIMA")
+        self.assertIsNone(projections[2]["expected_expenses"])
+        self.assertTrue(projections[2]["expenses_unreliable"])
+        self.assertEqual(
+            projections[2]["expenses_readiness_note"],
+            "Review missing quarterly periods; 1 of 24 monthly records",
+        )
         self.assertTrue(projections[2]["expected_tax_applicable"])
         self.assertIsNotNone(projections[2]["expected_tax"])
         self.assertEqual(projections[2]["tax_readiness_note"], "SARIMA")
+
+    def test_sarima_api_preserves_quarterly_series_anchor(self):
+        owner = self._create_bookkeeper("owner-sarima-anchor")
+        self._login_as(owner)
+        client = self._create_client(
+            bookkeeper=owner,
+            suffix="sarima-anchor",
+            remarks=Client.REMARK_ACTIVE,
+        )
+
+        quarter_dates = [
+            date(year, month, 1)
+            for year in (2024, 2025)
+            for month in (1, 4, 7, 10)
+        ]
+        for index, entry_date in enumerate(quarter_dates):
+            self._create_record_with_lines(
+                bookkeeper=owner,
+                client=client,
+                entry_date=entry_date,
+                frequency=FinancialRecord.FREQUENCY_QUARTERLY,
+                lines=[(
+                    "EXPENSES",
+                    "Quarterly expense",
+                    Decimal(100 + (index * 10)),
+                )],
+            )
+
+        response = self.client.get(
+            reverse("api_analytics_summary"),
+            {"client_id": client.id, "horizon": 3},
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        forecast = response.json()["predictive_forecast"]
+        projections = forecast["future_projections"]
+        self.assertTrue(forecast["has_forecast"])
+        self.assertEqual(
+            [row["period_label"] for row in projections],
+            ["Nov 2025", "Dec 2025", "Jan 2026"],
+        )
+        self.assertFalse(projections[0]["expected_expenses_applicable"])
+        self.assertFalse(projections[1]["expected_expenses_applicable"])
+        self.assertTrue(projections[2]["expected_expenses_applicable"])
+        self.assertEqual(projections[2]["expected_expenses"], 180.0)
+        self.assertEqual(projections[2]["expenses_readiness_note"], "SARIMA")
 

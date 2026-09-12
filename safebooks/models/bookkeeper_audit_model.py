@@ -16,6 +16,8 @@ class BookkeeperAuditLog(models.Model):
     ACTION_CLIENT_DETAILS_LOCK_CHANGED = "settings.client_details_lock_changed"
     ACTION_CLIENT_EMAILS_CHANGED = "settings.client_emails_changed"
     ACTION_DEACTIVATION_REQUESTED = "account.deactivation_requested"
+    ACTION_TWO_FACTOR_ENABLED = "security.two_factor_enabled"
+    ACTION_TWO_FACTOR_DISABLED = "security.two_factor_disabled"
 
     bookkeeper = models.ForeignKey(
         BookkeeperAccount,

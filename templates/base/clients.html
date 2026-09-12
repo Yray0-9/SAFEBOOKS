@@ -129,6 +129,21 @@
             </table>
         </div>
 
+        <nav class="clients-pagination" id="clientsPagination" aria-label="Clients pagination" hidden>
+            <span class="clients-pagination-range" id="clientsPageRange">Showing 1-10 of 0 Clients</span>
+            <div class="clients-pagination-controls">
+                <button type="button" class="btn clients-page-button" id="clientsPrevPage" aria-label="Previous page">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                    <span>Previous</span>
+                </button>
+                <div class="clients-page-numbers" id="clientsPageNumbers"></div>
+                <button type="button" class="btn clients-page-button" id="clientsNextPage" aria-label="Next page">
+                    <span>Next</span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        </nav>
+
         <div class="clients-empty-state" id="clientsEmptyState" hidden>
             <p>No clients in this list yet. Add a client when their record is ready.</p>
             <button type="button" class="btn dashboard-action-btn primary" id="openAddClientFromEmpty" data-bs-toggle="modal" data-bs-target="#addClientModal">Add Client</button>
@@ -139,7 +154,7 @@
 
 {% block after_layout %}
 <div class="modal fade client-manage-modal" id="addClientModal" tabindex="-1" aria-labelledby="addClientModalTitle" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content" id="addClientForm" novalidate>
             <div class="modal-header">
                 <h2 class="modal-title h5" id="addClientModalTitle">Add Client</h2>
@@ -265,7 +280,7 @@
 
 
 <div class="modal fade client-manage-modal client-report-modal" id="clientReportModal" tabindex="-1" aria-labelledby="clientReportModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -293,7 +308,7 @@
 </div>
 
 <div class="modal fade client-manage-modal" id="editClientModal" tabindex="-1" aria-labelledby="editClientModalTitle" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content" id="editClientForm" novalidate>
             <input type="hidden" id="editClientRowId" name="row_id">
             <div class="modal-header">
@@ -417,21 +432,48 @@
     </div>
 </div>
 
-<div class="modal fade" id="deleteClientModal" tabindex="-1" aria-labelledby="deleteClientModalTitle" aria-hidden="true">
+<div class="modal fade client-manage-modal" id="deleteClientModal" tabindex="-1" aria-labelledby="deleteClientModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content client-delete-modal">
             <div class="modal-header">
-                <h2 class="modal-title h5" id="deleteClientModalTitle">Close Client</h2>
+                <div>
+                    <h2 class="modal-title h5" id="deleteClientModalTitle">Close Client</h2>
+                    <p class="text-muted small mb-0">Specify the reason for closing this client.</p>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p class="clients-delete-text">Are you sure you want to close the business for this client?</p>
                 <p class="clients-delete-name" id="deleteClientName">-</p>
-                <p class="clients-delete-note">This will mark their status as "Closed" and move them to the Closed section.</p>
+                
+                <div class="mb-3 text-start">
+                    <label for="modalCloseClientReasonSelect" class="form-label client-form-label required">Reason for Closure</label>
+                    <select id="modalCloseClientReasonSelect" class="form-select client-form-input">
+                        <option value="Non-payment / Unresponsive" selected>Non-payment / Unresponsive</option>
+                        <option value="Ceased Operations / Closed Business">Ceased Operations / Closed Business</option>
+                        <option value="No Filing / Missing Requirements">No Filing / Missing Requirements</option>
+                        <option value="Transferred to Another Bookkeeper">Transferred to Another Bookkeeper</option>
+                        <option value="Other Reason">Other Reason (Specify below)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3 text-start" id="modalCloseClientCustomReasonWrap" hidden>
+                    <label for="modalCloseClientCustomReasonInput" class="form-label client-form-label required">Custom Closure Reason</label>
+                    <input type="text" id="modalCloseClientCustomReasonInput" class="form-control client-form-input" placeholder="Type specific closure reason...">
+                </div>
+
+                <div class="mb-2 text-start">
+                    <label for="modalCloseClientNotesInput" class="form-label client-form-label">Closure Notes (Optional)</label>
+                    <textarea id="modalCloseClientNotesInput" class="form-control client-form-input" rows="2" placeholder="Add additional details or context..."></textarea>
+                </div>
+                
+                <p class="clients-delete-note text-muted small mt-2 mb-0">This will mark their status as "Closed" and move them to the Closed tab.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn dashboard-action-btn primary" id="confirmDeleteClientBtn">Close Client</button>
+                <button type="button" class="btn dashboard-action-btn danger" id="confirmDeleteClientBtn">
+                    <i class="bi bi-person-x me-1"></i> Close Client
+                </button>
             </div>
         </div>
     </div>
@@ -455,7 +497,7 @@
                         <i class="bi bi-eye" aria-hidden="true"></i>
                     </button>
                 </div>
-                <p class="clients-access-modal-note">After confirmation, Client Details stays unlocked for a short time.</p>
+                <p class="clients-access-modal-note">Confirm your password each time to view client details.</p>
                 <span class="clients-access-status" id="clientAccessConfirmStatus" aria-live="polite"></span>
             </div>
             <div class="modal-footer client-details-actions">
@@ -524,8 +566,15 @@
         const clientsSortSelect = document.getElementById("clientsSortSelect");
         const clientsCountTag = document.getElementById("clientsCountTag");
         const clientsEmptyState = document.getElementById("clientsEmptyState");
-        const clientsRemarksPreviewNote = document.getElementById("clientsRemarksPreviewNote");
         const uiToastContainer = document.getElementById("uiToastContainer");
+        const clientsPagination = document.getElementById("clientsPagination");
+        const clientsPageRange = document.getElementById("clientsPageRange");
+        const clientsPrevPage = document.getElementById("clientsPrevPage");
+        const clientsNextPage = document.getElementById("clientsNextPage");
+        const clientsPageNumbers = document.getElementById("clientsPageNumbers");
+
+        let currentClientsPage = 1;
+        const CLIENTS_PAGE_SIZE = 10;
 
         const addClientForm = document.getElementById("addClientForm");
         const editClientForm = document.getElementById("editClientForm");
@@ -1186,6 +1235,10 @@
             if (clientsEmptyState && isClientsLoading) {
                 clientsEmptyState.hidden = true;
             }
+
+            if (clientsPagination && isClientsLoading) {
+                clientsPagination.hidden = true;
+            }
         };
 
         const getClientDataFromRow = (row) => {
@@ -1742,10 +1795,6 @@
 
         };
 
-        const isClientAccessRecentlyVerified = () => {
-            return clientDetailsVerifiedUntil > Math.floor(Date.now() / 1000);
-        };
-
         const setClientAccessStatus = (message, variant) => {
             if (!clientAccessConfirmStatus) {
                 return;
@@ -1764,6 +1813,10 @@
             }
             if (clientAccessConfirmPassword) {
                 clientAccessConfirmPassword.disabled = isLoading;
+            }
+            const passwordToggle = clientAccessConfirmModalElement ? clientAccessConfirmModalElement.querySelector(".client-password-toggle") : null;
+            if (passwordToggle) {
+                passwordToggle.disabled = isLoading;
             }
         };
 
@@ -1833,7 +1886,7 @@
                     throw new Error(message);
                 }
 
-                clientDetailsVerifiedUntil = Number(result.verified_until || 0) || 0;
+                clientDetailsVerifiedUntil = 0;
                 setClientAccessStatus("Access confirmed.", "success");
                 window.location.assign(pendingClientDetailsTarget.url);
             } catch (error) {
@@ -1851,7 +1904,7 @@
             const clientData = getClientDataFromRow(row);
             if (clientData && clientData.clientId) {
                 const targetUrl = `/clients/${clientData.clientId}/`;
-                if (!CLIENT_DETAILS_PASSWORD_REQUIRED || isClientAccessRecentlyVerified()) {
+                if (!CLIENT_DETAILS_PASSWORD_REQUIRED) {
                     window.location.assign(targetUrl);
                     return;
                 }
@@ -1893,10 +1946,117 @@
             });
         };
 
-        const applyClientsSearch = () => {
+        const generateClientsPaginationPages = (currPage, totalPages) => {
+            if (totalPages <= 5) {
+                const pages = [];
+                for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+                return pages;
+            }
+
+            if (currPage <= 3) {
+                return [1, 2, 3, "...", totalPages];
+            }
+
+            if (currPage >= totalPages - 2) {
+                return [1, "...", totalPages - 2, totalPages - 1, totalPages];
+            }
+
+            return [1, "...", currPage - 1, currPage, currPage + 1, "...", totalPages];
+        };
+
+        const scrollToClientsListTop = () => {
+            const listCard = document.querySelector(".clients-list-card");
+            if (listCard) {
+                listCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        };
+
+        const renderClientsPagination = (totalCount) => {
+            if (!clientsPagination) {
+                return;
+            }
+
+            if (totalCount <= 0) {
+                clientsPagination.hidden = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(totalCount / CLIENTS_PAGE_SIZE) || 1;
+            if (currentClientsPage > totalPages) {
+                currentClientsPage = totalPages;
+            }
+            if (currentClientsPage < 1) {
+                currentClientsPage = 1;
+            }
+
+            if (totalPages <= 1) {
+                clientsPagination.hidden = true;
+                return;
+            }
+
+            clientsPagination.hidden = false;
+
+            const startIndex = (currentClientsPage - 1) * CLIENTS_PAGE_SIZE + 1;
+            const endIndex = Math.min(currentClientsPage * CLIENTS_PAGE_SIZE, totalCount);
+
+            if (clientsPageRange) {
+                clientsPageRange.textContent = `Showing ${startIndex}-${endIndex} of ${totalCount} ${totalCount === 1 ? "Client" : "Clients"}`;
+            }
+
+            if (clientsPrevPage) {
+                clientsPrevPage.disabled = currentClientsPage <= 1;
+            }
+
+            if (clientsNextPage) {
+                clientsNextPage.disabled = currentClientsPage >= totalPages;
+            }
+
+            if (clientsPageNumbers) {
+                clientsPageNumbers.innerHTML = "";
+                const pages = generateClientsPaginationPages(currentClientsPage, totalPages);
+
+                pages.forEach((p) => {
+                    if (p === "...") {
+                        const ellipsis = document.createElement("span");
+                        ellipsis.className = "clients-page-ellipsis";
+                        ellipsis.textContent = "\u2026";
+                        ellipsis.setAttribute("aria-hidden", "true");
+                        clientsPageNumbers.appendChild(ellipsis);
+                    } else {
+                        const pageBtn = document.createElement("button");
+                        pageBtn.type = "button";
+                        pageBtn.className = `btn clients-page-num${p === currentClientsPage ? " active" : ""}`;
+                        pageBtn.textContent = String(p);
+                        pageBtn.setAttribute("aria-label", `Page ${p}`);
+                        if (p === currentClientsPage) {
+                            pageBtn.setAttribute("aria-current", "page");
+                        }
+                        pageBtn.addEventListener("click", () => {
+                            if (currentClientsPage !== p) {
+                                currentClientsPage = p;
+                                applyClientsSearch(false);
+                                scrollToClientsListTop();
+                            }
+                        });
+                        clientsPageNumbers.appendChild(pageBtn);
+                    }
+                });
+            }
+        };
+
+        const applyClientsSearch = (resetPage = true) => {
+            if (resetPage) {
+                currentClientsPage = 1;
+            }
+
             if (isClientsLoading) {
                 if (clientsEmptyState) {
                     clientsEmptyState.hidden = true;
+                }
+                if (clientsPagination) {
+                    clientsPagination.hidden = true;
                 }
                 return;
             }
@@ -1904,7 +2064,7 @@
             const rows = getClientRows();
             const query = normalize(clientsSearchInput ? clientsSearchInput.value : "");
             const queryDigits = normalizeDigits(query);
-            let visibleCount = 0;
+            const matchingRows = [];
 
             rows.forEach((row) => {
                 const tinDigits = normalizeDigits(row.dataset.tinRaw || row.dataset.tin || "");
@@ -1919,11 +2079,28 @@
                 }
                 const matchesRemarks = matchesRemarksTab && (activeRemarksFilter === "all" || remarksVal === activeRemarksFilter);
                 const isVisible = matchesQuery && matchesRemarks;
-                row.hidden = !isVisible;
-                row.setAttribute("aria-hidden", String(!isVisible));
                 if (isVisible) {
-                    visibleCount += 1;
+                    matchingRows.push(row);
                 }
+            });
+
+            const totalMatching = matchingRows.length;
+            const totalPages = Math.ceil(totalMatching / CLIENTS_PAGE_SIZE) || 1;
+            if (currentClientsPage > totalPages) {
+                currentClientsPage = totalPages;
+            }
+            if (currentClientsPage < 1) {
+                currentClientsPage = 1;
+            }
+
+            const startIndex = (currentClientsPage - 1) * CLIENTS_PAGE_SIZE;
+            const endIndex = startIndex + CLIENTS_PAGE_SIZE;
+            const pagedSet = new Set(matchingRows.slice(startIndex, endIndex));
+
+            rows.forEach((row) => {
+                const isShownOnPage = pagedSet.has(row);
+                row.hidden = !isShownOnPage;
+                row.setAttribute("aria-hidden", String(!isShownOnPage));
             });
 
             if (clientsTableBody) {
@@ -1935,10 +2112,11 @@
             }
 
             if (clientsEmptyState) {
-                clientsEmptyState.hidden = visibleCount !== 0;
+                clientsEmptyState.hidden = totalMatching !== 0;
             }
 
-            updateClientsCount(visibleCount);
+            updateClientsCount(totalMatching);
+            renderClientsPagination(totalMatching);
         };
 
         const loadClientsFromApi = async () => {
@@ -2078,11 +2256,50 @@
 
         if (clientsSearchInput) {
             bindTinInput(clientsSearchInput, true);
-            clientsSearchInput.addEventListener("input", debounce(applyClientsSearch));
+            clientsSearchInput.addEventListener("input", debounce(() => {
+                applyClientsSearch(true);
+            }));
         }
 
         if (clientsSortSelect) {
-            clientsSortSelect.addEventListener("change", syncSortedClients);
+            clientsSortSelect.addEventListener("change", () => {
+                currentClientsPage = 1;
+                syncSortedClients();
+            });
+        }
+
+        if (clientsPrevPage) {
+            clientsPrevPage.addEventListener("click", () => {
+                if (currentClientsPage > 1) {
+                    currentClientsPage -= 1;
+                    applyClientsSearch(false);
+                    scrollToClientsListTop();
+                }
+            });
+        }
+
+        if (clientsNextPage) {
+            clientsNextPage.addEventListener("click", () => {
+                const rows = getClientRows();
+                const query = normalize(clientsSearchInput ? clientsSearchInput.value : "");
+                const queryDigits = normalizeDigits(query);
+                const matchingCount = rows.filter((row) => {
+                    const tinDigits = normalizeDigits(row.dataset.tinRaw || row.dataset.tin || "");
+                    const matchesTin = queryDigits ? tinDigits.includes(queryDigits) : false;
+                    const matchesQuery = !query || normalize(row.dataset.clientName).includes(query) || matchesTin;
+                    const remarksVal = normalize(row.dataset.remarks || "");
+                    const matchesRemarksTab = directoryTabFilter === "active"
+                        ? (remarksVal !== "closed" && remarksVal !== "separated")
+                        : (remarksVal === "closed" || remarksVal === "separated");
+                    return matchesQuery && matchesRemarksTab && (activeRemarksFilter === "all" || remarksVal === activeRemarksFilter);
+                }).length;
+                const totalPages = Math.ceil(matchingCount / CLIENTS_PAGE_SIZE) || 1;
+                if (currentClientsPage < totalPages) {
+                    currentClientsPage += 1;
+                    applyClientsSearch(false);
+                    scrollToClientsListTop();
+                }
+            });
         }
 
         bindTinInput(addClientTinInput, false);
@@ -2236,6 +2453,23 @@
             });
         }
 
+        const modalCloseClientReasonSelect = document.getElementById("modalCloseClientReasonSelect");
+        const modalCloseClientCustomReasonWrap = document.getElementById("modalCloseClientCustomReasonWrap");
+        const modalCloseClientCustomReasonInput = document.getElementById("modalCloseClientCustomReasonInput");
+        const modalCloseClientNotesInput = document.getElementById("modalCloseClientNotesInput");
+
+        if (modalCloseClientReasonSelect) {
+            modalCloseClientReasonSelect.addEventListener("change", () => {
+                const isOther = modalCloseClientReasonSelect.value === "Other Reason";
+                if (modalCloseClientCustomReasonWrap) {
+                    modalCloseClientCustomReasonWrap.hidden = !isOther;
+                    if (isOther && modalCloseClientCustomReasonInput) {
+                        modalCloseClientCustomReasonInput.focus();
+                    }
+                }
+            });
+        }
+
         if (confirmDeleteClientBtn) {
             confirmDeleteClientBtn.addEventListener("click", async () => {
                 if (!pendingDeleteRow) {
@@ -2248,29 +2482,53 @@
                     return;
                 }
 
-                const csrfToken = getCookieValue("csrftoken");
-                const response = await fetch(buildClientDetailApiUrl(clientId), {
-                    method: "DELETE",
-                    headers: {
-                        "X-CSRFToken": csrfToken
-                    },
-                    credentials: "same-origin"
-                });
-
-                const result = await parseJsonSafe(response);
-                if (!response.ok || !result || !result.ok) {
-                    const message = result && result.message ? result.message : "Unable to delete client.";
-                    showToast(message);
-                    return;
+                let reason = modalCloseClientReasonSelect ? modalCloseClientReasonSelect.value : "Non-payment / Unresponsive";
+                if (reason === "Other Reason") {
+                    const customVal = modalCloseClientCustomReasonInput ? modalCloseClientCustomReasonInput.value.trim() : "";
+                    if (!customVal) {
+                        showToast("Please specify the custom closure reason.", "warning");
+                        if (modalCloseClientCustomReasonInput) modalCloseClientCustomReasonInput.focus();
+                        return;
+                    }
+                    reason = customVal;
                 }
+                const notes = modalCloseClientNotesInput ? modalCloseClientNotesInput.value.trim() : "";
 
-                if (deleteClientModal) {
-                    deleteClientModal.hide();
+                confirmDeleteClientBtn.disabled = true;
+                confirmDeleteClientBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Closing...';
+
+                try {
+                    const csrfToken = getCookieValue("csrftoken");
+                    const response = await fetch(buildClientDetailApiUrl(clientId), {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": csrfToken
+                        },
+                        body: JSON.stringify({ reason, notes }),
+                        credentials: "same-origin"
+                    });
+
+                    const result = await parseJsonSafe(response);
+                    if (!response.ok || !result || !result.ok) {
+                        const message = result && result.message ? result.message : "Unable to close client.";
+                        showToast(message, "danger");
+                        return;
+                    }
+
+                    if (deleteClientModal) {
+                        deleteClientModal.hide();
+                    }
+                    pendingDeleteRow = null;
+
+                    await loadClientsFromApi();
+                    showToast(result.message || "Client closed successfully.");
+                } catch (err) {
+                    showToast(err.message || "Failed to close client.", "danger");
+                } finally {
+                    confirmDeleteClientBtn.disabled = false;
+                    confirmDeleteClientBtn.innerHTML = '<i class="bi bi-person-x me-1"></i> Close Client';
                 }
-                pendingDeleteRow = null;
-
-                await loadClientsFromApi();
-                showToast(result.message || "Client deleted successfully.");
             });
         }
 
@@ -2355,6 +2613,12 @@
         if (deleteClientModalElement) {
             deleteClientModalElement.addEventListener("hidden.bs.modal", () => {
                 pendingDeleteRow = null;
+            });
+        }
+
+        if (clientAccessConfirmPassword) {
+            clientAccessConfirmPassword.addEventListener("input", () => {
+                setClientAccessStatus("", "");
             });
         }
 

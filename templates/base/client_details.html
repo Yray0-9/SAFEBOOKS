@@ -70,7 +70,7 @@
             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1-5 client-details-status-badge">Closed</span>
             {% endif %}
         </div>
-        <div class="client-details-actions-panel">
+        <div class="client-details-actions-panel" id="clientDetailsActionsPanel">
             <button type="button" class="btn dashboard-action-btn outline" id="editClientDetailsButton" data-bs-toggle="modal" data-bs-target="#editClientDetailsModal">
                 <i class="bi bi-pencil-square me-1"></i> Edit Details
             </button>
@@ -80,9 +80,40 @@
             <button type="button" id="generateReportActionBtn" class="btn dashboard-action-btn outline">
                 <i class="bi bi-printer me-1"></i> Preview Report
             </button>
+            {% if client.remarks != 'closed' %}
             <a href="{% url 'financial_records_client' %}?client_id={{ client.id }}&client={{ client.client_name|urlencode }}&tin={{ client.tin_number|urlencode }}&trade={{ client.trade_name|urlencode }}&action=add" class="btn dashboard-action-btn primary" id="clientDetailsAddEntryLink">
                 <i class="bi bi-plus-lg me-1"></i> Add Entry
             </a>
+            <button type="button" class="btn dashboard-action-btn outline-danger" id="closeClientActionBtn" data-bs-toggle="modal" data-bs-target="#closeClientModal" aria-label="Close client business">
+                <i class="bi bi-person-x me-1"></i> Close Client
+            </button>
+            {% else %}
+            <button type="button" class="btn dashboard-action-btn outline-success" id="reopenClientActionBtn" data-bs-toggle="modal" data-bs-target="#reopenClientModal" aria-label="Reopen and restore client">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Reopen Client
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Closed Client Notice Banner -->
+    <div class="client-closed-banner dashboard-fade-up" id="clientClosedNoticeBanner" {% if client.remarks != 'closed' %}hidden{% endif %}>
+        <div class="client-closed-banner-icon">
+            <i class="bi bi-archive-fill"></i>
+        </div>
+        <div class="client-closed-banner-content">
+            <div class="client-closed-header">
+                <h3 class="client-closed-title">This Client is Currently Closed</h3>
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Closed</span>
+            </div>
+            <p class="client-closed-reason" id="clientClosedReasonDisplay">
+                <strong>Reason for Closure:</strong> <span id="clientClosedReasonText">{{ client.closure_reason|default:"Non-payment / Unresponsive" }}</span>
+            </p>
+            <p class="client-closed-notes" id="clientClosedNotesDisplay" {% if not client.closure_notes %}hidden{% endif %}>
+                <strong>Closure Notes:</strong> <span id="clientClosedNotesText">{{ client.closure_notes|default:"" }}</span>
+            </p>
+            <p class="client-closed-meta" id="clientClosedMetaDisplay" {% if not client.closed_at %}hidden{% endif %}>
+                <i class="bi bi-clock-history me-1"></i> <span id="clientClosedDateText">{% if client.closed_at %}Closed on {{ client.closed_at|date:"F d, Y" }}{% endif %}</span>
+            </p>
         </div>
     </div>
 
@@ -629,7 +660,7 @@
     </div>
 
     <!-- Formatted Report Modal -->
-    <div class="modal fade" id="formattedReportModal" tabindex="-1" aria-labelledby="formattedReportModalLabel" aria-hidden="true">
+    <div class="modal fade client-manage-modal client-report-modal" id="formattedReportModal" tabindex="-1" aria-labelledby="formattedReportModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header d-flex justify-content-between align-items-center">
@@ -668,6 +699,81 @@
             </div>
         </div>
     </div>
+
+    <!-- Close Client Modal -->
+    <div class="modal fade" id="closeClientModal" tabindex="-1" aria-labelledby="closeClientModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content client-manage-modal">
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title h5" id="closeClientModalTitle">Close Client</h2>
+                        <p class="text-muted small mb-0">Specify the reason for closing this client.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="closeClientForm" novalidate>
+                    <div class="modal-body">
+                        <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                            <span class="small">Closing <strong>{{ client.client_name }}</strong> will remove them from the Active Directory and move them to Closed.</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="closeClientReasonSelect" class="form-label client-form-label required">Reason for Closure</label>
+                            <select id="closeClientReasonSelect" class="form-select client-form-input" required>
+                                <option value="Non-payment / Unresponsive" selected>Non-payment / Unresponsive</option>
+                                <option value="Ceased Operations / Closed Business">Ceased Operations / Closed Business</option>
+                                <option value="No Filing / Missing Requirements">No Filing / Missing Requirements</option>
+                                <option value="Transferred to Another Bookkeeper">Transferred to Another Bookkeeper</option>
+                                <option value="Other Reason">Other Reason (Specify below)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="closeClientCustomReasonWrap" hidden>
+                            <label for="closeClientCustomReasonInput" class="form-label client-form-label required">Custom Closure Reason</label>
+                            <input type="text" id="closeClientCustomReasonInput" class="form-control client-form-input" placeholder="Type specific closure reason...">
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="closeClientNotesInput" class="form-label client-form-label">Closure Notes (Optional)</label>
+                            <textarea id="closeClientNotesInput" class="form-control client-form-input" rows="3" placeholder="Add additional details or context regarding this closure..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn dashboard-action-btn danger" id="confirmCloseClientBtn">
+                            <i class="bi bi-person-x me-1"></i> Close Client
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reopen Client Modal -->
+    <div class="modal fade" id="reopenClientModal" tabindex="-1" aria-labelledby="reopenClientModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content client-manage-modal">
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title h5" id="reopenClientModalTitle">Reopen Client</h2>
+                        <p class="text-muted small mb-0">Restore this client to the Active Directory.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to reopen and restore <strong>{{ client.client_name }}</strong>?</p>
+                    <p class="text-muted small mb-0">This client will be moved back to the Active Directory and will be available for new financial records.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn dashboard-action-btn primary" id="confirmReopenClientBtn">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reopen Client
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}
 
@@ -690,6 +796,7 @@
         const ANALYTICS_SUMMARY_API_URL = "{% url 'api_analytics_summary' %}";
         const REPORTS_PRINT_LAYOUT_API_URL = "{% url 'api_reports_print_layout' %}";
         const CLIENT_DETAIL_API_URL = "{% url 'api_client_detail' client.id %}";
+        const CLIENT_REOPEN_API_URL = "{% url 'api_client_reopen' client.id %}";
         const CLIENT_FORECAST_GROWTH_PERCENT = "{{ client.forecast_growth_percent|default:'0.00' }}";
         const CLIENT_RECORD_EMAIL_NOTIFICATIONS_ENABLED = {{ client_record_email_notifications_enabled|yesno:"true,false" }};
         const body = document.body;
@@ -2174,6 +2281,7 @@
 
             setupModalReportEvents();
             setupEditClientDetailsEvents();
+            setupCloseAndReopenClientEvents();
 
             // Toggle Client Overview Card visibility depending on selected tab (Dashboard vs Forecast)
             const dashboardTab = document.getElementById("dashboard-tab");
@@ -2616,6 +2724,203 @@
                 const reportModal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 reportModal.show();
                 loadModalReport();
+            }
+        };
+
+        const setupCloseAndReopenClientEvents = () => {
+            const closeClientModalEl = document.getElementById("closeClientModal");
+            const reopenClientModalEl = document.getElementById("reopenClientModal");
+            const closeClientForm = document.getElementById("closeClientForm");
+            const closeClientReasonSelect = document.getElementById("closeClientReasonSelect");
+            const closeClientCustomReasonWrap = document.getElementById("closeClientCustomReasonWrap");
+            const closeClientCustomReasonInput = document.getElementById("closeClientCustomReasonInput");
+            const closeClientNotesInput = document.getElementById("closeClientNotesInput");
+            const confirmCloseClientBtn = document.getElementById("confirmCloseClientBtn");
+            const confirmReopenClientBtn = document.getElementById("confirmReopenClientBtn");
+
+            const closeClientModal = closeClientModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(closeClientModalEl) : null;
+            const reopenClientModal = reopenClientModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(reopenClientModalEl) : null;
+
+            const updateClosedUiState = (clientData) => {
+                const isClosed = Boolean(clientData && clientData.remarks === "closed");
+                const titleBadge = document.querySelector(".client-details-status-badge");
+                if (titleBadge) {
+                    titleBadge.className = isClosed
+                        ? "badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1-5 client-details-status-badge"
+                        : "badge bg-success-subtle text-success border border-success-subtle px-3 py-1-5 client-details-status-badge";
+                    titleBadge.textContent = isClosed ? "Closed" : "Active";
+                }
+                const remarksField = document.querySelector('[data-client-profile-field="remarks"]');
+                if (remarksField) {
+                    remarksField.textContent = isClosed ? "Closed" : "Active";
+                }
+
+                const banner = document.getElementById("clientClosedNoticeBanner");
+                const reasonText = document.getElementById("clientClosedReasonText");
+                const notesDisplay = document.getElementById("clientClosedNotesDisplay");
+                const notesText = document.getElementById("clientClosedNotesText");
+                const metaDisplay = document.getElementById("clientClosedMetaDisplay");
+                const dateText = document.getElementById("clientClosedDateText");
+
+                if (banner) banner.hidden = !isClosed;
+                if (reasonText && clientData) reasonText.textContent = clientData.closure_reason || "Non-payment / Unresponsive";
+                if (notesDisplay && notesText && clientData) {
+                    if (clientData.closure_notes) {
+                        notesText.textContent = clientData.closure_notes;
+                        notesDisplay.hidden = false;
+                    } else {
+                        notesText.textContent = "";
+                        notesDisplay.hidden = true;
+                    }
+                }
+                if (metaDisplay && dateText && clientData) {
+                    if (clientData.closed_at) {
+                        dateText.textContent = `Closed on ${new Date(clientData.closed_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
+                        metaDisplay.hidden = false;
+                    } else {
+                        metaDisplay.hidden = true;
+                    }
+                }
+
+                const actionsPanel = document.getElementById("clientDetailsActionsPanel");
+                if (actionsPanel) {
+                    const addEntryLink = document.getElementById("clientDetailsAddEntryLink");
+                    const closeBtn = document.getElementById("closeClientActionBtn");
+                    const reopenBtn = document.getElementById("reopenClientActionBtn");
+
+                    if (isClosed) {
+                        if (addEntryLink) addEntryLink.remove();
+                        if (closeBtn) closeBtn.remove();
+                        if (!document.getElementById("reopenClientActionBtn")) {
+                            const newReopenBtn = document.createElement("button");
+                            newReopenBtn.type = "button";
+                            newReopenBtn.className = "btn dashboard-action-btn outline-success";
+                            newReopenBtn.id = "reopenClientActionBtn";
+                            newReopenBtn.setAttribute("data-bs-toggle", "modal");
+                            newReopenBtn.setAttribute("data-bs-target", "#reopenClientModal");
+                            newReopenBtn.setAttribute("aria-label", "Reopen and restore client");
+                            newReopenBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Reopen Client';
+                            actionsPanel.appendChild(newReopenBtn);
+                        }
+                    } else {
+                        if (reopenBtn) reopenBtn.remove();
+                        if (!document.getElementById("clientDetailsAddEntryLink")) {
+                            const newAddEntry = document.createElement("a");
+                            newAddEntry.href = `{% url 'financial_records_client' %}?client_id={{ client.id }}&client=${encodeURIComponent(currentClientProfile.client_name)}&tin=${encodeURIComponent(currentClientProfile.tin_number)}&trade=${encodeURIComponent(currentClientProfile.trade_name)}&action=add`;
+                            newAddEntry.className = "btn dashboard-action-btn primary";
+                            newAddEntry.id = "clientDetailsAddEntryLink";
+                            newAddEntry.innerHTML = '<i class="bi bi-plus-lg me-1"></i> Add Entry';
+                            actionsPanel.appendChild(newAddEntry);
+                        }
+                        if (!document.getElementById("closeClientActionBtn")) {
+                            const newCloseBtn = document.createElement("button");
+                            newCloseBtn.type = "button";
+                            newCloseBtn.className = "btn dashboard-action-btn outline-danger";
+                            newCloseBtn.id = "closeClientActionBtn";
+                            newCloseBtn.setAttribute("data-bs-toggle", "modal");
+                            newCloseBtn.setAttribute("data-bs-target", "#closeClientModal");
+                            newCloseBtn.setAttribute("aria-label", "Close client business");
+                            newCloseBtn.innerHTML = '<i class="bi bi-person-x me-1"></i> Close Client';
+                            actionsPanel.appendChild(newCloseBtn);
+                        }
+                    }
+                }
+            };
+
+            if (closeClientReasonSelect) {
+                closeClientReasonSelect.addEventListener("change", () => {
+                    const isOther = closeClientReasonSelect.value === "Other Reason";
+                    if (closeClientCustomReasonWrap) {
+                        closeClientCustomReasonWrap.hidden = !isOther;
+                        if (isOther && closeClientCustomReasonInput) {
+                            closeClientCustomReasonInput.focus();
+                        }
+                    }
+                });
+            }
+
+            if (closeClientForm) {
+                closeClientForm.addEventListener("submit", async (e) => {
+                    e.preventDefault();
+                    let reason = closeClientReasonSelect ? closeClientReasonSelect.value : "Non-payment / Unresponsive";
+                    if (reason === "Other Reason") {
+                        const customVal = closeClientCustomReasonInput ? closeClientCustomReasonInput.value.trim() : "";
+                        if (!customVal) {
+                            showToast("Please specify the custom closure reason.", "warning");
+                            if (closeClientCustomReasonInput) closeClientCustomReasonInput.focus();
+                            return;
+                        }
+                        reason = customVal;
+                    }
+                    const notes = closeClientNotesInput ? closeClientNotesInput.value.trim() : "";
+
+                    if (confirmCloseClientBtn) {
+                        confirmCloseClientBtn.disabled = true;
+                        confirmCloseClientBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Closing...';
+                    }
+
+                    try {
+                        const csrfToken = getCookieValue("csrftoken");
+                        const response = await fetch(CLIENT_DETAIL_API_URL, {
+                            method: "DELETE",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfToken,
+                            },
+                            body: JSON.stringify({ reason, notes }),
+                            credentials: "same-origin"
+                        });
+
+                        const result = await parseJsonSafe(response);
+                        if (!response.ok || !result || !result.ok) {
+                            throw new Error(result && result.message ? result.message : "Unable to close client.");
+                        }
+
+                        if (closeClientModal) closeClientModal.hide();
+                        updateClosedUiState(result.client || { remarks: "closed", closure_reason: reason, closure_notes: notes, closed_at: new Date().toISOString() });
+                        showToast(result.message || "Client closed successfully.");
+                    } catch (err) {
+                        showToast(err.message || "Failed to close client.", "danger");
+                    } finally {
+                        if (confirmCloseClientBtn) {
+                            confirmCloseClientBtn.disabled = false;
+                            confirmCloseClientBtn.innerHTML = '<i class="bi bi-person-x me-1"></i> Close Client';
+                        }
+                    }
+                });
+            }
+
+            if (confirmReopenClientBtn) {
+                confirmReopenClientBtn.addEventListener("click", async () => {
+                    confirmReopenClientBtn.disabled = true;
+                    confirmReopenClientBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Reopening...';
+
+                    try {
+                        const csrfToken = getCookieValue("csrftoken");
+                        const response = await fetch(CLIENT_REOPEN_API_URL, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfToken,
+                            },
+                            credentials: "same-origin"
+                        });
+
+                        const result = await parseJsonSafe(response);
+                        if (!response.ok || !result || !result.ok) {
+                            throw new Error(result && result.message ? result.message : "Unable to reopen client.");
+                        }
+
+                        if (reopenClientModal) reopenClientModal.hide();
+                        updateClosedUiState(result.client || { remarks: "new", closure_reason: "", closure_notes: "", closed_at: "" });
+                        showToast(result.message || "Client reopened successfully.");
+                    } catch (err) {
+                        showToast(err.message || "Failed to reopen client.", "danger");
+                    } finally {
+                        confirmReopenClientBtn.disabled = false;
+                        confirmReopenClientBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Reopen Client';
+                    }
+                });
             }
         };
 

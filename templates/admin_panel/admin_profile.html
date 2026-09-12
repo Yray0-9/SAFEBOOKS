@@ -4,7 +4,7 @@
 {% block page_title %}Admin Profile{% endblock %}
 {% block page_heading %}Admin Profile{% endblock %}
 {% block page_subtitle %}
-<p class="dashboard-page-subtitle">Manage your admin account and security.</p>
+<p class="dashboard-page-subtitle">Manage your admin account identity.</p>
 {% endblock %}
 
 {% block extra_css %}
@@ -41,30 +41,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="dash-sk-content">
-                    <div class="dash-sk-left">
-                        <div class="dash-sk-card">
-                            <div class="skeleton-shimmer dash-sk-card-head" style="width: 50%;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="margin-top: 15px; margin-bottom: 10px;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 10px; width: 80%;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="width: 90%;"></div>
-                        </div>
-                    </div>
-                    <div class="dash-sk-right">
-                        <div class="dash-sk-card">
-                            <div class="skeleton-shimmer dash-sk-card-head" style="width: 50%;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="margin-top: 15px; margin-bottom: 10px;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 10px; width: 80%;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="width: 90%;"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="dash-sk-content mt-3" style="grid-template-columns: 1fr;">
+                <div class="dash-sk-content" style="grid-template-columns: 1fr;">
                     <div class="dash-sk-card">
-                        <div class="skeleton-shimmer dash-sk-card-head" style="width: 30%;"></div>
-                        <div class="skeleton-shimmer dash-sk-line" style="margin-top: 15px; margin-bottom: 8px;"></div>
-                        <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 8px; width: 90%;"></div>
-                        <div class="skeleton-shimmer dash-sk-line" style="width: 85%;"></div>
+                        <div class="skeleton-shimmer dash-sk-card-head" style="width: 50%;"></div>
+                        <div class="skeleton-shimmer dash-sk-line" style="margin-top: 15px; margin-bottom: 10px;"></div>
+                        <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 10px; width: 80%;"></div>
+                        <div class="skeleton-shimmer dash-sk-line" style="width: 90%;"></div>
                     </div>
                 </div>
             </section>
@@ -94,241 +76,38 @@
                 </div>
             </article>
 
-            <div class="row g-3">
-                <div class="col-xl-7">
-                    <form class="dashboard-card admin-card profile-card dashboard-fade-up profile-scroll-target h-100" style="--delay: 0.08s;" id="adminIdentity" novalidate tabindex="-1">
-                        <div class="profile-card-head">
-                            <div>
-                                <h2>Identity details</h2>
-                            </div>
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="profile-field-label" for="adminFullName">Full name</label>
-                                <input type="text" id="adminFullName" class="form-control profile-input" value="{{ current_admin_name|default:'System Admin' }}" placeholder="Enter your full name" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="profile-field-label" for="adminEmail">Email address</label>
-                                <input type="email" id="adminEmail" class="form-control profile-input" value="{{ current_admin_email|default:'admin@safebooks.com' }}" placeholder="admin@safebooks.com" required>
-                            </div>
-                        </div>
-
-                        <div class="profile-section-footer">
-                            <span class="profile-save-status" id="adminProfileStatus">Saved</span>
-                            <div class="dashboard-actions admin-actions">
-                                <button type="button" class="dashboard-action-btn outline" id="adminProfileReset">Reset changes</button>
-                                <button type="submit" class="dashboard-action-btn primary" id="adminProfileSave">Save profile</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="col-xl-5">
-                    <form class="dashboard-card admin-card profile-card dashboard-fade-up profile-scroll-target h-100" style="--delay: 0.1s;" id="adminSecurity" novalidate tabindex="-1">
-                        <div class="profile-card-head">
-                            <div>
-                                <h2>Password security</h2>
-                            </div>
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="profile-field-label" for="adminCurrentPassword">Current password</label>
-                                <input type="password" id="adminCurrentPassword" class="form-control profile-input" autocomplete="current-password" placeholder="Enter current password" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="profile-field-label" for="adminNewPassword">New password</label>
-                                <input type="password" id="adminNewPassword" class="form-control profile-input" autocomplete="new-password" placeholder="Create new password" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="profile-field-label" for="adminConfirmPassword">Confirm password</label>
-                                <input type="password" id="adminConfirmPassword" class="form-control profile-input" autocomplete="new-password" placeholder="Repeat new password" required>
-                            </div>
-                        </div>
-
-                        <p class="profile-field-hint">Use at least 8 characters with uppercase, lowercase, number, and symbol.</p>
-
-                        <div class="profile-section-footer">
-                            <span class="profile-save-status" id="adminPasswordStatus">Not changed</span>
-                            <button type="submit" class="dashboard-action-btn primary profile-save-btn" id="adminPasswordSave">Update password</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <article class="dashboard-card admin-card profile-card profile-two-factor-card dashboard-fade-up profile-scroll-target" style="--delay: 0.11s;" id="adminTwoFactor" tabindex="-1">
+            <form class="dashboard-card admin-card profile-card dashboard-fade-up profile-scroll-target" style="--delay: 0.08s;" id="adminIdentity" novalidate tabindex="-1">
                 <div class="profile-card-head">
                     <div>
-                        <h2>Authenticator security</h2>
-                    </div>
-                    <span class="profile-two-factor-status is-loading" id="adminTwoFactorStatus">Checking...</span>
-                </div>
-                <div class="profile-security-row profile-two-factor-row">
-                    <div class="profile-two-factor-summary">
-                        <span class="profile-two-factor-icon" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
-                        <div>
-                            <p class="profile-field-label" id="adminTwoFactorTitle">Two-factor authentication</p>
-                            <p class="profile-field-hint" id="adminTwoFactorDescription">Loading security status...</p>
-                        </div>
-                    </div>
-                    <div class="profile-two-factor-actions">
-                        <button type="button" class="dashboard-action-btn outline profile-two-factor-action d-none" id="adminTwoFactorRecoveryAction">Replace recovery codes</button>
-                        <button type="button" class="dashboard-action-btn outline profile-two-factor-action" id="adminTwoFactorAction" disabled>Manage</button>
+                        <h2>Identity details</h2>
                     </div>
                 </div>
-            </article>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="profile-field-label" for="adminFullName">Full name</label>
+                        <input type="text" id="adminFullName" class="form-control profile-input" value="{{ current_admin_name|default:'System Admin' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="profile-field-label" for="adminEmail">Email address</label>
+                        <input type="email" id="adminEmail" class="form-control profile-input" value="{{ current_admin_email|default:'admin@safebooks.com' }}" required>
+                    </div>
+                </div>
+
+                <div class="profile-section-footer">
+                    <span class="profile-save-status" id="adminProfileStatus">Saved</span>
+                    <div class="dashboard-actions admin-actions">
+                        <button type="button" class="dashboard-action-btn outline" id="adminProfileReset">Reset changes</button>
+                        <button type="submit" class="dashboard-action-btn primary" id="adminProfileSave">Save profile</button>
+                    </div>
+                </div>
+            </form>
 
         </div>
     </div>
 </section>
 
-<div class="modal fade profile-security-modal" id="adminTwoFactorSetupModal" tabindex="-1" aria-labelledby="adminTwoFactorSetupTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="adminTwoFactorSetupTitle">Enable authenticator</h2>
-                    <p class="profile-field-hint">Confirm your identity, then connect your authenticator app.</p>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="adminTwoFactorSetupForm" novalidate>
-                    <div id="adminTwoFactorPasswordStep">
-                        <label class="profile-field-label" for="adminTwoFactorCurrentPassword">Current password</label>
-                        <input type="password" id="adminTwoFactorCurrentPassword" class="form-control profile-input" autocomplete="current-password" required>
-                    </div>
-                    <div class="d-none" id="adminTwoFactorCodeStep">
-                        <div class="profile-authenticator-setup">
-                            <div class="profile-qr-panel d-none" id="adminTwoFactorQrPanel">
-                                <img id="adminTwoFactorQrCode" class="profile-qr-code" alt="Authenticator setup QR code">
-                                <p>Scan with your authenticator app</p>
-                            </div>
-                            <div class="profile-authenticator-instructions">
-                                <p class="profile-field-label">Connect your authenticator</p>
-                                <ol class="profile-setup-steps">
-                                    <li>Open Google Authenticator or another TOTP app.</li>
-                                    <li>Scan the QR code.</li>
-                                    <li>Enter the six-digit code shown by the app.</li>
-                                </ol>
-                                <details class="profile-manual-setup">
-                                    <summary>Cannot scan? Use the setup key</summary>
-                                    <label class="visually-hidden" for="adminTwoFactorSetupKey">Authenticator setup key</label>
-                                    <div class="profile-setup-key-row">
-                                        <input type="text" id="adminTwoFactorSetupKey" class="form-control profile-input profile-setup-key" readonly aria-describedby="adminTwoFactorKeyHint">
-                                        <button type="button" class="dashboard-icon-btn" id="adminTwoFactorCopyKey" title="Copy setup key" aria-label="Copy setup key"><i class="bi bi-copy"></i></button>
-                                    </div>
-                                    <p class="profile-field-hint" id="adminTwoFactorKeyHint">The key connects the same SafeBooks admin account as the QR code.</p>
-                                </details>
-                            </div>
-                        </div>
-                        <label class="profile-field-label profile-code-label" for="adminTwoFactorCode">Six-digit code</label>
-                        <input type="text" id="adminTwoFactorCode" class="form-control profile-input profile-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
-                    </div>
-                    <p class="profile-security-feedback" id="adminTwoFactorSetupFeedback" role="status" aria-live="polite"></p>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="dashboard-action-btn primary" id="adminTwoFactorBegin">Continue</button>
-                <button type="button" class="dashboard-action-btn primary d-none" id="adminTwoFactorConfirm">Enable 2FA</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="modal fade profile-security-modal" id="adminRecoveryCodesModal" tabindex="-1" aria-labelledby="adminRecoveryCodesTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="adminRecoveryCodesTitle">Save your recovery codes</h2>
-                    <p class="profile-field-hint">Use one code if your authenticator is unavailable.</p>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div class="profile-recovery-notice" role="note">
-                    <i class="bi bi-shield-check" aria-hidden="true"></i>
-                    <p>Store these codes somewhere private. Each code works once, and SafeBooks will not show this set again.</p>
-                </div>
-                <div class="profile-recovery-code-grid" id="adminRecoveryCodeList" aria-label="One-time recovery codes"></div>
-                <p class="profile-security-feedback" id="adminRecoveryCodesFeedback" role="status" aria-live="polite"></p>
-            </div>
-            <div class="modal-footer profile-recovery-footer">
-                <button type="button" class="dashboard-action-btn outline" id="adminRecoveryCodesCopy"><i class="bi bi-copy" aria-hidden="true"></i> Copy codes</button>
-                <button type="button" class="dashboard-action-btn outline" id="adminRecoveryCodesPrint"><i class="bi bi-printer" aria-hidden="true"></i> Print</button>
-                <button type="button" class="dashboard-action-btn primary" id="adminRecoveryCodesDone">I saved my codes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade profile-security-modal" id="adminRecoveryRegenerateModal" tabindex="-1" aria-labelledby="adminRecoveryRegenerateTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="adminRecoveryRegenerateTitle">Replace recovery codes</h2>
-                    <p class="profile-field-hint">Creating a new set immediately disables every previous recovery code.</p>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="adminRecoveryRegenerateForm" novalidate>
-                    <div class="profile-security-form-grid">
-                        <div>
-                            <label class="profile-field-label" for="adminRecoveryRegeneratePassword">Current password</label>
-                            <input type="password" id="adminRecoveryRegeneratePassword" class="form-control profile-input" autocomplete="current-password" required>
-                        </div>
-                        <div>
-                            <label class="profile-field-label" for="adminRecoveryRegenerateCode">Six-digit code</label>
-                            <input type="text" id="adminRecoveryRegenerateCode" class="form-control profile-input profile-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
-                        </div>
-                    </div>
-                    <p class="profile-security-feedback" id="adminRecoveryRegenerateFeedback" role="status" aria-live="polite"></p>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="dashboard-action-btn primary" id="adminRecoveryRegenerate">Create new codes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade profile-security-modal" id="adminTwoFactorDisableModal" tabindex="-1" aria-labelledby="adminTwoFactorDisableTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h2 class="modal-title" id="adminTwoFactorDisableTitle">Disable authenticator</h2>
-                    <p class="profile-field-hint">Confirm with your password and current authenticator code.</p>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="adminTwoFactorDisableForm" novalidate>
-                    <div class="profile-security-form-grid">
-                        <div>
-                            <label class="profile-field-label" for="adminTwoFactorDisablePassword">Current password</label>
-                            <input type="password" id="adminTwoFactorDisablePassword" class="form-control profile-input" autocomplete="current-password" required>
-                        </div>
-                        <div>
-                            <label class="profile-field-label" for="adminTwoFactorDisableCode">Authenticator or recovery code</label>
-                            <input type="text" id="adminTwoFactorDisableCode" class="form-control profile-input" autocomplete="one-time-code" maxlength="14" required>
-                        </div>
-                    </div>
-                    <p class="profile-security-feedback" id="adminTwoFactorDisableFeedback" role="status" aria-live="polite"></p>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="dashboard-action-btn danger" id="adminTwoFactorDisable">Disable 2FA</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -336,11 +115,6 @@
     window.SafeBooksAdminProfileConfig = {
         urls: {
             adminProfileApi: "{% url 'api_admin_profile' %}",
-            adminPasswordApi: "{% url 'api_admin_security_password' %}",
-            adminTwoFactorSetupApi: "{% url 'api_admin_two_factor_setup' %}",
-            adminTwoFactorConfirmApi: "{% url 'api_admin_two_factor_confirm' %}",
-            adminTwoFactorDisableApi: "{% url 'api_admin_two_factor_disable' %}",
-            adminTwoFactorRecoveryCodesApi: "{% url 'api_admin_two_factor_recovery_codes' %}",
             loginPage: "{% url 'login' %}",
         },
         profile: {
@@ -350,5 +124,5 @@
         },
     };
 </script>
-<script src="{% static 'js/admin_profile_page.js' %}?v=20260714-admin-profile-cleanup"></script>
+<script src="{% static 'js/admin_profile_page.js' %}?v=20260823-security-to-settings"></script>
 {% endblock %}

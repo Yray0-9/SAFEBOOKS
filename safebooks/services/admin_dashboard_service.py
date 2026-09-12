@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.paginator import Paginator
 from django.db.models import Count
 from django.db.models.functions import Lower
 from django.utils import timezone
@@ -9,6 +10,18 @@ from safebooks.models import BookkeeperAccount, BookkeeperDeactivationRequest
 
 HIGH_LOAD_THRESHOLD = 150
 REVIEW_LIST_LIMIT = 4
+DEFAULT_LOAD_PAGE_SIZE = 5
+MAX_LOAD_PAGE_SIZE = 50
+
+
+def _normalize_positive_int(value, default: int, maximum: int | None = None) -> int:
+    try:
+        resolved = int(value)
+    except (TypeError, ValueError):
+        return default
+    if resolved < 1:
+        return default
+    return min(resolved, maximum) if maximum else resolved
 
 
 def _serialize_load_snapshot(account: BookkeeperAccount, client_count: int) -> dict:
@@ -57,7 +70,7 @@ def _serialize_deactivation_request(request_obj: BookkeeperDeactivationRequest) 
     }
 
 
-def get_admin_dashboard_summary(admin_account) -> dict:
+def get_admin_dashboard_summary(admin_account, load_page=1, load_page_size=DEFAULT_LOAD_PAGE_SIZE) -> dict:
     now = timezone.now()
     pending_cutoff = now - timedelta(days=1)
     week_cutoff = now - timedelta(days=7)
@@ -76,10 +89,26 @@ def get_admin_dashboard_summary(admin_account) -> dict:
     active_load_queryset = approved_qs.annotate(client_count=Count("clients", distinct=True))
     high_load_count = active_load_queryset.filter(client_count__gte=HIGH_LOAD_THRESHOLD).count()
 
+    resolved_page_size = _normalize_positive_int(load_page_size, DEFAULT_LOAD_PAGE_SIZE, MAX_LOAD_PAGE_SIZE)
+    sorted_load_qs = load_queryset.order_by("-client_count", Lower("full_name"), "id")
+    load_paginator = Paginator(sorted_load_qs, resolved_page_size)
+    load_page_obj = load_paginator.get_page(_normalize_positive_int(load_page, 1))
+
     load_snapshot = [
         _serialize_load_snapshot(account, account.client_count)
-        for account in load_queryset.order_by("-client_count", Lower("full_name"), "id")[:5]
+        for account in load_page_obj.object_list
     ]
+
+    load_snapshot_pagination = {
+        "page": load_page_obj.number,
+        "page_size": resolved_page_size,
+        "total_pages": load_paginator.num_pages,
+        "total_count": load_paginator.count,
+        "start_index": load_page_obj.start_index() if load_paginator.count else 0,
+        "end_index": load_page_obj.end_index() if load_paginator.count else 0,
+        "has_previous": load_page_obj.has_previous(),
+        "has_next": load_page_obj.has_next(),
+    }
 
     approval_readiness = {
         "new": pending_qs.filter(created_at__gte=pending_cutoff).count(),
@@ -124,6 +153,9 @@ def get_admin_dashboard_summary(admin_account) -> dict:
         },
         "approval_readiness": approval_readiness,
         "load_snapshot": load_snapshot,
+        "load_snapshot_pagination": load_snapshot_pagination,
+        "load_pagination": load_snapshot_pagination,
+        "pagination": load_snapshot_pagination,
         "needs_review": {
             "pending_approvals": pending_review,
             "deactivation_requests": deactivation_requests,

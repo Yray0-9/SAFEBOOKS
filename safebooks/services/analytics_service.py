@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from safebooks.models import Client, FinancialRecord, FinancialRecordLine
-from safebooks.services.forecasting_service import FREQUENCY_CONFIG, build_sarima_forecast
+from safebooks.services.forecasting_service import build_sarima_forecast
 
 
 TAX_TYPE_CODES = {
@@ -269,88 +269,6 @@ def _resolve_line_forecast_frequency(line: FinancialRecordLine, category: str) -
             return inferred_frequency
 
     return _normalize_frequency(line.record.frequency)
-
-
-def _periods_are_regular_for_frequency(
-    periods: set[tuple[int, int]],
-    frequency: str,
-) -> bool:
-    ordered_periods = sorted(periods)
-    if len(ordered_periods) < 2:
-        return True
-
-    interval = FREQUENCY_INTERVALS.get(frequency)
-    if interval is None:
-        return False
-
-    return all(
-        current == _shift_month(previous[0], previous[1], interval)
-        for previous, current in zip(ordered_periods, ordered_periods[1:])
-    )
-
-
-def _align_period_key_for_frequency(
-    period_key: tuple[int, int],
-    frequency: str,
-) -> tuple[int, int]:
-    if frequency == FinancialRecord.FREQUENCY_QUARTERLY:
-        year, month = period_key
-        return year, (((month - 1) // 3) + 1) * 3
-    return period_key
-
-
-def _infer_isolated_expense_frequency_overrides(prepared_lines: list[dict]) -> dict[int, str]:
-    """Recover one mistagged expense when its dates complete a regular series.
-
-    This affects forecasting only. It does not modify stored records, and it
-    does not merge genuinely mixed monthly and quarterly expense histories.
-    """
-    groups: dict[tuple[int, str], list[dict]] = defaultdict(list)
-    for item in prepared_lines:
-        if item["category"] != "expenses":
-            continue
-        type_key = _normalize_type_code_key(item["line"].type_code)
-        groups[(item["client_id"], type_key)].append(item)
-
-    overrides: dict[int, str] = {}
-    supported_frequencies = tuple(FREQUENCY_CONFIG)
-
-    for items in groups.values():
-        frequency_counts = {
-            frequency: sum(item["frequency"] == frequency for item in items)
-            for frequency in supported_frequencies
-        }
-        dominant_frequency = max(frequency_counts, key=frequency_counts.get)
-        dominant_count = frequency_counts[dominant_frequency]
-        minimum_observations = FREQUENCY_CONFIG[dominant_frequency]["minimum_observations"]
-        minority_items = [item for item in items if item["frequency"] != dominant_frequency]
-
-        # A single conflicting label can safely be inferred only when it fills
-        # the sole gap in an otherwise complete native-frequency series.
-        if dominant_count < minimum_observations - 1 or len(minority_items) != 1:
-            continue
-
-        candidate = minority_items[0]
-        dominant_periods = {
-            _align_period_key_for_frequency(item["period_key"], dominant_frequency)
-            for item in items
-            if item["frequency"] == dominant_frequency
-        }
-        candidate_period = _align_period_key_for_frequency(
-            candidate["period_key"],
-            dominant_frequency,
-        )
-        if candidate_period in dominant_periods:
-            continue
-
-        completed_periods = dominant_periods | {candidate_period}
-        if (
-            len(completed_periods) >= minimum_observations
-            and _periods_are_regular_for_frequency(completed_periods, dominant_frequency)
-        ):
-            overrides[candidate["index"]] = dominant_frequency
-
-    return overrides
 
 
 def _resolve_all_clients_remarks(clients: list[Client]) -> str:
@@ -891,7 +809,7 @@ def _build_predictive_forecast(
     latest_period_key: tuple[int, int] | None = None
     prepared_lines: list[dict] = []
 
-    for index, line in enumerate(lines):
+    for line in lines:
         record = line.record
         if not record:
             continue
@@ -904,8 +822,6 @@ def _build_predictive_forecast(
         frequency = _resolve_line_forecast_frequency(line, category)
 
         prepared_lines.append({
-            "index": index,
-            "line": line,
             "client_id": record.client_id,
             "period_key": period_key,
             "amount": amount,
@@ -914,18 +830,16 @@ def _build_predictive_forecast(
         })
         actual_totals_by_period[period_key][category] += amount
 
-    frequency_overrides = _infer_isolated_expense_frequency_overrides(prepared_lines)
     for item in prepared_lines:
         category = item["category"]
-        frequency = frequency_overrides.get(item["index"], item["frequency"])
+        frequency = item["frequency"]
         group_key = category
-        forecast_period_key = _align_period_key_for_frequency(item["period_key"], frequency)
         grouped_totals[(
             item["client_id"],
             category,
             frequency,
             group_key,
-        )][forecast_period_key] += item["amount"]
+        )][item["period_key"]] += item["amount"]
 
     if latest_period_key is None:
         reference_year = fallback_reference_date.year

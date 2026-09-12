@@ -22,7 +22,7 @@ from django.views.generic import RedirectView
 from safebooks import views
 
 urlpatterns = [
-    path('django-admin/', admin.site.urls),
+    #path('django-admin/', admin.site.urls),
     path(
         'favicon.ico',
         RedirectView.as_view(url=staticfiles_storage.url('images/Logo_safebooks.png'), permanent=False),
@@ -35,6 +35,7 @@ urlpatterns = [
     path('auth/google/callback/', views.auth_google_callback_view, name='auth_google_callback'),
     path('api/auth/login/', views.login_view, name='api_login'),
     path('api/auth/admin-2fa/verify/', views.admin_two_factor_login_verify_view, name='api_admin_two_factor_login_verify'),
+    path('api/auth/bookkeeper-2fa/verify/', views.bookkeeper_two_factor_login_verify_view, name='api_bookkeeper_two_factor_login_verify'),
     path('api/auth/register/', views.register_view, name='api_register'),
     path('api/auth/google/complete-signup/', views.google_complete_signup_view, name='api_google_complete_signup'),
     path('api/auth/logout/', views.logout_view, name='api_logout'),
@@ -48,12 +49,16 @@ urlpatterns = [
     path('api/settings/security/password/', views.security_change_password_api_view, name='api_security_change_password'),
     path('api/settings/security/login-alerts/', views.security_login_alerts_api_view, name='api_security_login_alerts'),
     path('api/settings/security/client-details-access/', views.security_client_details_access_preference_api_view, name='api_security_client_details_access_preference'),
+    path('api/settings/security/two-factor/setup/', views.bookkeeper_two_factor_setup_api_view, name='api_bookkeeper_two_factor_setup'),
+    path('api/settings/security/two-factor/confirm/', views.bookkeeper_two_factor_confirm_api_view, name='api_bookkeeper_two_factor_confirm'),
+    path('api/settings/security/two-factor/disable/', views.bookkeeper_two_factor_disable_api_view, name='api_bookkeeper_two_factor_disable'),
     path('api/settings/account/deactivation-request/', views.settings_deactivation_request_api_view, name='api_settings_deactivation_request'),
     path('api/security/client-details-access/confirm/', views.security_client_details_access_confirm_api_view, name='api_security_client_details_access_confirm'),
     path('api/profile/', views.profile_api_view, name='api_profile'),
     path('api/audit-log/', views.bookkeeper_audit_log_api_view, name='api_bookkeeper_audit_log'),
     path('api/clients/', views.clients_api_view, name='api_clients'),
     path('api/clients/<int:client_id>/', views.client_detail_api_view, name='api_client_detail'),
+    path('api/clients/<int:client_id>/reopen/', views.client_reopen_api_view, name='api_client_reopen'),
     path('api/dashboard/summary/', views.dashboard_summary_api_view, name='api_dashboard_summary'),
     path('api/analytics/summary/', views.analytics_summary_api_view, name='api_analytics_summary'),
     path('api/reports/print-layout/', views.reports_print_layout_api_view, name='api_reports_print_layout'),

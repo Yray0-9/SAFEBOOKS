@@ -192,3 +192,181 @@ body.theme-dark .audit-action-badge.security {
         background: #0f1c33;
     }
 }
+
+/* Audit Log Pagination */
+.audit-log-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid #e1e9f8;
+    margin-top: 0.85rem;
+    padding-top: 0.95rem;
+    flex-wrap: wrap;
+}
+
+.audit-log-pagination[hidden] {
+    display: none !important;
+}
+
+.audit-log-pagination-range {
+    color: #6079a6;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.audit-log-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.audit-log-page-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 34px;
+    padding: 0.32rem 0.75rem;
+    border: 1px solid #caddff;
+    border-radius: 8px;
+    background: #f7faff;
+    color: #1f5ed9;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.audit-log-page-button:hover:not(:disabled) {
+    background: #1f5ed9;
+    color: #ffffff;
+    border-color: #1f5ed9;
+    box-shadow: 0 4px 10px rgba(31, 94, 217, 0.2);
+}
+
+.audit-log-page-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.audit-log-page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.audit-log-page-num {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 0.4rem;
+    border-radius: 8px;
+    border: 1px solid #dce7fc;
+    background: #ffffff;
+    color: #324c7b;
+    font-size: 0.84rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.audit-log-page-num:hover:not(.active) {
+    background: #eef4ff;
+    border-color: #bad3fe;
+    color: #1f5ed9;
+}
+
+.audit-log-page-num.active {
+    background: #1f5ed9;
+    color: #ffffff;
+    border-color: #1f5ed9;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(31, 94, 217, 0.25);
+    cursor: default;
+}
+
+.audit-log-page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 34px;
+    color: #8fa0c0;
+    font-size: 0.84rem;
+    font-weight: 800;
+    user-select: none;
+}
+
+@media (max-width: 575px) {
+    .audit-log-pagination {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .audit-log-pagination-range {
+        text-align: center;
+    }
+
+    .audit-log-pagination-controls {
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+}
+
+body.theme-dark .audit-log-pagination {
+    border-color: #334155;
+}
+
+body.theme-dark .audit-log-pagination-range {
+    color: #94a3b8;
+}
+
+body.theme-dark .admin-audit-page-button,
+body.theme-dark .audit-log-page-button {
+    border-color: #31558a;
+    background: #13233c;
+    color: #93c5fd;
+}
+
+body.theme-dark .admin-audit-page-button:hover:not(:disabled),
+body.theme-dark .audit-log-page-button:hover:not(:disabled) {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+body.theme-dark .admin-audit-page-button:disabled,
+body.theme-dark .audit-log-page-button:disabled {
+    background: #0f1c33;
+    border-color: #1c2b42;
+    color: #435b7f;
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+body.theme-dark .audit-log-page-num {
+    border-color: #334155;
+    background: #0f1c33;
+    color: #cbd5e1;
+}
+
+body.theme-dark .audit-log-page-num:hover:not(.active) {
+    background: #1e293b;
+    border-color: #475569;
+    color: #93c5fd;
+}
+
+body.theme-dark .audit-log-page-num.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+body.theme-dark .audit-log-page-ellipsis {
+    color: #64748b;
+}

@@ -291,6 +291,56 @@
                             <button type="button" class="btn dashboard-action-btn primary settings-save-btn" id="settingsClientDetailsLockSaveButton">Save Lock Setting</button>
                         </div>
                     </div>
+
+                    <div class="settings-security-panel settings-two-factor-panel" id="settingsTwoFactorPanel">
+                        <div class="settings-security-header">
+                            <div>
+                                <p class="settings-field-label">
+                                    Two-Factor Authentication (2FA)
+                                    <span class="safebooks-tooltip-wrap">
+                                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                                        <span class="safebooks-tooltip-content">Protect your bookkeeper account by requiring an authenticator app code on login.</span>
+                                    </span>
+                                </p>
+                            </div>
+                            <span class="settings-status-pill {% if two_factor_enabled %}is-enabled{% else %}is-neutral{% endif %}" id="settingsTwoFactorStatus">{% if two_factor_enabled %}Enabled{% else %}Disabled{% endif %}</span>
+                        </div>
+
+                        <div class="settings-two-factor-preview-info">
+                            <div class="settings-two-factor-icon-badge">
+                                <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                            </div>
+                            <div class="settings-two-factor-text">
+                                <span class="settings-two-factor-method">Authenticator App (TOTP)</span>
+                                <span class="settings-two-factor-note">Google Authenticator, Microsoft Authenticator, or Authy</span>
+                            </div>
+                            <span class="settings-tag-badge">Recommended</span>
+                        </div>
+
+                        <div class="settings-security-footer">
+                            <div></div>
+                            <div class="settings-security-buttons">
+                                <button
+                                    type="button"
+                                    class="btn dashboard-action-btn primary {% if two_factor_enabled %}d-none{% endif %}"
+                                    id="settingsOpenTwoFactorModal"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#settingsTwoFactorModal"
+                                >
+                                    <i class="bi bi-shield-check"></i> Set Up 2FA
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn dashboard-action-btn outline {% if not two_factor_enabled %}d-none{% endif %}"
+                                    id="settingsOpenDisableTwoFactorModal"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#settingsDisableTwoFactorModal"
+                                >
+                                    <i class="bi bi-shield-slash"></i> Disable 2FA
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </article>
 
@@ -447,6 +497,113 @@
                 </div>
             </div>
 
+            <!-- 2FA Setup Modal -->
+            <div class="modal fade settings-manage-modal" id="settingsTwoFactorModal" tabindex="-1" aria-labelledby="settingsTwoFactorModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h2 class="modal-title h5" id="settingsTwoFactorModalLabel">Set Up Two-Factor Authentication</h2>
+                                <p class="settings-field-hint mb-0">Connect an authenticator app for enhanced bookkeeper security.</p>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="settings-2fa-setup-grid">
+                                <!-- QR Code Column -->
+                                <div class="settings-2fa-qr-col">
+                                    <div class="settings-2fa-qr-box" id="settingsTwoFactorQrContainer">
+                                        <img id="settingsTwoFactorQrImage" class="settings-2fa-qr-img d-none" alt="2FA QR Code" src="" />
+                                        <div id="settingsTwoFactorQrSpinner" class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+                                            <span class="visually-hidden">Generating QR Code...</span>
+                                        </div>
+                                    </div>
+                                    <span class="settings-2fa-qr-hint">Scan with your authenticator app</span>
+                                </div>
+
+                                <!-- Instructions Column -->
+                                <div class="settings-2fa-info-col">
+                                    <div class="settings-2fa-step">
+                                        <div class="settings-2fa-step-num">1</div>
+                                        <div class="settings-2fa-step-content">
+                                            <p class="settings-field-label mb-1">Scan the QR code</p>
+                                            <p class="settings-field-hint mb-0">Open Google Authenticator, Microsoft Authenticator, or Authy and scan this code.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-2fa-step">
+                                        <div class="settings-2fa-step-num">2</div>
+                                        <div class="settings-2fa-step-content">
+                                            <p class="settings-field-label mb-1">Or enter setup key manually</p>
+                                            <div class="settings-2fa-key-box">
+                                                <input type="text" class="form-control settings-2fa-key-input" id="settingsTwoFactorKeyPreview" value="" placeholder="Generating key..." readonly>
+                                                <button type="button" class="btn settings-2fa-copy-btn" id="settingsTwoFactorCopyBtn" title="Copy setup key">
+                                                    <i class="bi bi-copy"></i> Copy
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-2fa-step">
+                                        <div class="settings-2fa-step-num">3</div>
+                                        <div class="settings-2fa-step-content">
+                                            <label class="settings-field-label mb-1" for="settingsTwoFactorCodePreview">Enter 6-digit code</label>
+                                            <input type="text" class="form-control settings-2fa-code-input" id="settingsTwoFactorCodePreview" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-danger d-none mt-3 mb-0" id="settingsTwoFactorModalFeedback" role="alert"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <div class="settings-security-buttons">
+                                <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn dashboard-action-btn primary" id="settingsTwoFactorSubmitBtn">
+                                    <i class="bi bi-check-circle"></i> Verify &amp; Enable
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2FA Disable Modal -->
+            <div class="modal fade settings-manage-modal" id="settingsDisableTwoFactorModal" tabindex="-1" aria-labelledby="settingsDisableTwoFactorModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <form class="modal-content" id="settingsDisableTwoFactorForm" novalidate>
+                        <div class="modal-header">
+                            <div>
+                                <h2 class="modal-title h5" id="settingsDisableTwoFactorModalLabel">Disable Two-Factor Authentication</h2>
+                                <p class="settings-field-hint mb-0">Enter your current password to turn off 2FA protection.</p>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label settings-field-label" for="settingsDisableTwoFactorPassword">Current Password</label>
+                                <div class="auth-password-field">
+                                    <div class="auth-password-wrap">
+                                        <input type="password" id="settingsDisableTwoFactorPassword" class="form-control auth-input" autocomplete="current-password" placeholder="Enter current password" required>
+                                        <button type="button" class="auth-password-toggle" data-password-toggle-target="settingsDisableTwoFactorPassword" aria-label="Show password">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-danger d-none mt-2 mb-0" id="settingsDisableTwoFactorFeedback" role="alert"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <div class="settings-security-buttons">
+                                <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn dashboard-action-btn danger" id="settingsDisableTwoFactorSubmitBtn">
+                                    <i class="bi bi-shield-slash"></i> Turn Off 2FA
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>
@@ -464,12 +621,16 @@
             securityLoginAlertsApi: "{% url 'api_security_login_alerts' %}",
             clientRecordEmailNotificationsApi: "{% url 'api_settings_client_record_email_notifications' %}",
             securityClientDetailsAccessPreferenceApi: "{% url 'api_security_client_details_access_preference' %}",
-            deactivationRequestApi: "{% url 'api_settings_deactivation_request' %}"
+            deactivationRequestApi: "{% url 'api_settings_deactivation_request' %}",
+            twoFactorSetupApi: "{% url 'api_bookkeeper_two_factor_setup' %}",
+            twoFactorConfirmApi: "{% url 'api_bookkeeper_two_factor_confirm' %}",
+            twoFactorDisableApi: "{% url 'api_bookkeeper_two_factor_disable' %}"
         },
         sidebarStateKey: "safebooks.sidebarCollapsed",
         desktopQuery: "(min-width: 992px)",
         authUserKey: "safebooks.authUser",
         loginWelcomeKey: "safebooks.loginWelcome",
+        twoFactorEnabled: {{ two_factor_enabled|yesno:"true,false" }},
         defaultName: "{{ current_user_name|default:'Bookkeeper User'|escapejs }}",
         defaultInitials: "{{ current_user_initials|default:'SB'|escapejs }}"
     };

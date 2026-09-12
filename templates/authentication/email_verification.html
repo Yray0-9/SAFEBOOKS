@@ -144,6 +144,22 @@
                 document.body.classList.add("skeleton-loaded");
             };
 
+            const clearFeedback = () => {
+                if (!feedback) {
+                    return;
+                }
+
+                feedback.textContent = "";
+                feedback.classList.add("d-none");
+                feedback.classList.remove(
+                    "alert-success",
+                    "alert-danger",
+                    "alert-warning",
+                    "animate-shake",
+                    "animate-fade-in"
+                );
+            };
+
             const setFeedback = (message, level, debugCode) => {
                 if (!feedback) {
                     return;
@@ -151,23 +167,43 @@
 
                 const finalMessage = debugCode ? `${message} (Dev code: ${debugCode})` : message;
                 feedback.textContent = finalMessage;
-                feedback.classList.remove("d-none", "alert-success", "alert-danger", "alert-warning");
+                feedback.classList.remove(
+                    "d-none",
+                    "alert-success",
+                    "alert-danger",
+                    "alert-warning",
+                    "animate-shake",
+                    "animate-fade-in"
+                );
+
+                // Trigger a reflow to restart animation
+                void feedback.offsetWidth;
+
                 if (level === "success") {
-                    feedback.classList.add("alert-success");
+                    feedback.classList.add("alert-success", "animate-fade-in");
                 } else if (level === "warning") {
-                    feedback.classList.add("alert-warning");
+                    feedback.classList.add("alert-warning", "animate-fade-in");
                 } else {
-                    feedback.classList.add("alert-danger");
+                    feedback.classList.add("alert-danger", "animate-shake");
                 }
             };
 
             const setSubmitState = (isSubmitting) => {
-                if (!submitButton) {
-                    return;
+                if (submitButton) {
+                    submitButton.disabled = isSubmitting;
+                    submitButton.textContent = isSubmitting ? "Verifying..." : "Verify Email";
                 }
-                submitButton.disabled = isSubmitting;
-                submitButton.textContent = isSubmitting ? "Verifying..." : "Verify Email";
+                if (codeInput) {
+                    codeInput.disabled = isSubmitting;
+                }
             };
+
+            if (codeInput) {
+                codeInput.addEventListener("input", () => {
+                    codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 6);
+                    clearFeedback();
+                });
+            }
 
             const startResendCooldown = (seconds) => {
                 if (!resendButton) {
@@ -209,6 +245,7 @@
             verifyForm.addEventListener("submit", async (event) => {
                 event.preventDefault();
                 clearSkeletonState();
+                clearFeedback();
 
                 const rawCode = codeInput ? codeInput.value.trim() : "";
                 if (!/^\d{6}$/.test(rawCode)) {
@@ -250,6 +287,7 @@
 
             if (resendButton) {
                 resendButton.addEventListener("click", async () => {
+                    clearFeedback();
                     resendButton.disabled = true;
                     resendButton.textContent = "Sending...";
 

@@ -9,6 +9,8 @@ from decimal import Decimal, InvalidOperation
 logger = logging.getLogger(__name__)
 
 SARIMA_ORDER = (0, 1, 0)
+SARIMA_OPTIMIZER = "powell"
+SARIMA_MAX_ITERATIONS = 250
 FREQUENCY_CONFIG = {
     "monthly": {"interval": 1, "seasonal_period": 12, "minimum_observations": 24},
     "quarterly": {"interval": 3, "seasonal_period": 4, "minimum_observations": 8},
@@ -27,9 +29,6 @@ def _period_index(period: tuple[int, int]) -> int:
 def _next_period(period: tuple[int, int], frequency: str) -> tuple[int, int]:
     year, month = period
     if frequency == "quarterly":
-        quarter_end_month = (((month - 1) // 3) + 1) * 3
-        if month != quarter_end_month:
-            return year, quarter_end_month
         return _shift_month(year, month, 3)
     if frequency == "annually":
         return _shift_month(year, month, 12)
@@ -97,20 +96,48 @@ def _validate_regular_periods(periods: list[tuple[int, int]], frequency: str) ->
 
 
 def _fit_sarima(values: list[float], seasonal_period: int, steps: int) -> list[float]:
+    from statsmodels.tools.sm_exceptions import ConvergenceWarning
     from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.simplefilter("always")
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         fitted = SARIMAX(
             values,
             order=SARIMA_ORDER,
             seasonal_order=(0, 1, 0, seasonal_period),
             trend="n",
             simple_differencing=False,
-        ).fit(disp=False)
+        ).fit(
+            disp=False,
+            method=SARIMA_OPTIMIZER,
+            maxiter=SARIMA_MAX_ITERATIONS,
+        )
         predicted_mean = fitted.get_forecast(steps=steps).predicted_mean
 
-    return [float(value) for value in predicted_mean]
+    converged = bool(getattr(fitted, "mle_retvals", {}).get("converged", True))
+    convergence_warnings = [
+        warning
+        for warning in captured_warnings
+        if issubclass(warning.category, ConvergenceWarning)
+    ]
+    if not converged or convergence_warnings:
+        raise RuntimeError("SARIMA optimization did not converge.")
+
+    for warning in captured_warnings:
+        logger.warning(
+            "SARIMA emitted %s: %s",
+            warning.category.__name__,
+            warning.message,
+        )
+
+    predicted_values = [float(value) for value in predicted_mean]
+    if len(predicted_values) != steps:
+        raise RuntimeError(
+            f"SARIMA returned {len(predicted_values)} forecast values for {steps} requested steps."
+        )
+
+    return predicted_values
 
 
 def build_sarima_forecast(
@@ -196,6 +223,19 @@ def build_sarima_forecast(
         result.update({
             "status": "model_error",
             "message": "The SARIMA model could not produce a forecast for this history.",
+        })
+        return result
+
+    if len(predicted_values) != len(scheduled_periods):
+        logger.error(
+            "SARIMA returned an incomplete forecast for %s history: expected %s values, received %s.",
+            frequency,
+            len(scheduled_periods),
+            len(predicted_values),
+        )
+        result.update({
+            "status": "model_error",
+            "message": "The SARIMA model returned an incomplete forecast.",
         })
         return result
 

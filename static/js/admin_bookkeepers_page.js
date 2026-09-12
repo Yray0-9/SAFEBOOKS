@@ -36,12 +36,100 @@
     const bookkeeperActionModalWarning = document.getElementById("bookkeeperActionModalWarning");
     const bookkeeperActionConfirm = document.getElementById("bookkeeperActionConfirm");
     const bookkeeperActionPasswordInput = document.getElementById("bookkeeperActionPasswordInput");
+    const bookkeeperActionPasswordToggle = document.getElementById("bookkeeperActionPasswordToggle");
+    const bookkeeperActionPasswordFeedback = document.getElementById("bookkeeperActionPasswordFeedback");
 
     const uiToastContainer = document.getElementById("uiToastContainer");
 
     if (!bookkeepersTableBody || !bookkeepersSearchInput || !bookkeepersSortSelect) {
         return;
     }
+
+    const updateConfirmDisabledState = () => {
+        if (!bookkeeperActionConfirm) {
+            return;
+        }
+        const val = bookkeeperActionPasswordInput ? bookkeeperActionPasswordInput.value.trim() : "";
+        bookkeeperActionConfirm.disabled = val.length === 0;
+    };
+
+    const setPasswordInvalidState = (isInvalid, message = "") => {
+        if (bookkeeperActionPasswordInput) {
+            bookkeeperActionPasswordInput.classList.toggle("is-invalid", isInvalid);
+        }
+        if (bookkeeperActionPasswordFeedback) {
+            if (message) {
+                bookkeeperActionPasswordFeedback.innerHTML = `<i class="bi bi-exclamation-circle me-1"></i>${escapeHtml(message)}`;
+            } else if (!isInvalid) {
+                bookkeeperActionPasswordFeedback.textContent = "Please enter your admin password.";
+            }
+            bookkeeperActionPasswordFeedback.classList.toggle("is-visible", isInvalid);
+            bookkeeperActionPasswordFeedback.style.display = isInvalid ? "block" : "none";
+        }
+        const wrap = bookkeeperActionModal ? bookkeeperActionModal.querySelector(".auth-password-wrap") : null;
+        if (wrap) {
+            wrap.classList.remove("animate-shake");
+            if (isInvalid) {
+                void wrap.offsetWidth;
+                wrap.classList.add("animate-shake");
+                window.setTimeout(() => wrap.classList.remove("animate-shake"), 450);
+            }
+        }
+    };
+
+    const setModalSubmittingState = (isSubmitting, action = "") => {
+        if (bookkeeperActionPasswordInput) {
+            bookkeeperActionPasswordInput.disabled = isSubmitting;
+        }
+        if (bookkeeperActionPasswordToggle) {
+            bookkeeperActionPasswordToggle.disabled = isSubmitting;
+        }
+        if (bookkeeperActionModal) {
+            const cancelBtn = bookkeeperActionModal.querySelector('[data-bs-dismiss="modal"]');
+            if (cancelBtn) {
+                cancelBtn.disabled = isSubmitting;
+            }
+            const closeBtn = bookkeeperActionModal.querySelector(".btn-close");
+            if (closeBtn) {
+                closeBtn.disabled = isSubmitting;
+            }
+        }
+        if (bookkeeperActionConfirm) {
+            bookkeeperActionConfirm.disabled = isSubmitting;
+            if (isSubmitting) {
+                let label = "Processing...";
+                if (action === "deactivate") label = "Deactivating...";
+                else if (action === "reactivate") label = "Reactivating...";
+                else if (action === "approve-deactivation-request") label = "Approving...";
+                else if (action === "decline-deactivation-request") label = "Declining...";
+                else if (action === "delete") label = "Deleting...";
+                bookkeeperActionConfirm.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>${label}`;
+            } else {
+                let label = "Confirm";
+                if (action === "deactivate") label = "Deactivate";
+                else if (action === "reactivate") label = "Reactivate";
+                else if (action === "approve-deactivation-request") label = "Approve Request";
+                else if (action === "decline-deactivation-request") label = "Decline Request";
+                else if (action === "delete") label = "Delete";
+                bookkeeperActionConfirm.textContent = label;
+                updateConfirmDisabledState();
+            }
+        }
+    };
+
+    const resetPasswordToggle = () => {
+        if (bookkeeperActionPasswordInput) {
+            bookkeeperActionPasswordInput.type = "password";
+        }
+        if (bookkeeperActionPasswordToggle) {
+            const icon = bookkeeperActionPasswordToggle.querySelector("i");
+            if (icon) {
+                icon.classList.remove("bi-eye-slash");
+                icon.classList.add("bi-eye");
+            }
+            bookkeeperActionPasswordToggle.setAttribute("aria-label", "Show password");
+        }
+    };
 
     const escapeHtml = (value) => {
         return String(value || "")
@@ -343,8 +431,7 @@
             ? buildRequestDeclineUrl(requestId)
             : buildActionUrl(bookkeeperId, action);
         if (!url) {
-            showToast("Bookkeeper action is unavailable.", "warning");
-            return false;
+            return { ok: false, message: "Bookkeeper action is unavailable." };
         }
 
         const csrfToken = shared && typeof shared.getCookieValue === "function"
@@ -371,20 +458,22 @@
                 : await response.json();
 
             if (!response.ok || !result || !result.ok) {
-                showToast(result && result.message ? result.message : "Action failed.", "warning");
-                if (result && result.refresh_required) {
-                    await fetchBookkeepers();
-                    return true;
-                }
-                return false;
+                return {
+                    ok: false,
+                    message: result && result.message ? result.message : "Action failed.",
+                    refreshRequired: Boolean(result && result.refresh_required),
+                };
             }
 
-            showToast(result.message || "Action completed.", "success");
-            await fetchBookkeepers();
-            return true;
+            return {
+                ok: true,
+                message: result.message || "Action completed.",
+            };
         } catch (error) {
-            showToast("Unable to complete action right now.", "warning");
-            return false;
+            return {
+                ok: false,
+                message: "Unable to complete action right now.",
+            };
         }
     };
 
@@ -488,7 +577,19 @@
         }
         if (bookkeeperActionPasswordInput) {
             bookkeeperActionPasswordInput.value = "";
-            bookkeeperActionPasswordInput.classList.remove("is-invalid");
+            bookkeeperActionPasswordInput.disabled = false;
+        }
+        if (bookkeeperActionPasswordToggle) {
+            bookkeeperActionPasswordToggle.disabled = false;
+        }
+        setPasswordInvalidState(false);
+        resetPasswordToggle();
+        setModalSubmittingState(false, action);
+
+        // Always keep the confirmation button primary (blue) for consistent styling across actions
+        if (bookkeeperActionConfirm) {
+            bookkeeperActionConfirm.classList.remove("outline");
+            bookkeeperActionConfirm.classList.add("primary");
         }
 
         if (action === "deactivate" || action === "approve-deactivation-request") {
@@ -513,8 +614,6 @@
                 bookkeeperActionConfirm.textContent = action === "approve-deactivation-request"
                     ? "Approve Request"
                     : "Deactivate";
-                bookkeeperActionConfirm.classList.remove("primary");
-                bookkeeperActionConfirm.classList.add("outline");
             }
         } else if (action === "decline-deactivation-request") {
             if (bookkeeperActionModalLabel) {
@@ -529,8 +628,6 @@
             }
             if (bookkeeperActionConfirm) {
                 bookkeeperActionConfirm.textContent = "Decline Request";
-                bookkeeperActionConfirm.classList.remove("primary");
-                bookkeeperActionConfirm.classList.add("outline");
             }
         } else if (action === "reactivate") {
             if (bookkeeperActionModalLabel) {
@@ -541,8 +638,6 @@
             }
             if (bookkeeperActionConfirm) {
                 bookkeeperActionConfirm.textContent = "Reactivate";
-                bookkeeperActionConfirm.classList.remove("outline");
-                bookkeeperActionConfirm.classList.add("primary");
             }
         } else {
             if (bookkeeperActionModalLabel) {
@@ -557,15 +652,15 @@
             }
             if (bookkeeperActionConfirm) {
                 bookkeeperActionConfirm.textContent = "Delete";
-                bookkeeperActionConfirm.classList.remove("primary");
-                bookkeeperActionConfirm.classList.add("outline");
             }
         }
 
         actionModalInstance.show();
-        if (bookkeeperActionPasswordInput) {
-            window.setTimeout(() => bookkeeperActionPasswordInput.focus(), 150);
-        }
+        window.setTimeout(() => {
+            if (bookkeeperActionPasswordInput) {
+                bookkeeperActionPasswordInput.focus();
+            }
+        }, 100);
     };
 
     const state = {
@@ -655,6 +750,67 @@
         }
     });
 
+    if (bookkeeperActionModal) {
+        bookkeeperActionModal.addEventListener("shown.bs.modal", () => {
+            if (bookkeeperActionPasswordInput) {
+                bookkeeperActionPasswordInput.focus();
+                bookkeeperActionPasswordInput.select();
+            }
+        });
+
+        bookkeeperActionModal.addEventListener("hidden.bs.modal", () => {
+            if (bookkeeperActionPasswordInput) {
+                bookkeeperActionPasswordInput.value = "";
+                bookkeeperActionPasswordInput.disabled = false;
+            }
+            if (bookkeeperActionPasswordToggle) {
+                bookkeeperActionPasswordToggle.disabled = false;
+            }
+            setPasswordInvalidState(false);
+            resetPasswordToggle();
+            setModalSubmittingState(false, pendingAction ? pendingAction.action : "");
+            pendingAction = null;
+        });
+    }
+
+    if (bookkeeperActionPasswordToggle) {
+        bookkeeperActionPasswordToggle.addEventListener("click", (event) => {
+            event.preventDefault();
+            if (!bookkeeperActionPasswordInput || bookkeeperActionPasswordToggle.disabled) {
+                return;
+            }
+            const isPassword = bookkeeperActionPasswordInput.type === "password";
+            bookkeeperActionPasswordInput.type = isPassword ? "text" : "password";
+
+            const icon = bookkeeperActionPasswordToggle.querySelector("i");
+            if (icon) {
+                icon.classList.toggle("bi-eye", !isPassword);
+                icon.classList.toggle("bi-eye-slash", isPassword);
+            }
+            bookkeeperActionPasswordToggle.setAttribute(
+                "aria-label",
+                isPassword ? "Hide password" : "Show password"
+            );
+            bookkeeperActionPasswordInput.focus();
+        });
+    }
+
+    if (bookkeeperActionPasswordInput) {
+        bookkeeperActionPasswordInput.addEventListener("input", () => {
+            setPasswordInvalidState(false);
+            updateConfirmDisabledState();
+        });
+
+        bookkeeperActionPasswordInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                if (bookkeeperActionConfirm && !bookkeeperActionConfirm.disabled) {
+                    bookkeeperActionConfirm.click();
+                }
+            }
+        });
+    }
+
     if (bookkeeperActionConfirm) {
         bookkeeperActionConfirm.addEventListener("click", async () => {
             if (!pendingAction) {
@@ -667,31 +823,42 @@
                 : "";
 
             if (!adminPassword) {
+                setPasswordInvalidState(true, "Please enter your admin password.");
                 if (bookkeeperActionPasswordInput) {
-                    bookkeeperActionPasswordInput.classList.add("is-invalid");
                     bookkeeperActionPasswordInput.focus();
                 }
-                showToast("Enter your admin password to continue.", "warning");
                 return;
             }
 
-            bookkeeperActionConfirm.disabled = true;
-            const completed = await runBookkeeperAction(id, action, adminPassword, requestId);
-            bookkeeperActionConfirm.disabled = false;
+            setModalSubmittingState(true, action);
+            const result = await runBookkeeperAction(id, action, adminPassword, requestId);
+            setModalSubmittingState(false, action);
 
-            if (completed) {
+            if (result.ok) {
                 pendingAction = null;
-            }
+                if (actionModalInstance) {
+                    actionModalInstance.hide();
+                }
+                showToast(result.message || "Action completed.", "success");
+                await fetchBookkeepers();
+            } else {
+                if (result.refreshRequired) {
+                    if (actionModalInstance) {
+                        actionModalInstance.hide();
+                    }
+                    showToast(result.message || "Action failed.", "warning");
+                    await fetchBookkeepers();
+                    return;
+                }
 
-            if (completed && actionModalInstance) {
-                actionModalInstance.hide();
+                // In-modal error (e.g. "Admin password is incorrect.")
+                // No toast on top-right: show error message and red highlight directly inside the modal
+                setPasswordInvalidState(true, result.message || "Admin password is incorrect.");
+                if (bookkeeperActionPasswordInput) {
+                    bookkeeperActionPasswordInput.focus();
+                    bookkeeperActionPasswordInput.select();
+                }
             }
-        });
-    }
-
-    if (bookkeeperActionPasswordInput) {
-        bookkeeperActionPasswordInput.addEventListener("input", () => {
-            bookkeeperActionPasswordInput.classList.remove("is-invalid");
         });
     }
 

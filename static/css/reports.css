@@ -329,6 +329,12 @@
 
 .reports-ledger-grid-wrap {
     margin-top: 0.56rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.reports-ledger-grid-table {
+    min-width: 780px;
 }
 
 .reports-ledger-grid-table thead th {
@@ -337,8 +343,13 @@
     font-size: 0.67rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
+    letter-spacing: 0.04em;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    text-align: center;
+    vertical-align: middle;
+    line-height: 1.25;
 }
 
 .reports-ledger-grid-table td {
@@ -599,6 +610,9 @@ body.theme-dark .reports-ledger-grid-table thead th {
     background: #0f1c33;
     border-color: #25344f;
     color: #9eb0d3;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
 body.theme-dark .reports-ledger-client-table td,

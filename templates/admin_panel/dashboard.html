@@ -182,12 +182,12 @@
 
     <div class="row g-3 mt-1">
         <div class="col-xl-7">
-            <article class="dashboard-card admin-card h-100">
+            <article class="dashboard-card admin-card h-100 d-flex flex-column">
                 <div class="dashboard-card-head">
                     <h2>Bookkeeper Load Snapshot</h2>
                     <a href="{% url 'admin_bookkeepers' %}" class="dashboard-link-muted">View all</a>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive flex-grow-1">
                     <table class="table admin-table">
                         <thead>
                             <tr>
@@ -203,6 +203,14 @@
                         </tbody>
                     </table>
                 </div>
+                <nav class="admin-bookkeeper-pagination mt-auto" id="adminDashboardLoadPagination" aria-label="Bookkeeper load pages" hidden>
+                    <span id="adminDashboardLoadPageRange">0 bookkeepers</span>
+                    <div class="admin-bookkeeper-page-actions">
+                        <button type="button" class="btn admin-audit-page-button" id="adminDashboardLoadPreviousPage">Previous</button>
+                        <span id="adminDashboardLoadPageStatus">Page 1 of 1</span>
+                        <button type="button" class="btn admin-audit-page-button" id="adminDashboardLoadNextPage">Next</button>
+                    </div>
+                </nav>
             </article>
         </div>
         <div class="col-xl-5">

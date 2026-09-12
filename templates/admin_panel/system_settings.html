@@ -1,14 +1,15 @@
 {% extends 'admin_panel/admin_base.html' %}
 {% load static %}
 
-{% block page_title %}System Rules{% endblock %}
-{% block page_heading %}System Rules{% endblock %}
+{% block page_title %}System Settings{% endblock %}
+{% block page_heading %}System Settings{% endblock %}
 {% block page_subtitle %}
-<p class="dashboard-page-subtitle">Current admin policies in SafeBooks. These rules are read-only until a configurable policy module is needed.</p>
+<p class="dashboard-page-subtitle">Configure global workspace policies, security parameters, and platform defaults.</p>
 {% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/settings.css' %}">
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
 {% endblock %}
 
 {% block skeleton %}
@@ -23,7 +24,6 @@
                     <div class="skeleton-shimmer dash-sk-nav-item"></div>
                     <div class="skeleton-shimmer dash-sk-nav-item"></div>
                     <div class="skeleton-shimmer dash-sk-nav-item"></div>
-                    <div class="skeleton-shimmer dash-sk-nav-item"></div>
                 </div>
             </aside>
             <section class="dash-sk-main">
@@ -32,26 +32,23 @@
                     <div class="skeleton-shimmer dash-sk-search"></div>
                     <div class="skeleton-shimmer dash-sk-profile"></div>
                 </div>
-                <div class="dash-sk-content" style="grid-template-columns: 240px 1fr;">
+                <div class="dash-sk-content" style="grid-template-columns: 200px 1fr;">
                     <div class="dash-sk-left">
                         <div class="dash-sk-card">
                             <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 12px; width: 80%;"></div>
                             <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 12px; width: 70%;"></div>
                             <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 12px; width: 75%;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="width: 60%;"></div>
                         </div>
                     </div>
                     <div class="dash-sk-right">
                         <div class="dash-sk-card" style="margin-bottom: 12px;">
                             <div class="skeleton-shimmer dash-sk-card-head" style="width: 40%;"></div>
                             <div class="skeleton-shimmer dash-sk-line" style="margin-top: 15px; margin-bottom: 8px;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 8px;"></div>
                             <div class="skeleton-shimmer dash-sk-line" style="width: 60%;"></div>
                         </div>
                         <div class="dash-sk-card">
                             <div class="skeleton-shimmer dash-sk-card-head" style="width: 45%;"></div>
                             <div class="skeleton-shimmer dash-sk-line" style="margin-top: 15px; margin-bottom: 8px;"></div>
-                            <div class="skeleton-shimmer dash-sk-line" style="margin-bottom: 8px;"></div>
                             <div class="skeleton-shimmer dash-sk-line" style="width: 70%;"></div>
                         </div>
                     </div>
@@ -65,170 +62,417 @@
 {% block content %}
 <section class="dashboard-content admin-dashboard">
     <div class="settings-layout admin-settings-layout">
-        <nav class="settings-nav admin-settings-nav" aria-label="System rule sections">
-            <a class="settings-nav-link" href="#adminRulesApprovals"><i class="bi bi-check2-circle"></i><span>Approvals</span></a>
-            <a class="settings-nav-link" href="#adminRulesAccess"><i class="bi bi-person-lock"></i><span>Access Control</span></a>
-            <a class="settings-nav-link" href="#adminRulesAudit"><i class="bi bi-journal-check"></i><span>Audit Trail</span></a>
-            <a class="settings-nav-link" href="#adminRulesSecurity"><i class="bi bi-shield-check"></i><span>Security</span></a>
+        <!-- Sticky Navigation with clean, short labels -->
+        <nav class="settings-nav admin-settings-nav" aria-label="System Settings Navigation">
+            <a class="settings-nav-link is-active" href="#adminSettingsAppearance"><i class="bi bi-palette"></i><span>Appearance</span></a>
+            <a class="settings-nav-link" href="#adminSettingsNotifications"><i class="bi bi-bell"></i><span>Notifications</span></a>
+            <a class="settings-nav-link" href="#adminSettingsSecurity"><i class="bi bi-shield-lock"></i><span>Security</span></a>
         </nav>
 
+        <!-- Settings Cards Panels -->
         <div class="settings-panels admin-settings-panels">
-            <article class="dashboard-card admin-card settings-card" id="adminRulesApprovals" data-settings-section>
-                <div class="settings-card-head">
-                    <div>
-                        <h2>Approval rules</h2>
-                        <p class="dashboard-section-hint">Bookkeeper access remains controlled by the system admin.</p>
+
+            <!-- 1. Appearance & Theme Preferences -->
+            <article class="dashboard-card admin-card settings-card dashboard-fade-up" id="adminSettingsAppearance" data-settings-section style="--delay: 0.04s;">
+                <div class="settings-card-head admin-settings-card-head-wrap">
+                    <div class="admin-settings-title-group">
+                        <span class="admin-settings-icon-bubble"><i class="bi bi-palette"></i></span>
+                        <div>
+                            <h2>Appearance</h2>
+                        </div>
                     </div>
-                    <span class="admin-card-tag">Active</span>
+                    <span class="admin-settings-badge badge-active"><i class="bi bi-moon-stars-fill"></i>Theme Engine</span>
                 </div>
 
-                <div class="admin-rule-grid">
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-person-check"></i></span>
-                        <div>
-                            <strong>Manual approval required</strong>
-                            <p>New bookkeeper accounts stay pending until the admin approves them.</p>
+                <div class="settings-theme-preview">
+                    <div class="settings-theme-swatch light is-active" id="adminThemeSwatchLight" data-theme-swatch="light" role="button" tabindex="0" aria-label="Select Light Theme">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="settings-theme-title"><i class="bi bi-sun me-1"></i> Light Mode</span>
+                            <i class="bi bi-check-circle-fill text-primary admin-swatch-check" id="adminSwatchCheckLight"></i>
                         </div>
+                        <span class="settings-theme-chip"></span>
                     </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-chat-square-text"></i></span>
-                        <div>
-                            <strong>Rejection reason required</strong>
-                            <p>Rejected requests must include a reason so the account history stays understandable.</p>
+                    <div class="settings-theme-swatch dark" id="adminThemeSwatchDark" data-theme-swatch="dark" role="button" tabindex="0" aria-label="Select Dark Theme">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="settings-theme-title"><i class="bi bi-moon-stars me-1"></i> Dark Mode</span>
+                            <i class="bi bi-check-circle-fill text-primary admin-swatch-check d-none" id="adminSwatchCheckDark"></i>
                         </div>
-                    </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-arrow-repeat"></i></span>
-                        <div>
-                            <strong>Rejected accounts can be approved later</strong>
-                            <p>The admin can restore access when the bookkeeper has corrected the request.</p>
-                        </div>
+                        <span class="settings-theme-chip"></span>
                     </div>
                 </div>
 
                 <div class="settings-section-footer">
-                    <a href="{% url 'admin_approvals' %}" class="btn dashboard-action-btn outline">Open approvals</a>
+                    <div></div>
+                    <button type="button" class="btn dashboard-action-btn primary" id="adminApplyThemeBtn" disabled aria-disabled="true">Apply Theme</button>
                 </div>
             </article>
 
-            <article class="dashboard-card admin-card settings-card" id="adminRulesAccess" data-settings-section>
-                <div class="settings-card-head">
-                    <div>
-                        <h2>Bookkeeper access control</h2>
-                        <p class="dashboard-section-hint">Account access can be paused without deleting client ownership.</p>
+            <!-- 2. Notifications & Outgoing Mailer -->
+            <article class="dashboard-card admin-card settings-card dashboard-fade-up" id="adminSettingsNotifications" data-settings-section style="--delay: 0.08s;">
+                <div class="settings-card-head admin-settings-card-head-wrap">
+                    <div class="admin-settings-title-group">
+                        <span class="admin-settings-icon-bubble"><i class="bi bi-bell"></i></span>
+                        <div>
+                            <h2>Notifications & Mailer</h2>
+                        </div>
                     </div>
-                    <span class="admin-card-tag">Active</span>
+                    <span class="admin-settings-badge badge-active"><i class="bi bi-envelope-check-fill"></i>Connected</span>
                 </div>
 
-                <div class="admin-rule-grid">
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-person-dash"></i></span>
-                        <div>
-                            <strong>Deactivate instead of normal delete</strong>
-                            <p>Deactivated bookkeepers cannot sign in, but their client records stay preserved.</p>
+                <div class="admin-settings-overview-strip">
+                    <div class="admin-settings-overview-item">
+                        <i class="bi bi-send-check"></i>
+                        <div class="admin-settings-overview-meta">
+                            <small>Mailer</small>
+                            <strong>smtp.gmail.com:587</strong>
                         </div>
                     </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-key"></i></span>
-                        <div>
-                            <strong>Admin password required</strong>
-                            <p>Deactivate, reactivate, and protected delete actions require the admin password.</p>
+                    <div class="admin-settings-overview-item">
+                        <i class="bi bi-shield-shaded"></i>
+                        <div class="admin-settings-overview-meta">
+                            <small>Security</small>
+                            <strong>TLS Encrypted</strong>
                         </div>
                     </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-exclamation-triangle"></i></span>
-                        <div>
-                            <strong>Delete is blocked when clients exist</strong>
-                            <p>Permanent delete is not allowed while the bookkeeper still owns client records.</p>
+                    <div class="admin-settings-overview-item">
+                        <i class="bi bi-envelope-at"></i>
+                        <div class="admin-settings-overview-meta">
+                            <small>Sender</small>
+                            <strong>SafeBooks &lt;no-reply&gt;</strong>
                         </div>
+                    </div>
+                </div>
+
+                <div class="settings-toggle-list">
+                    <div class="settings-toggle-row">
+                        <div>
+                            <p class="settings-field-label mb-0">Admin Approval Alert Notifications</p>
+                        </div>
+                        <label class="settings-switch">
+                            <input type="checkbox" id="settingNotifyAdminRegistration" checked aria-label="Notify admin on new registrations">
+                            <span class="settings-switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-toggle-row">
+                        <div>
+                            <p class="settings-field-label mb-0">Account Deactivation Request Alerts</p>
+                        </div>
+                        <label class="settings-switch">
+                            <input type="checkbox" id="settingNotifyDeactivation" checked aria-label="Notify on deactivation requests">
+                            <span class="settings-switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-toggle-row">
+                        <div>
+                            <p class="settings-field-label mb-0">Client Financial Record Change Emails</p>
+                        </div>
+                        <label class="settings-switch">
+                            <input type="checkbox" id="settingClientRecordNotification" checked aria-label="Client record notifications">
+                            <span class="settings-switch-slider"></span>
+                        </label>
                     </div>
                 </div>
 
                 <div class="settings-section-footer">
-                    <a href="{% url 'admin_bookkeepers' %}" class="btn dashboard-action-btn outline">Open bookkeepers</a>
+                    <div></div>
+                    <button type="button" class="btn dashboard-action-btn primary btn-save-settings">Save Changes</button>
                 </div>
             </article>
 
-            <article class="dashboard-card admin-card settings-card" id="adminRulesAudit" data-settings-section>
-                <div class="settings-card-head">
-                    <div>
-                        <h2>Audit trail</h2>
-                        <p class="dashboard-section-hint">Critical admin actions are recorded for review.</p>
+            <!-- 3. Security (Password & Authenticator) -->
+            <article class="dashboard-card admin-card settings-card profile-card profile-two-factor-card dashboard-fade-up" id="adminSettingsSecurity" data-settings-section style="--delay: 0.12s;">
+                <div class="settings-card-head admin-settings-card-head-wrap">
+                    <div class="admin-settings-title-group">
+                        <span class="admin-settings-icon-bubble"><i class="bi bi-shield-lock"></i></span>
+                        <div>
+                            <h2>Security</h2>
+                        </div>
                     </div>
-                    <span class="admin-card-tag">Active</span>
+                    <span class="profile-two-factor-status is-loading" id="adminTwoFactorStatus">Checking...</span>
                 </div>
+                
+                <div class="profile-security-list">
+                    <!-- Row 1: Account Password -->
+                    <div class="profile-security-row profile-two-factor-row">
+                        <div class="profile-two-factor-summary">
+                            <span class="profile-two-factor-icon" aria-hidden="true"><i class="bi bi-key"></i></span>
+                            <div>
+                                <p class="profile-field-label">Account Password</p>
+                                <p class="profile-field-hint">Change your password regularly to keep your admin account secure.</p>
+                            </div>
+                        </div>
+                        <div class="profile-two-factor-actions">
+                            <button type="button" class="dashboard-action-btn outline profile-two-factor-action" id="adminPasswordChangeBtn">Change password</button>
+                        </div>
+                    </div>
 
-                <div class="admin-rule-grid">
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-check2-circle"></i></span>
-                        <div>
-                            <strong>Approval decisions are logged</strong>
-                            <p>Approve and reject actions show who performed the decision and when.</p>
+                    <!-- Row 2: Two-Factor Authentication -->
+                    <div class="profile-security-row profile-two-factor-row">
+                        <div class="profile-two-factor-summary">
+                            <span class="profile-two-factor-icon" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
+                            <div>
+                                <p class="profile-field-label" id="adminTwoFactorTitle">Two-factor authentication</p>
+                                <p class="profile-field-hint" id="adminTwoFactorDescription">Loading security status...</p>
+                            </div>
+                        </div>
+                        <div class="profile-two-factor-actions">
+                            <button type="button" class="dashboard-action-btn outline profile-two-factor-action d-none" id="adminTwoFactorRecoveryAction">Replace recovery codes</button>
+                            <button type="button" class="dashboard-action-btn outline profile-two-factor-action" id="adminTwoFactorAction" disabled>Manage</button>
                         </div>
                     </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-person-lock"></i></span>
-                        <div>
-                            <strong>Access changes are logged</strong>
-                            <p>Deactivate, reactivate, and protected delete attempts are visible in the audit log.</p>
-                        </div>
-                    </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-shield-lock"></i></span>
-                        <div>
-                            <strong>Admin security changes are logged</strong>
-                            <p>Admin profile updates and password changes are added to the same activity trail.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section-footer">
-                    <a href="{% url 'admin_audit_log' %}" class="btn dashboard-action-btn outline">Open audit log</a>
                 </div>
             </article>
 
-            <article class="dashboard-card admin-card settings-card" id="adminRulesSecurity" data-settings-section>
-                <div class="settings-card-head">
-                    <div>
-                        <h2>Admin security</h2>
-                        <p class="dashboard-section-hint">Admin account controls are handled from the profile page.</p>
-                    </div>
-                    <span class="admin-card-tag">Active</span>
-                </div>
-
-                <div class="admin-rule-grid">
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-lock"></i></span>
-                        <div>
-                            <strong>Password changes are real</strong>
-                            <p>Admin password updates require the current password and must meet SafeBooks password rules.</p>
-                        </div>
-                    </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-envelope-check"></i></span>
-                        <div>
-                            <strong>Admin email remains unique</strong>
-                            <p>The admin profile prevents duplicate emails across admin accounts.</p>
-                        </div>
-                    </div>
-                    <div class="admin-rule-item">
-                        <span><i class="bi bi-sliders"></i></span>
-                        <div>
-                            <strong>Configurable policies are deferred</strong>
-                            <p>Additional global settings should be added only when they are backed by real behavior.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section-footer">
-                    <a href="{% url 'admin_profile' %}" class="btn dashboard-action-btn outline">Open admin profile</a>
-                </div>
-            </article>
         </div>
     </div>
 </section>
+
+<!-- Password Change Modal -->
+<div class="modal fade profile-security-modal" id="adminPasswordChangeModal" tabindex="-1" aria-labelledby="adminPasswordChangeTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="adminPasswordChangeTitle">Change password</h2>
+                    <p class="profile-field-hint">Enter your current password and choose a strong new password.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminPasswordChangeForm" novalidate>
+                    <div class="mb-3">
+                        <label class="profile-field-label" for="adminCurrentPassword">Current password</label>
+                        <div class="auth-password-field">
+                            <div class="auth-password-wrap">
+                                <input type="password" id="adminCurrentPassword" class="form-control auth-input profile-input" autocomplete="current-password" required>
+                                <button type="button" class="auth-password-toggle" data-password-toggle-target="adminCurrentPassword" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="profile-field-label" for="adminNewPassword">New password</label>
+                        <div class="auth-password-field">
+                            <div class="auth-password-wrap">
+                                <input type="password" id="adminNewPassword" class="form-control auth-input profile-input" autocomplete="new-password" required>
+                                <button type="button" class="auth-password-toggle" data-password-toggle-target="adminNewPassword" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="profile-field-label" for="adminConfirmPassword">Confirm password</label>
+                        <div class="auth-password-field">
+                            <div class="auth-password-wrap">
+                                <input type="password" id="adminConfirmPassword" class="form-control auth-input profile-input" autocomplete="new-password" required>
+                                <button type="button" class="auth-password-toggle" data-password-toggle-target="adminConfirmPassword" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="profile-field-hint mb-2">Use at least 8 characters with uppercase, lowercase, number, and symbol.</p>
+                    <p class="profile-security-feedback" id="adminPasswordFeedback" role="status" aria-live="polite"></p>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="dashboard-action-btn primary" id="adminPasswordSave">Update password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2FA Setup Modal -->
+<div class="modal fade profile-security-modal" id="adminTwoFactorSetupModal" tabindex="-1" aria-labelledby="adminTwoFactorSetupTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="adminTwoFactorSetupTitle">Enable authenticator</h2>
+                    <p class="profile-field-hint">Confirm your identity, then connect your authenticator app.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminTwoFactorSetupForm" novalidate>
+                    <div id="adminTwoFactorPasswordStep">
+                        <label class="profile-field-label" for="adminTwoFactorCurrentPassword">Current password</label>
+                        <div class="auth-password-field">
+                            <div class="auth-password-wrap">
+                                <input type="password" id="adminTwoFactorCurrentPassword" class="form-control auth-input profile-input" autocomplete="current-password" required>
+                                <button type="button" class="auth-password-toggle" data-password-toggle-target="adminTwoFactorCurrentPassword" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-none" id="adminTwoFactorCodeStep">
+                        <div class="profile-authenticator-setup">
+                            <div class="profile-qr-panel d-none" id="adminTwoFactorQrPanel">
+                                <img id="adminTwoFactorQrCode" class="profile-qr-code" alt="Authenticator setup QR code">
+                                <p>Scan with your authenticator app</p>
+                            </div>
+                            <div class="profile-authenticator-instructions">
+                                <p class="profile-field-label">Connect your authenticator</p>
+                                <ol class="profile-setup-steps">
+                                    <li>Open Google Authenticator or another TOTP app.</li>
+                                    <li>Scan the QR code.</li>
+                                    <li>Enter the six-digit code shown by the app.</li>
+                                </ol>
+                                <details class="profile-manual-setup">
+                                    <summary>Cannot scan? Use the setup key</summary>
+                                    <label class="visually-hidden" for="adminTwoFactorSetupKey">Authenticator setup key</label>
+                                    <div class="profile-setup-key-row">
+                                        <input type="text" id="adminTwoFactorSetupKey" class="form-control profile-input profile-setup-key" readonly aria-describedby="adminTwoFactorKeyHint">
+                                        <button type="button" class="dashboard-icon-btn" id="adminTwoFactorCopyKey" title="Copy setup key" aria-label="Copy setup key"><i class="bi bi-copy"></i></button>
+                                    </div>
+                                    <p class="profile-field-hint" id="adminTwoFactorKeyHint">The key connects the same SafeBooks admin account as the QR code.</p>
+                                </details>
+                            </div>
+                        </div>
+                        <label class="profile-field-label profile-code-label" for="adminTwoFactorCode">Six-digit code</label>
+                        <input type="text" id="adminTwoFactorCode" class="form-control profile-input profile-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+                    </div>
+                    <p class="profile-security-feedback" id="adminTwoFactorSetupFeedback" role="status" aria-live="polite"></p>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="dashboard-action-btn primary" id="adminTwoFactorBegin">Continue</button>
+                <button type="button" class="dashboard-action-btn primary d-none" id="adminTwoFactorConfirm">Enable 2FA</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recovery Codes Modal -->
+<div class="modal fade profile-security-modal" id="adminRecoveryCodesModal" tabindex="-1" aria-labelledby="adminRecoveryCodesTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="adminRecoveryCodesTitle">Save your recovery codes</h2>
+                    <p class="profile-field-hint">Use one code if your authenticator is unavailable.</p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="profile-recovery-notice" role="note">
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    <p>Store these codes somewhere private. Each code works once, and SafeBooks will not show this set again.</p>
+                </div>
+                <div class="profile-recovery-code-grid" id="adminRecoveryCodeList" aria-label="One-time recovery codes"></div>
+                <p class="profile-security-feedback" id="adminRecoveryCodesFeedback" role="status" aria-live="polite"></p>
+            </div>
+            <div class="modal-footer profile-recovery-footer">
+                <button type="button" class="dashboard-action-btn outline" id="adminRecoveryCodesCopy"><i class="bi bi-copy" aria-hidden="true"></i> Copy codes</button>
+                <button type="button" class="dashboard-action-btn outline" id="adminRecoveryCodesPrint"><i class="bi bi-printer" aria-hidden="true"></i> Print</button>
+                <button type="button" class="dashboard-action-btn primary" id="adminRecoveryCodesDone">I saved my codes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recovery Regenerate Modal -->
+<div class="modal fade profile-security-modal" id="adminRecoveryRegenerateModal" tabindex="-1" aria-labelledby="adminRecoveryRegenerateTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="adminRecoveryRegenerateTitle">Replace recovery codes</h2>
+                    <p class="profile-field-hint">Creating a new set immediately disables every previous recovery code.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminRecoveryRegenerateForm" novalidate>
+                    <div class="profile-security-form-grid">
+                        <div>
+                            <label class="profile-field-label" for="adminRecoveryRegeneratePassword">Current password</label>
+                            <div class="auth-password-field">
+                                <div class="auth-password-wrap">
+                                    <input type="password" id="adminRecoveryRegeneratePassword" class="form-control auth-input profile-input" autocomplete="current-password" required>
+                                    <button type="button" class="auth-password-toggle" data-password-toggle-target="adminRecoveryRegeneratePassword" aria-label="Show password">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="profile-field-label" for="adminRecoveryRegenerateCode">Six-digit code</label>
+                            <input type="text" id="adminRecoveryRegenerateCode" class="form-control profile-input profile-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+                        </div>
+                    </div>
+                    <p class="profile-security-feedback" id="adminRecoveryRegenerateFeedback" role="status" aria-live="polite"></p>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="dashboard-action-btn primary" id="adminRecoveryRegenerate">Create new codes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2FA Disable Modal -->
+<div class="modal fade profile-security-modal" id="adminTwoFactorDisableModal" tabindex="-1" aria-labelledby="adminTwoFactorDisableTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="adminTwoFactorDisableTitle">Disable authenticator</h2>
+                    <p class="profile-field-hint">Confirm with your password and current authenticator code.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminTwoFactorDisableForm" novalidate>
+                    <div class="profile-security-form-grid">
+                        <div>
+                            <label class="profile-field-label" for="adminTwoFactorDisablePassword">Current password</label>
+                            <div class="auth-password-field">
+                                <div class="auth-password-wrap">
+                                    <input type="password" id="adminTwoFactorDisablePassword" class="form-control auth-input profile-input" autocomplete="current-password" required>
+                                    <button type="button" class="auth-password-toggle" data-password-toggle-target="adminTwoFactorDisablePassword" aria-label="Show password">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="profile-field-label" for="adminTwoFactorDisableCode">Authenticator or recovery code</label>
+                            <input type="text" id="adminTwoFactorDisableCode" class="form-control profile-input" autocomplete="one-time-code" maxlength="14" required>
+                        </div>
+                    </div>
+                    <p class="profile-security-feedback" id="adminTwoFactorDisableFeedback" role="status" aria-live="polite"></p>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="dashboard-action-btn danger" id="adminTwoFactorDisable">Disable 2FA</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/admin_settings_page.js' %}?v=20260626-rules"></script>
+<script>
+    window.SafeBooksAdminSettingsConfig = {
+        urls: {
+            adminProfileApi: "{% url 'api_admin_profile' %}",
+            adminPasswordApi: "{% url 'api_admin_security_password' %}",
+            adminTwoFactorSetupApi: "{% url 'api_admin_two_factor_setup' %}",
+            adminTwoFactorConfirmApi: "{% url 'api_admin_two_factor_confirm' %}",
+            adminTwoFactorDisableApi: "{% url 'api_admin_two_factor_disable' %}",
+            adminTwoFactorRecoveryCodesApi: "{% url 'api_admin_two_factor_recovery_codes' %}",
+            loginPage: "{% url 'login' %}",
+        },
+    };
+</script>
+<script src="{% static 'js/admin_settings_page.js' %}?v=20260823-password-modal-v2"></script>
 {% endblock %}

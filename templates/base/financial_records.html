@@ -8,6 +8,11 @@
 <p class="dashboard-page-subtitle">Select a client to view and manage financial transactions</p>
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.0">
+{% endblock %}
+
 {% block skeleton %}
 <div class="skeleton-overlay dashboard-skeleton" id="pageSkeleton" aria-hidden="true">
     <div class="skeleton-shell">
@@ -86,7 +91,7 @@
         </div>
     </article>
 
-    <article class="dashboard-card dashboard-fade-up mt-3" style="--delay: 0.12s;">
+    <article class="dashboard-card dashboard-fade-up mt-3 financial-clients-list-card" style="--delay: 0.12s;">
         <div class="dashboard-card-head">
             <h2>Clients with Financial Records</h2>
             <span class="dashboard-tag" id="financialClientsCountTag">0 Clients</span>
@@ -106,6 +111,21 @@
                 <tbody id="financialClientsTableBody"></tbody>
             </table>
         </div>
+
+        <nav class="clients-pagination" id="financialClientsPagination" aria-label="Financial clients pagination" hidden>
+            <span class="clients-pagination-range" id="financialClientsPageRange">Showing 1-10 of 0 Clients</span>
+            <div class="clients-pagination-controls">
+                <button type="button" class="btn clients-page-button" id="financialClientsPrevPage" aria-label="Previous page">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                    <span>Previous</span>
+                </button>
+                <div class="clients-page-numbers" id="financialClientsPageNumbers"></div>
+                <button type="button" class="btn clients-page-button" id="financialClientsNextPage" aria-label="Next page">
+                    <span>Next</span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        </nav>
 
         <div class="clients-empty-state" id="financialClientsEmptyState" hidden>
             <p id="financialClientsEmptyMessage">No clients are ready for financial records yet. Add a client first, then open their records when paperwork is ready.</p>
@@ -176,6 +196,16 @@
         const financialClientsEmptyMessage = document.getElementById("financialClientsEmptyMessage");
         const financialClientsEmptyPrimaryAction = document.getElementById("financialClientsEmptyPrimaryAction");
         const uiToastContainer = document.getElementById("uiToastContainer");
+
+        const financialClientsPagination = document.getElementById("financialClientsPagination");
+        const financialClientsPageRange = document.getElementById("financialClientsPageRange");
+        const financialClientsPrevPage = document.getElementById("financialClientsPrevPage");
+        const financialClientsNextPage = document.getElementById("financialClientsNextPage");
+        const financialClientsPageNumbers = document.getElementById("financialClientsPageNumbers");
+
+        let currentFinancialClientsPage = 1;
+        const FINANCIAL_CLIENTS_PAGE_SIZE = 10;
+
         const FINANCIAL_RECORDS_DETAIL_BASE_URL = "{% url 'financial_records_client' %}";
         const FINANCIAL_RECORD_CLIENTS_API_URL = "{% url 'api_financial_record_clients' %}";
 
@@ -340,6 +370,110 @@
 
             if (financialClientsEmptyState && isFinancialClientsLoading) {
                 financialClientsEmptyState.hidden = true;
+            }
+
+            if (financialClientsPagination && isFinancialClientsLoading) {
+                financialClientsPagination.hidden = true;
+            }
+        };
+
+        const generateFinancialClientsPaginationPages = (currPage, totalPages) => {
+            if (totalPages <= 5) {
+                const pages = [];
+                for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+                return pages;
+            }
+
+            if (currPage <= 3) {
+                return [1, 2, 3, "...", totalPages];
+            }
+
+            if (currPage >= totalPages - 2) {
+                return [1, "...", totalPages - 2, totalPages - 1, totalPages];
+            }
+
+            return [1, "...", currPage - 1, currPage, currPage + 1, "...", totalPages];
+        };
+
+        const scrollToFinancialClientsTop = () => {
+            const card = document.querySelector(".financial-clients-list-card");
+            if (card) {
+                card.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        };
+
+        const renderFinancialClientsPagination = (totalCount) => {
+            if (!financialClientsPagination) {
+                return;
+            }
+
+            if (totalCount <= 0) {
+                financialClientsPagination.hidden = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(totalCount / FINANCIAL_CLIENTS_PAGE_SIZE) || 1;
+            if (currentFinancialClientsPage > totalPages) {
+                currentFinancialClientsPage = totalPages;
+            }
+            if (currentFinancialClientsPage < 1) {
+                currentFinancialClientsPage = 1;
+            }
+
+            if (totalPages <= 1) {
+                financialClientsPagination.hidden = true;
+                return;
+            }
+
+            financialClientsPagination.hidden = false;
+
+            const startIndex = (currentFinancialClientsPage - 1) * FINANCIAL_CLIENTS_PAGE_SIZE + 1;
+            const endIndex = Math.min(currentFinancialClientsPage * FINANCIAL_CLIENTS_PAGE_SIZE, totalCount);
+
+            if (financialClientsPageRange) {
+                financialClientsPageRange.textContent = `Showing ${startIndex}-${endIndex} of ${totalCount} ${totalCount === 1 ? "Client" : "Clients"}`;
+            }
+
+            if (financialClientsPrevPage) {
+                financialClientsPrevPage.disabled = currentFinancialClientsPage <= 1;
+            }
+
+            if (financialClientsNextPage) {
+                financialClientsNextPage.disabled = currentFinancialClientsPage >= totalPages;
+            }
+
+            if (financialClientsPageNumbers) {
+                financialClientsPageNumbers.innerHTML = "";
+                const pages = generateFinancialClientsPaginationPages(currentFinancialClientsPage, totalPages);
+
+                pages.forEach((p) => {
+                    if (p === "...") {
+                        const ellipsis = document.createElement("span");
+                        ellipsis.className = "clients-page-ellipsis";
+                        ellipsis.textContent = "\u2026";
+                        ellipsis.setAttribute("aria-hidden", "true");
+                        financialClientsPageNumbers.appendChild(ellipsis);
+                    } else {
+                        const pageBtn = document.createElement("button");
+                        pageBtn.type = "button";
+                        pageBtn.className = `btn clients-page-num${p === currentFinancialClientsPage ? " active" : ""}`;
+                        pageBtn.textContent = String(p);
+                        pageBtn.setAttribute("aria-label", `Page ${p}`);
+                        if (p === currentFinancialClientsPage) {
+                            pageBtn.setAttribute("aria-current", "page");
+                        }
+                        pageBtn.addEventListener("click", () => {
+                            if (currentFinancialClientsPage !== p) {
+                                currentFinancialClientsPage = p;
+                                applyFilters(false);
+                                scrollToFinancialClientsTop();
+                            }
+                        });
+                        financialClientsPageNumbers.appendChild(pageBtn);
+                    }
+                });
             }
         };
 
@@ -575,13 +709,20 @@
                 financialClientsTableBody.appendChild(row);
             });
 
-            applyFilters();
+            applyFilters(false);
         };
 
-        const applyFilters = () => {
+        const applyFilters = (resetPage = true) => {
+            if (resetPage) {
+                currentFinancialClientsPage = 1;
+            }
+
             if (isFinancialClientsLoading) {
                 if (financialClientsEmptyState) {
                     financialClientsEmptyState.hidden = true;
+                }
+                if (financialClientsPagination) {
+                    financialClientsPagination.hidden = true;
                 }
                 return;
             }
@@ -590,7 +731,7 @@
             const query = normalize(financialClientsSearchInput ? financialClientsSearchInput.value : "");
             const queryDigits = query.replace(/[^a-z0-9]/g, "");
             const activityFilter = normalize(financialClientsFilter ? financialClientsFilter.value : "all");
-            let visibleCount = 0;
+            const matchingRows = [];
 
             rows.forEach((row) => {
                 const nameMatch = normalize(row.dataset.clientName).includes(query);
@@ -601,12 +742,28 @@
                 const matchesActivity = activityFilter === "all" || normalize(row.dataset.activityState) === activityFilter;
                 const isVisible = matchesQuery && matchesActivity;
 
-                row.hidden = !isVisible;
-                row.setAttribute("aria-hidden", String(!isVisible));
-
                 if (isVisible) {
-                    visibleCount += 1;
+                    matchingRows.push(row);
                 }
+            });
+
+            const totalMatching = matchingRows.length;
+            const totalPages = Math.ceil(totalMatching / FINANCIAL_CLIENTS_PAGE_SIZE) || 1;
+            if (currentFinancialClientsPage > totalPages) {
+                currentFinancialClientsPage = totalPages;
+            }
+            if (currentFinancialClientsPage < 1) {
+                currentFinancialClientsPage = 1;
+            }
+
+            const startIndex = (currentFinancialClientsPage - 1) * FINANCIAL_CLIENTS_PAGE_SIZE;
+            const endIndex = startIndex + FINANCIAL_CLIENTS_PAGE_SIZE;
+            const pagedSet = new Set(matchingRows.slice(startIndex, endIndex));
+
+            rows.forEach((row) => {
+                const isShownOnPage = pagedSet.has(row);
+                row.hidden = !isShownOnPage;
+                row.setAttribute("aria-hidden", String(!isShownOnPage));
             });
 
             if (financialClientsTableBody) {
@@ -617,9 +774,9 @@
                 }, 170);
             }
 
-            updateFinancialClientsEmptyState(visibleCount, rows.length, query, activityFilter);
-
-            updateCount(visibleCount);
+            updateFinancialClientsEmptyState(totalMatching, rows.length, query, activityFilter);
+            updateCount(totalMatching);
+            renderFinancialClientsPagination(totalMatching);
         };
 
         const loadClientsFromApi = async () => {
@@ -711,15 +868,56 @@
 
         if (financialClientsSearchInput) {
             bindTinInput(financialClientsSearchInput, true);
-            financialClientsSearchInput.addEventListener("input", debounce(applyFilters));
+            financialClientsSearchInput.addEventListener("input", debounce(() => {
+                applyFilters(true);
+            }));
         }
 
         if (financialClientsFilter) {
-            financialClientsFilter.addEventListener("change", applyFilters);
+            financialClientsFilter.addEventListener("change", () => {
+                applyFilters(true);
+            });
         }
 
         if (financialClientsSortSelect) {
-            financialClientsSortSelect.addEventListener("change", syncSortedFinancialClients);
+            financialClientsSortSelect.addEventListener("change", () => {
+                currentFinancialClientsPage = 1;
+                syncSortedFinancialClients();
+            });
+        }
+
+        if (financialClientsPrevPage) {
+            financialClientsPrevPage.addEventListener("click", () => {
+                if (currentFinancialClientsPage > 1) {
+                    currentFinancialClientsPage -= 1;
+                    applyFilters(false);
+                    scrollToFinancialClientsTop();
+                }
+            });
+        }
+
+        if (financialClientsNextPage) {
+            financialClientsNextPage.addEventListener("click", () => {
+                const rows = getRows();
+                const query = normalize(financialClientsSearchInput ? financialClientsSearchInput.value : "");
+                const queryDigits = query.replace(/[^a-z0-9]/g, "");
+                const activityFilter = normalize(financialClientsFilter ? financialClientsFilter.value : "all");
+                const matchingCount = rows.filter((row) => {
+                    const nameMatch = normalize(row.dataset.clientName).includes(query);
+                    const clientTin = normalize(row.dataset.tin);
+                    const clientTinDigits = clientTin.replace(/[^a-z0-9]/g, "");
+                    const tinMatch = clientTin.includes(query) || (queryDigits && clientTinDigits.includes(queryDigits));
+                    const matchesQuery = !query || nameMatch || tinMatch;
+                    const matchesActivity = activityFilter === "all" || normalize(row.dataset.activityState) === activityFilter;
+                    return matchesQuery && matchesActivity;
+                }).length;
+                const totalPages = Math.ceil(matchingCount / FINANCIAL_CLIENTS_PAGE_SIZE) || 1;
+                if (currentFinancialClientsPage < totalPages) {
+                    currentFinancialClientsPage += 1;
+                    applyFilters(false);
+                    scrollToFinancialClientsTop();
+                }
+            });
         }
 
         if (dashboardProfileAction) {

@@ -7,6 +7,7 @@
 <p class="dashboard-page-subtitle">Bookkeeper workspace for client records and follow-ups</p>
 {% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.0">
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=1.0">
 {% endblock %}
 {% block topbar_meta %}
@@ -196,6 +197,21 @@
                         <tbody id="clientTableBody"></tbody>
                     </table>
                 </div>
+
+                <nav class="clients-pagination" id="clientWorkQueuePagination" aria-label="Client work queue pagination" hidden>
+                    <span class="clients-pagination-range" id="clientWorkQueuePageRange">Showing 1-10 of 0 Clients</span>
+                    <div class="clients-pagination-controls">
+                        <button type="button" class="btn clients-page-button" id="clientWorkQueuePrevPage" aria-label="Previous page">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                            <span>Previous</span>
+                        </button>
+                        <div class="clients-page-numbers" id="clientWorkQueuePageNumbers"></div>
+                        <button type="button" class="btn clients-page-button" id="clientWorkQueueNextPage" aria-label="Next page">
+                            <span>Next</span>
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </nav>
                 <div class="dashboard-data-empty" id="clientActivityEmpty" hidden>
                     <p>No matching clients in this view. Try another filter or add a client.</p>
                     <div class="dashboard-empty-actions">
@@ -229,6 +245,21 @@
                         <tbody id="recentEntriesBody"></tbody>
                     </table>
                 </div>
+
+                <nav class="clients-pagination" id="recentEntriesPagination" aria-label="Recent entries pagination" hidden>
+                    <span class="clients-pagination-range" id="recentEntriesPageRange">Showing 1-5 of 0 Entries</span>
+                    <div class="clients-pagination-controls">
+                        <button type="button" class="btn clients-page-button" id="recentEntriesPrevPage" aria-label="Previous page">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                            <span>Previous</span>
+                        </button>
+                        <div class="clients-page-numbers" id="recentEntriesPageNumbers"></div>
+                        <button type="button" class="btn clients-page-button" id="recentEntriesNextPage" aria-label="Next page">
+                            <span>Next</span>
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </nav>
                 <div class="dashboard-data-empty" id="recentEntriesEmpty" hidden>
                     <p>No financial entries recorded yet. Add an entry when a client record is ready.</p>
                     <div class="dashboard-empty-actions">
@@ -390,13 +421,25 @@
         const clientFiltersReset = document.getElementById("clientFiltersReset");
         const clientSortSelect = document.getElementById("clientSortSelect");
         const clientActivityEmpty = document.getElementById("clientActivityEmpty");
-
-
+        const clientWorkQueuePagination = document.getElementById("clientWorkQueuePagination");
+        const clientWorkQueuePageRange = document.getElementById("clientWorkQueuePageRange");
+        const clientWorkQueuePrevPage = document.getElementById("clientWorkQueuePrevPage");
+        const clientWorkQueueNextPage = document.getElementById("clientWorkQueueNextPage");
+        const clientWorkQueuePageNumbers = document.getElementById("clientWorkQueuePageNumbers");
+        let currentClientWorkQueuePage = 1;
+        const CLIENT_WORK_QUEUE_PAGE_SIZE = 10;
 
         const recentEntriesWrap = document.getElementById("recentEntriesWrap");
         const recentEntriesBody = document.getElementById("recentEntriesBody");
         const recentEntriesEmpty = document.getElementById("recentEntriesEmpty");
         const recentEntriesCountTag = document.getElementById("recentEntriesCountTag");
+        const recentEntriesPagination = document.getElementById("recentEntriesPagination");
+        const recentEntriesPageRange = document.getElementById("recentEntriesPageRange");
+        const recentEntriesPrevPage = document.getElementById("recentEntriesPrevPage");
+        const recentEntriesNextPage = document.getElementById("recentEntriesNextPage");
+        const recentEntriesPageNumbers = document.getElementById("recentEntriesPageNumbers");
+        let currentRecentEntriesPage = 1;
+        const RECENT_ENTRIES_PAGE_SIZE = 5;
         const dashboardCurrentPeriod = document.getElementById("dashboardCurrentPeriod");
         const dashboardLastUpdated = document.getElementById("dashboardLastUpdated");
 
@@ -727,7 +770,187 @@
             }
         };
 
-        const renderClientTableRows = (rows) => {
+        const generatePaginationPages = (currPage, totalPages) => {
+            if (totalPages <= 5) {
+                const pages = [];
+                for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+                return pages;
+            }
+
+            if (currPage <= 3) {
+                return [1, 2, 3, "...", totalPages];
+            }
+
+            if (currPage >= totalPages - 2) {
+                return [1, "...", totalPages - 2, totalPages - 1, totalPages];
+            }
+
+            return [1, "...", currPage - 1, currPage, currPage + 1, "...", totalPages];
+        };
+
+        const scrollToClientWorkQueueTop = () => {
+            const card = document.querySelector("#clientTableWrap") ? document.querySelector("#clientTableWrap").closest(".dashboard-card") : null;
+            if (card) {
+                card.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        };
+
+        const scrollToRecentEntriesTop = () => {
+            const card = document.querySelector("#recentEntriesWrap") ? document.querySelector("#recentEntriesWrap").closest(".dashboard-card") : null;
+            if (card) {
+                card.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        };
+
+        const renderClientWorkQueuePagination = (totalCount) => {
+            if (!clientWorkQueuePagination) {
+                return;
+            }
+
+            if (totalCount <= 0) {
+                clientWorkQueuePagination.hidden = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(totalCount / CLIENT_WORK_QUEUE_PAGE_SIZE) || 1;
+            if (currentClientWorkQueuePage > totalPages) {
+                currentClientWorkQueuePage = totalPages;
+            }
+            if (currentClientWorkQueuePage < 1) {
+                currentClientWorkQueuePage = 1;
+            }
+
+            if (totalPages <= 1) {
+                clientWorkQueuePagination.hidden = true;
+                return;
+            }
+
+            clientWorkQueuePagination.hidden = false;
+
+            const startIndex = (currentClientWorkQueuePage - 1) * CLIENT_WORK_QUEUE_PAGE_SIZE + 1;
+            const endIndex = Math.min(currentClientWorkQueuePage * CLIENT_WORK_QUEUE_PAGE_SIZE, totalCount);
+
+            if (clientWorkQueuePageRange) {
+                clientWorkQueuePageRange.textContent = `Showing ${startIndex}-${endIndex} of ${totalCount} ${totalCount === 1 ? "Client" : "Clients"}`;
+            }
+
+            if (clientWorkQueuePrevPage) {
+                clientWorkQueuePrevPage.disabled = currentClientWorkQueuePage <= 1;
+            }
+
+            if (clientWorkQueueNextPage) {
+                clientWorkQueueNextPage.disabled = currentClientWorkQueuePage >= totalPages;
+            }
+
+            if (clientWorkQueuePageNumbers) {
+                clientWorkQueuePageNumbers.innerHTML = "";
+                const pages = generatePaginationPages(currentClientWorkQueuePage, totalPages);
+
+                pages.forEach((p) => {
+                    if (p === "...") {
+                        const ellipsis = document.createElement("span");
+                        ellipsis.className = "clients-page-ellipsis";
+                        ellipsis.textContent = "\u2026";
+                        ellipsis.setAttribute("aria-hidden", "true");
+                        clientWorkQueuePageNumbers.appendChild(ellipsis);
+                    } else {
+                        const pageBtn = document.createElement("button");
+                        pageBtn.type = "button";
+                        pageBtn.className = `btn clients-page-num${p === currentClientWorkQueuePage ? " active" : ""}`;
+                        pageBtn.textContent = String(p);
+                        pageBtn.setAttribute("aria-label", `Page ${p}`);
+                        if (p === currentClientWorkQueuePage) {
+                            pageBtn.setAttribute("aria-current", "page");
+                        }
+                        pageBtn.addEventListener("click", () => {
+                            if (currentClientWorkQueuePage !== p) {
+                                currentClientWorkQueuePage = p;
+                                applyClientFilters(false);
+                                scrollToClientWorkQueueTop();
+                            }
+                        });
+                        clientWorkQueuePageNumbers.appendChild(pageBtn);
+                    }
+                });
+            }
+        };
+
+        const renderRecentEntriesPagination = (totalCount) => {
+            if (!recentEntriesPagination) {
+                return;
+            }
+
+            if (totalCount <= 0) {
+                recentEntriesPagination.hidden = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(totalCount / RECENT_ENTRIES_PAGE_SIZE) || 1;
+            if (currentRecentEntriesPage > totalPages) {
+                currentRecentEntriesPage = totalPages;
+            }
+            if (currentRecentEntriesPage < 1) {
+                currentRecentEntriesPage = 1;
+            }
+
+            if (totalPages <= 1) {
+                recentEntriesPagination.hidden = true;
+                return;
+            }
+
+            recentEntriesPagination.hidden = false;
+
+            const startIndex = (currentRecentEntriesPage - 1) * RECENT_ENTRIES_PAGE_SIZE + 1;
+            const endIndex = Math.min(currentRecentEntriesPage * RECENT_ENTRIES_PAGE_SIZE, totalCount);
+
+            if (recentEntriesPageRange) {
+                recentEntriesPageRange.textContent = `Showing ${startIndex}-${endIndex} of ${totalCount} ${totalCount === 1 ? "Entry" : "Entries"}`;
+            }
+
+            if (recentEntriesPrevPage) {
+                recentEntriesPrevPage.disabled = currentRecentEntriesPage <= 1;
+            }
+
+            if (recentEntriesNextPage) {
+                recentEntriesNextPage.disabled = currentRecentEntriesPage >= totalPages;
+            }
+
+            if (recentEntriesPageNumbers) {
+                recentEntriesPageNumbers.innerHTML = "";
+                const pages = generatePaginationPages(currentRecentEntriesPage, totalPages);
+
+                pages.forEach((p) => {
+                    if (p === "...") {
+                        const ellipsis = document.createElement("span");
+                        ellipsis.className = "clients-page-ellipsis";
+                        ellipsis.textContent = "\u2026";
+                        ellipsis.setAttribute("aria-hidden", "true");
+                        recentEntriesPageNumbers.appendChild(ellipsis);
+                    } else {
+                        const pageBtn = document.createElement("button");
+                        pageBtn.type = "button";
+                        pageBtn.className = `btn clients-page-num${p === currentRecentEntriesPage ? " active" : ""}`;
+                        pageBtn.textContent = String(p);
+                        pageBtn.setAttribute("aria-label", `Page ${p}`);
+                        if (p === currentRecentEntriesPage) {
+                            pageBtn.setAttribute("aria-current", "page");
+                        }
+                        pageBtn.addEventListener("click", () => {
+                            if (currentRecentEntriesPage !== p) {
+                                currentRecentEntriesPage = p;
+                                renderRecentEntries();
+                                scrollToRecentEntriesTop();
+                            }
+                        });
+                        recentEntriesPageNumbers.appendChild(pageBtn);
+                    }
+                });
+            }
+        };
+
+        const renderClientTableRows = (rows, totalCount = rows.length) => {
             if (!clientTableBody) {
                 return;
             }
@@ -778,7 +1001,7 @@
                 }, 170);
             }
 
-            const hasRows = rows.length > 0;
+            const hasRows = totalCount > 0;
             if (clientTableWrap) {
                 clientTableWrap.hidden = !hasRows;
             }
@@ -822,7 +1045,11 @@
             return safeRows;
         };
 
-        const applyClientFilters = () => {
+        const applyClientFilters = (resetPage = true) => {
+            if (resetPage) {
+                currentClientWorkQueuePage = 1;
+            }
+
             const query = normalize(clientTableSearch ? clientTableSearch.value : "");
             const queryDigits = normalizeDigits(query);
             const statusFilter = normalize(getActiveClientFilter());
@@ -838,8 +1065,22 @@
 
             filteredRows = sortClientActivity(filteredRows, sortBy);
 
-            renderClientTableRows(filteredRows);
-            updateClientFilterSummary(statusFilter, filteredRows.length);
+            const totalMatching = filteredRows.length;
+            const totalPages = Math.ceil(totalMatching / CLIENT_WORK_QUEUE_PAGE_SIZE) || 1;
+            if (currentClientWorkQueuePage > totalPages) {
+                currentClientWorkQueuePage = totalPages;
+            }
+            if (currentClientWorkQueuePage < 1) {
+                currentClientWorkQueuePage = 1;
+            }
+
+            const startIndex = (currentClientWorkQueuePage - 1) * CLIENT_WORK_QUEUE_PAGE_SIZE;
+            const endIndex = startIndex + CLIENT_WORK_QUEUE_PAGE_SIZE;
+            const pagedRows = filteredRows.slice(startIndex, endIndex);
+
+            renderClientTableRows(pagedRows, totalMatching);
+            updateClientFilterSummary(statusFilter, totalMatching);
+            renderClientWorkQueuePagination(totalMatching);
         };
 
         const renderRecentEntries = () => {
@@ -847,9 +1088,21 @@
                 return;
             }
 
-            const entriesToShow = [...RECENT_ENTRIES_DATA]
-                .sort((a, b) => normalize(b.entryDate).localeCompare(normalize(a.entryDate)))
-                .slice(0, 5);
+            const allEntries = [...RECENT_ENTRIES_DATA]
+                .sort((a, b) => normalize(b.entryDate).localeCompare(normalize(a.entryDate)));
+
+            const totalMatching = allEntries.length;
+            const totalPages = Math.ceil(totalMatching / RECENT_ENTRIES_PAGE_SIZE) || 1;
+            if (currentRecentEntriesPage > totalPages) {
+                currentRecentEntriesPage = totalPages;
+            }
+            if (currentRecentEntriesPage < 1) {
+                currentRecentEntriesPage = 1;
+            }
+
+            const startIndex = (currentRecentEntriesPage - 1) * RECENT_ENTRIES_PAGE_SIZE;
+            const endIndex = startIndex + RECENT_ENTRIES_PAGE_SIZE;
+            const entriesToShow = allEntries.slice(startIndex, endIndex);
 
             recentEntriesBody.innerHTML = entriesToShow
                 .map((entry) => {
@@ -864,16 +1117,18 @@
                 .join("");
 
             if (recentEntriesCountTag) {
-                recentEntriesCountTag.textContent = `${entriesToShow.length} ${entriesToShow.length === 1 ? "Entry" : "Entries"}`;
+                recentEntriesCountTag.textContent = `${totalMatching} ${totalMatching === 1 ? "Entry" : "Entries"}`;
             }
 
-            const hasEntries = entriesToShow.length > 0;
+            const hasEntries = totalMatching > 0;
             if (recentEntriesWrap) {
                 recentEntriesWrap.hidden = !hasEntries;
             }
             if (recentEntriesEmpty) {
                 recentEntriesEmpty.hidden = hasEntries;
             }
+
+            renderRecentEntriesPagination(totalMatching);
         };
 
         const updateSummaryCards = () => {
@@ -1242,13 +1497,15 @@
 
         if (clientTableSearch) {
             bindTinInput(clientTableSearch, true);
-            clientTableSearch.addEventListener("input", applyClientFilters);
+            clientTableSearch.addEventListener("input", () => {
+                applyClientFilters(true);
+            });
         }
 
         clientFilterChips.forEach((chip) => {
             chip.addEventListener("click", () => {
                 setActiveClientFilter(chip.dataset.filter || "all");
-                applyClientFilters();
+                applyClientFilters(true);
             });
         });
 
@@ -1258,15 +1515,69 @@
                     clientTableSearch.value = "";
                 }
                 if (clientSortSelect) {
-                    clientSortSelect.value = "newest";
+                    clientSortSelect.value = "recent-activity";
                 }
                 setActiveClientFilter("all");
-                applyClientFilters();
+                applyClientFilters(true);
             });
         }
 
         if (clientSortSelect) {
-            clientSortSelect.addEventListener("change", applyClientFilters);
+            clientSortSelect.addEventListener("change", () => {
+                applyClientFilters(true);
+            });
+        }
+
+        if (clientWorkQueuePrevPage) {
+            clientWorkQueuePrevPage.addEventListener("click", () => {
+                if (currentClientWorkQueuePage > 1) {
+                    currentClientWorkQueuePage -= 1;
+                    applyClientFilters(false);
+                    scrollToClientWorkQueueTop();
+                }
+            });
+        }
+
+        if (clientWorkQueueNextPage) {
+            clientWorkQueueNextPage.addEventListener("click", () => {
+                const query = normalize(clientTableSearch ? clientTableSearch.value : "");
+                const queryDigits = normalizeDigits(query);
+                const statusFilter = normalize(getActiveClientFilter());
+                const matchingCount = CLIENT_ACTIVITY_DATA.filter((row) => {
+                    const tinDigits = normalizeDigits(row.tinRaw || row.tin);
+                    const matchesTin = queryDigits ? tinDigits.includes(queryDigits) : false;
+                    const matchesQuery = !query || normalize(row.clientName).includes(query) || matchesTin;
+                    const matchesStatus = statusFilter === "all" || normalize(row.status) === statusFilter;
+                    return matchesQuery && matchesStatus;
+                }).length;
+                const totalPages = Math.ceil(matchingCount / CLIENT_WORK_QUEUE_PAGE_SIZE) || 1;
+                if (currentClientWorkQueuePage < totalPages) {
+                    currentClientWorkQueuePage += 1;
+                    applyClientFilters(false);
+                    scrollToClientWorkQueueTop();
+                }
+            });
+        }
+
+        if (recentEntriesPrevPage) {
+            recentEntriesPrevPage.addEventListener("click", () => {
+                if (currentRecentEntriesPage > 1) {
+                    currentRecentEntriesPage -= 1;
+                    renderRecentEntries();
+                    scrollToRecentEntriesTop();
+                }
+            });
+        }
+
+        if (recentEntriesNextPage) {
+            recentEntriesNextPage.addEventListener("click", () => {
+                const totalPages = Math.ceil(RECENT_ENTRIES_DATA.length / RECENT_ENTRIES_PAGE_SIZE) || 1;
+                if (currentRecentEntriesPage < totalPages) {
+                    currentRecentEntriesPage += 1;
+                    renderRecentEntries();
+                    scrollToRecentEntriesTop();
+                }
+            });
         }
 
         if (dashboardProfileAction) {

@@ -31,13 +31,13 @@ class AdminSystemSettingsPageTests(TestCase):
         session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
         session.save()
 
-    def test_system_rules_requires_admin_authentication(self):
+    def test_system_settings_requires_admin_authentication(self):
         response = self.client.get(reverse("admin_system_settings"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("login"), response["Location"])
 
-    def test_system_rules_blocks_bookkeeper_session(self):
+    def test_system_settings_blocks_bookkeeper_session(self):
         self._login_bookkeeper()
 
         response = self.client.get(reverse("admin_system_settings"))
@@ -45,17 +45,26 @@ class AdminSystemSettingsPageTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("dashboard"))
 
-    def test_system_rules_page_is_read_only_and_honest(self):
+    def test_system_settings_page_renders_successfully(self):
         admin = self._create_admin()
         self._login_admin(admin)
 
         response = self.client.get(reverse("admin_system_settings"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "System Rules")
-        self.assertContains(response, "Manual approval required")
-        self.assertContains(response, "Admin password required")
-        self.assertContains(response, "Configurable policies are deferred")
-        self.assertNotContains(response, "Preview only")
-        self.assertNotContains(response, "Save all settings")
-        self.assertNotContains(response, "Save approval policy")
+        self.assertContains(response, "System Settings")
+        self.assertContains(response, "Appearance")
+        self.assertContains(response, 'id="adminSettingsAppearance"')
+        self.assertContains(response, "Notifications & Mailer")
+        self.assertContains(response, "Security")
+        self.assertContains(response, "Account Password")
+        self.assertContains(response, "Two-factor authentication")
+        self.assertContains(response, 'id="adminSettingsSecurity"')
+        self.assertContains(response, 'id="adminPasswordChangeBtn"')
+        self.assertContains(response, 'id="adminTwoFactorAction"')
+        self.assertNotContains(response, "General & Regional")
+        self.assertNotContains(response, "Security & Sessions")
+        self.assertNotContains(response, "System & Maintenance")
+        self.assertNotContains(response, "Bookkeeper Governance")
+        self.assertNotContains(response, "System Announcements")
+        self.assertNotContains(response, "Data & Export")

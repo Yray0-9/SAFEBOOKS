@@ -1042,20 +1042,518 @@
     color: #f1f5f9;
 }
 
+.theme-dark .client-details-edit-modal .client-form-label,
+body.theme-dark .client-details-edit-modal .client-form-label,
+.theme-dark .client-form-label,
+body.theme-dark .client-form-label {
+    color: #adc0e6;
+}
+
+.theme-dark .client-details-edit-modal .client-custom-fields-title,
+body.theme-dark .client-details-edit-modal .client-custom-fields-title {
+    color: #9eb0d3;
+}
+
+.theme-dark .client-edit-modal-subtitle,
+body.theme-dark .client-edit-modal-subtitle {
+    color: #9eb0d3;
+}
+
+.theme-dark .client-details-edit-modal .client-select-icon,
+body.theme-dark .client-details-edit-modal .client-select-icon {
+    color: #9eb0d3;
+}
+
+.theme-dark .client-details-edit-modal .client-select-input,
+body.theme-dark .client-details-edit-modal .client-select-input {
+    background-image: none !important;
+}
+
+.theme-dark .client-details-edit-modal .client-custom-label-input::placeholder,
+body.theme-dark .client-details-edit-modal .client-custom-label-input::placeholder {
+    color: #7f98c0;
+}
+
+body.theme-dark #formattedReportModal .modal-content,
 .theme-dark #formattedReportModal .modal-content {
+    background: #101b2f;
+    border-color: #23324d;
+    box-shadow: 0 18px 34px rgba(2, 8, 20, 0.6);
+}
+
+body.theme-dark #formattedReportModal .modal-header,
+body.theme-dark #formattedReportModal .modal-footer,
+.theme-dark #formattedReportModal .modal-header,
+.theme-dark #formattedReportModal .modal-footer {
+    background-color: #101b2f !important;
+    border-color: #23324d !important;
+}
+
+body.theme-dark #formattedReportModal .client-report-modal-body,
+.theme-dark #formattedReportModal .client-report-modal-body {
+    background-color: #0b1424 !important;
+}
+
+body.theme-dark #formattedReportModal .modal-title,
+.theme-dark #formattedReportModal .modal-title {
+    color: #f1f5f9 !important;
+}
+
+body.theme-dark .client-report-modal-subtitle,
+.theme-dark .client-report-modal-subtitle {
+    color: #9eb0d3 !important;
+}
+
+body.theme-dark #formattedReportModal .btn-close,
+.theme-dark #formattedReportModal .btn-close {
+    filter: invert(1);
+    opacity: 0.75;
+}
+
+body.theme-dark #formattedReportModal .btn-close:hover,
+body.theme-dark #formattedReportModal .btn-close:focus-visible,
+.theme-dark #formattedReportModal .btn-close:hover,
+.theme-dark #formattedReportModal .btn-close:focus-visible {
+    opacity: 1;
+}
+
+body.theme-dark .client-report-modal-btn,
+.theme-dark .client-report-modal-btn {
+    background: #111f36;
+    border-color: #30466d;
+    color: #aecdff;
+}
+
+body.theme-dark .client-report-modal-btn:hover,
+.theme-dark .client-report-modal-btn:hover {
+    background: #1a2b4a;
+    border-color: #3a5490;
+    color: #d7e6ff;
+}
+
+body.theme-dark .client-report-sheet,
+.theme-dark .client-report-sheet {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-dark .client-report-loading-text,
+.theme-dark .client-report-loading-text {
+    color: #9eb0d3;
+}
+
+
+/* Closed Client Banner & Notice */
+.client-closed-banner {
+    display: flex;
+    gap: 1rem;
+    padding: 1.15rem 1.35rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    margin-bottom: 0.5rem;
+    align-items: flex-start;
+}
+
+.client-closed-banner[hidden] {
+    display: none !important;
+}
+
+.client-closed-banner-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 10px;
+    background: #e2e8f0;
+    color: #64748b;
+    font-size: 1.25rem;
+}
+
+.client-closed-banner-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.client-closed-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.35rem;
+}
+
+.client-closed-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.client-closed-reason,
+.client-closed-notes {
+    margin: 0 0 0.35rem 0;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    color: #475569;
+}
+
+.client-closed-notes[hidden] {
+    display: none !important;
+}
+
+.client-closed-meta {
+    margin: 0.35rem 0 0 0;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.client-closed-meta[hidden] {
+    display: none !important;
+}
+
+/* Action button outline variations */
+.dashboard-action-btn.outline-danger {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #dc2626;
+}
+
+.dashboard-action-btn.outline-danger:hover,
+.dashboard-action-btn.outline-danger:focus-visible {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.dashboard-action-btn.outline-success {
+    background: transparent;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #16a34a;
+}
+
+.dashboard-action-btn.outline-success:hover,
+.dashboard-action-btn.outline-success:focus-visible {
+    background: #f0fdf4;
+    border-color: #22c55e;
+    color: #15803d;
+}
+
+.dashboard-action-btn.danger {
+    background: #ef4444;
+    border: 1px solid #dc2626;
+    color: #ffffff;
+}
+
+.dashboard-action-btn.danger:hover,
+.dashboard-action-btn.danger:focus-visible {
+    background: #dc2626;
+    border-color: #b91c1c;
+    color: #ffffff;
+}
+
+/* Dark theme styles for closed banner and modal */
+.theme-dark .client-closed-banner {
+    background: #0f172a;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+.theme-dark .client-closed-banner-icon {
+    background: #1e293b;
+    color: #94a3b8;
+}
+
+.theme-dark .client-closed-title {
+    color: #f1f5f9;
+}
+
+.theme-dark .client-closed-reason,
+.theme-dark .client-closed-notes {
+    color: #94a3b8;
+}
+
+.theme-dark .client-closed-meta {
+    color: #64748b;
+}
+
+.theme-dark .dashboard-action-btn.outline-danger {
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #f87171;
+}
+
+.theme-dark .dashboard-action-btn.outline-danger:hover,
+.theme-dark .dashboard-action-btn.outline-danger:focus-visible {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #fca5a5;
+}
+
+.theme-dark .dashboard-action-btn.outline-success {
+    border-color: rgba(34, 197, 94, 0.45);
+    color: #4ade80;
+}
+
+.theme-dark .dashboard-action-btn.outline-success:hover,
+.theme-dark .dashboard-action-btn.outline-success:focus-visible {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: #22c55e;
+    color: #86efac;
+}
+
+.theme-dark #closeClientModal .modal-content,
+.theme-dark #reopenClientModal .modal-content {
     background: #1e293b;
     border-color: #334155;
 }
 
-.theme-dark #formattedReportModal .modal-header,
-.theme-dark #formattedReportModal .modal-footer {
+.theme-dark #closeClientModal .modal-header,
+.theme-dark #closeClientModal .modal-footer,
+.theme-dark #reopenClientModal .modal-header,
+.theme-dark #reopenClientModal .modal-footer {
     border-color: #334155;
 }
 
-.theme-dark #formattedReportModal .modal-title {
+.theme-dark #closeClientModal .modal-title,
+.theme-dark #reopenClientModal .modal-title {
     color: #f1f5f9;
 }
 
-.theme-dark #formattedReportModal .btn-close {
+.theme-dark #closeClientModal .btn-close,
+.theme-dark #reopenClientModal .btn-close {
     filter: invert(1) grayscale(1) brightness(2);
+}
+
+/* Dark mode Record Schedule Status styles */
+body.theme-dark .client-workflow-subtitle,
+.theme-dark .client-workflow-subtitle {
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-workflow-status-tag,
+.theme-dark .client-workflow-status-tag {
+    background: #2a1e12;
+    border-color: #5c3c1e;
+    color: #fcd34d;
+}
+
+body.theme-dark .client-workflow-status-tag.ready,
+.theme-dark .client-workflow-status-tag.ready {
+    background: #0d261b;
+    border-color: #1b4d36;
+    color: #6ee7b7;
+}
+
+body.theme-dark .client-workflow-status-tag.upcoming,
+.theme-dark .client-workflow-status-tag.upcoming {
+    background: #13233c;
+    border-color: #2b4570;
+    color: #93c5fd;
+}
+
+body.theme-dark .client-workflow-status-tag.pending,
+.theme-dark .client-workflow-status-tag.pending {
+    background: #1c273c;
+    border-color: #2a3a55;
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-workflow-readiness,
+.theme-dark .client-workflow-readiness {
+    background: #0f1c33;
+    border-color: #23344f;
+}
+
+body.theme-dark .client-workflow-readiness strong,
+.theme-dark .client-workflow-readiness strong {
+    color: #e6edf7;
+}
+
+body.theme-dark .client-workflow-readiness span,
+.theme-dark .client-workflow-readiness span {
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-workflow-item,
+.theme-dark .client-workflow-item {
+    background: #0f1c33;
+    border-color: #23344f;
+}
+
+body.theme-dark .client-workflow-icon,
+.theme-dark .client-workflow-icon {
+    background: #172847;
+    color: #aecdff;
+}
+
+body.theme-dark .client-workflow-item strong,
+.theme-dark .client-workflow-item strong {
+    color: #e6edf7;
+}
+
+body.theme-dark .client-workflow-item div > span,
+.theme-dark .client-workflow-item div > span {
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-workflow-item.warning,
+.theme-dark .client-workflow-item.warning {
+    border-color: #5c3c1e;
+    background: #1a1614;
+}
+
+body.theme-dark .client-workflow-item.warning .client-workflow-icon,
+.theme-dark .client-workflow-item.warning .client-workflow-icon {
+    background: #332014;
+    color: #f59e0b;
+}
+
+body.theme-dark .client-workflow-item.warning strong,
+.theme-dark .client-workflow-item.warning strong {
+    color: #fde68a;
+}
+
+body.theme-dark .client-workflow-item.warning div > span,
+.theme-dark .client-workflow-item.warning div > span {
+    color: #d4a373;
+}
+
+body.theme-dark .client-workflow-item.complete,
+.theme-dark .client-workflow-item.complete {
+    border-color: #1b4d36;
+    background: #0d1e18;
+}
+
+body.theme-dark .client-workflow-item.complete .client-workflow-icon,
+.theme-dark .client-workflow-item.complete .client-workflow-icon {
+    background: #133827;
+    color: #34d399;
+}
+
+body.theme-dark .client-workflow-item.complete strong,
+.theme-dark .client-workflow-item.complete strong {
+    color: #a7f3d0;
+}
+
+body.theme-dark .client-workflow-item.complete div > span,
+.theme-dark .client-workflow-item.complete div > span {
+    color: #6ee7b7;
+}
+
+body.theme-dark .client-workflow-item.upcoming,
+.theme-dark .client-workflow-item.upcoming {
+    border-color: #2a3c5a;
+    background: #111f38;
+}
+
+body.theme-dark .client-workflow-item.upcoming .client-workflow-icon,
+.theme-dark .client-workflow-item.upcoming .client-workflow-icon {
+    background: #1a2c4e;
+    color: #60a5fa;
+}
+
+body.theme-dark .client-workflow-item.muted,
+body.theme-dark .client-workflow-item.pending,
+.theme-dark .client-workflow-item.muted,
+.theme-dark .client-workflow-item.pending {
+    background: #0f1c33;
+    border-color: #23344f;
+}
+
+body.theme-dark .client-workflow-item.muted .client-workflow-icon,
+body.theme-dark .client-workflow-item.pending .client-workflow-icon,
+.theme-dark .client-workflow-item.muted .client-workflow-icon,
+.theme-dark .client-workflow-item.pending .client-workflow-icon {
+    background: #17243c;
+    color: #7f98c0;
+}
+
+/* Dark mode Client Overview reminder */
+body.theme-dark .client-details-reminder,
+.theme-dark .client-details-reminder {
+    background: #0f1c33;
+    border-color: #23344f;
+    color: #e6edf7;
+}
+
+body.theme-dark .client-details-reminder-icon,
+.theme-dark .client-details-reminder-icon {
+    background: #172847;
+    color: #aecdff;
+}
+
+body.theme-dark .client-details-reminder strong,
+.theme-dark .client-details-reminder strong {
+    color: #e6edf7;
+}
+
+body.theme-dark .client-details-reminder ul,
+.theme-dark .client-details-reminder ul {
+    color: #9eb0d3;
+}
+
+/* Dark mode Analytics navigation tabs */
+body.theme-dark .analytics-nav-tabs,
+.theme-dark .analytics-nav-tabs {
+    border-bottom: 1px solid #23344f;
+}
+
+body.theme-dark .analytics-nav-tabs .nav-link,
+.theme-dark .analytics-nav-tabs .nav-link {
+    color: #8fa0c0;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 10px 10px 0 0;
+    transition: all 0.2s ease;
+}
+
+body.theme-dark .analytics-nav-tabs .nav-link:hover,
+.theme-dark .analytics-nav-tabs .nav-link:hover {
+    color: #cfe0f7;
+    background-color: rgba(37, 99, 235, 0.08);
+    border-color: #23344f #23344f transparent;
+}
+
+body.theme-dark .analytics-nav-tabs .nav-link.active,
+.theme-dark .analytics-nav-tabs .nav-link.active {
+    color: #ffffff !important;
+    background: #101b2f !important;
+    border-color: #2b3c5a #2b3c5a #101b2f !important;
+    font-weight: 700;
+}
+
+/* Dark mode password reveal toggle */
+body.theme-dark .client-password-toggle,
+.theme-dark .client-password-toggle {
+    background: transparent;
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-password-toggle:hover,
+body.theme-dark .client-password-toggle:focus-visible,
+body.theme-dark .client-password-toggle:focus,
+.theme-dark .client-password-toggle:hover,
+.theme-dark .client-password-toggle:focus-visible,
+.theme-dark .client-password-toggle:focus {
+    background: #192a4a;
+    color: #aecdff;
+    box-shadow: 0 0 0 0.16rem rgba(61, 120, 230, 0.2);
+}
+
+body.theme-dark .client-details-toggle-btn,
+.theme-dark .client-details-toggle-btn {
+    background: transparent;
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-details-toggle-btn:hover,
+body.theme-dark .client-details-toggle-btn:focus-visible,
+body.theme-dark .client-details-toggle-btn:focus,
+.theme-dark .client-details-toggle-btn:hover,
+.theme-dark .client-details-toggle-btn:focus-visible,
+.theme-dark .client-details-toggle-btn:focus {
+    background: #192a4a;
+    color: #aecdff;
 }

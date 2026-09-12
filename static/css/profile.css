@@ -154,12 +154,23 @@
     background: #f9fbff;
     font-weight: 600;
     color: #2f4f83;
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, opacity 0.25s ease;
 }
 
 .profile-input:focus,
 .profile-select:focus {
     border-color: #aac2ee;
     box-shadow: 0 0 0 0.2rem rgba(39, 103, 225, 0.12);
+}
+
+/* Disabled states for settings modal inputs */
+.profile-input:disabled,
+.profile-select:disabled {
+    background: #eaecef;
+    border-color: #d2d5da;
+    color: #8d9099;
+    cursor: not-allowed;
+    opacity: 1;
 }
 
 .profile-readonly-pill {
@@ -290,6 +301,17 @@
     min-width: 0;
     padding-bottom: 0;
     border-bottom: 0;
+}
+
+.profile-security-list .profile-two-factor-row {
+    padding-top: 0.5rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid #e8effb;
+}
+
+.profile-security-list .profile-two-factor-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0.15rem;
 }
 
 .profile-two-factor-summary {
@@ -695,6 +717,13 @@ body.theme-dark .profile-select {
     color: #e6edf7;
 }
 
+body.theme-dark .profile-input:disabled,
+body.theme-dark .profile-select:disabled {
+    background: #1a1f2e;
+    border-color: #2a3040;
+    color: #6b7280;
+}
+
 body.theme-dark .profile-readonly-pill,
 body.theme-dark .profile-chip {
     background: #1a2c4f;
@@ -736,6 +765,10 @@ body.theme-dark .profile-two-factor-status.is-enabled {
     border-color: #245f4f;
     background: #14382f;
     color: #85dfbc;
+}
+
+body.theme-dark .profile-security-list .profile-two-factor-row {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 body.theme-dark .profile-security-modal .modal-content {
@@ -785,4 +818,139 @@ body.theme-dark .dashboard-icon-btn {
     border-color: #2a3c5a;
     background: #0f1c33;
     color: #aecdff;
+}
+
+/* ==========================================================================
+   Profile Password Toggle Styles
+   ========================================================================== */
+
+.auth-password-field {
+    border: 1px solid #c6d8fd;
+    border-radius: 12px;
+    background: #fbfdff;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-password-field:focus-within {
+    border-color: #2c68e1;
+    box-shadow: 0 0 0 0.2rem rgba(39, 103, 225, 0.16);
+    background: #ffffff;
+}
+
+.auth-password-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.auth-password-field .auth-input,
+.auth-password-field .profile-input {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.72rem 2.85rem 0.72rem 0.9rem;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.auth-password-field .auth-input:focus,
+.auth-password-field .profile-input:focus {
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.auth-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.45rem;
+    transform: translateY(-50%);
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #6b82af;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 2;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.auth-password-toggle:hover,
+.auth-password-toggle:focus-visible {
+    background: #eaf1ff;
+    color: #2b56ad;
+}
+
+.auth-password-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(39, 103, 225, 0.14);
+}
+
+/* Disabled states for password wrapper & toggle button in settings modals */
+.auth-password-field:has(.auth-input:disabled),
+.auth-password-field:has(.profile-input:disabled) {
+    background: #eaecef;
+    border-color: #d2d5da;
+    box-shadow: none;
+}
+
+.auth-password-toggle:disabled {
+    color: #b0b3b8;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.auth-password-toggle:disabled:hover {
+    background: transparent;
+    color: #b0b3b8;
+}
+
+body.theme-dark .auth-password-field {
+    border-color: #25344f;
+    background: #0f1c33;
+}
+
+body.theme-dark .auth-password-field:focus-within {
+    border-color: #4a82f0;
+    box-shadow: 0 0 0 0.2rem rgba(74, 130, 240, 0.2);
+    background: #12213b;
+}
+
+body.theme-dark .auth-password-field:has(.auth-input:disabled),
+body.theme-dark .auth-password-field:has(.profile-input:disabled) {
+    background: #1a1f2e;
+    border-color: #2a3040;
+    box-shadow: none;
+}
+
+body.theme-dark .auth-password-field .auth-input,
+body.theme-dark .auth-password-field .profile-input {
+    color: #e6edf7;
+}
+
+body.theme-dark .auth-password-toggle {
+    color: #7d96bd;
+}
+
+body.theme-dark .auth-password-toggle:hover,
+body.theme-dark .auth-password-toggle:focus-visible {
+    background: #1a2c4d;
+    color: #c2d8fc;
+}
+
+body.theme-dark .auth-password-toggle:disabled {
+    color: #4b5563;
+}
+
+body.theme-dark .auth-password-toggle:disabled:hover {
+    background: transparent;
+    color: #4b5563;
 }

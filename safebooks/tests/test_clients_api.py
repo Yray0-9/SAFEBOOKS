@@ -335,3 +335,71 @@ class ClientsApiTests(TestCase):
         payload = response.json()
         self.assertFalse(payload.get("ok"))
         self.assertEqual(payload.get("message"), "Invalid request payload.")
+
+    def test_close_client_saves_reason_notes_and_closed_at(self):
+        owner = self._create_bookkeeper("owner-close-reason")
+        self._login_as(owner)
+        client = Client.objects.create(
+            bookkeeper=owner,
+            client_name="Close Test Client",
+            tin_number=self._build_tin("close-test"),
+            location="Panabo",
+        )
+
+        close_data = {
+            "reason": "Non-payment / Unresponsive",
+            "notes": "Client failed to submit monthly reports and invoices for Q2.",
+        }
+
+        response = self.client.delete(
+            reverse("api_client_detail", kwargs={"client_id": client.id}),
+            data=json.dumps(close_data),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload["client"]["remarks"], Client.REMARK_CLOSED)
+        self.assertEqual(payload["client"]["closure_reason"], "Non-payment / Unresponsive")
+        self.assertEqual(payload["client"]["closure_notes"], "Client failed to submit monthly reports and invoices for Q2.")
+        self.assertTrue(bool(payload["client"]["closed_at"]))
+
+        client.refresh_from_db()
+        self.assertEqual(client.remarks, Client.REMARK_CLOSED)
+        self.assertEqual(client.closure_reason, "Non-payment / Unresponsive")
+        self.assertEqual(client.closure_notes, "Client failed to submit monthly reports and invoices for Q2.")
+        self.assertIsNotNone(client.closed_at)
+
+    def test_reopen_client_restores_active_and_clears_closure_fields(self):
+        owner = self._create_bookkeeper("owner-reopen-test")
+        self._login_as(owner)
+        client = Client.objects.create(
+            bookkeeper=owner,
+            client_name="Reopen Target Client",
+            tin_number=self._build_tin("reopen-target"),
+            location="Tagum",
+            remarks=Client.REMARK_CLOSED,
+            closure_reason="Ceased Operations",
+            closure_notes="Temporarily closed",
+            closed_at=timezone.now(),
+        )
+
+        response = self.client.post(
+            reverse("api_client_reopen", kwargs={"client_id": client.id}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload["client"]["remarks"], Client.REMARK_NEW)
+        self.assertEqual(payload["client"]["closure_reason"], "")
+        self.assertEqual(payload["client"]["closure_notes"], "")
+        self.assertEqual(payload["client"]["closed_at"], "")
+
+        client.refresh_from_db()
+        self.assertEqual(client.remarks, Client.REMARK_NEW)
+        self.assertEqual(client.closure_reason, "")
+        self.assertEqual(client.closure_notes, "")
+        self.assertIsNone(client.closed_at)

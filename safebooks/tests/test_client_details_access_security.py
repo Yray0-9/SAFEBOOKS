@@ -131,6 +131,36 @@ class ClientDetailsAccessSecurityTests(TestCase):
         detail_response = self.client.get(reverse("client_details", args=[client.id]))
         self.assertEqual(detail_response.status_code, 200)
 
+    def test_client_details_confirmation_is_required_every_time(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        self._login_as(account)
+        client1 = self._create_client(account)
+        client2 = Client.objects.create(
+            bookkeeper=account,
+            client_name="Second Client",
+            tin_number="987654321000",
+            trade_name="Second Trade",
+            location="Davao Del Norte",
+            remarks=Client.REMARK_ACTIVE,
+        )
+
+        confirm_response = self.client.post(
+            reverse("api_security_client_details_access_confirm"),
+            data=json.dumps({"current_password": "SafeBooks#123"}),
+            content_type="application/json",
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertEqual(confirm_response.status_code, 200)
+
+        # First visit succeeds
+        detail_response1 = self.client.get(reverse("client_details", args=[client1.id]))
+        self.assertEqual(detail_response1.status_code, 200)
+
+        # Subsequent visit to another client (or visiting clients page and clicking again) requires confirmation
+        detail_response2 = self.client.get(reverse("client_details", args=[client2.id]))
+        self.assertEqual(detail_response2.status_code, 302)
+        self.assertIn("client_access_required=1", detail_response2["Location"])
+
     def test_preference_update_requires_password_and_can_disable_lock(self):
         account = self._create_bookkeeper(lock_enabled=True)
         self._login_as(account)

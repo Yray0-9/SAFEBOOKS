@@ -1258,3 +1258,33 @@ body.theme-dark .analytics-forecast-lane-label.net {
 .analytics-trend-line-expenses:hover {
     stroke-width: 4px;
 }
+
+/* Dark mode Analytics navigation tabs */
+body.theme-dark .analytics-nav-tabs,
+.theme-dark .analytics-nav-tabs {
+    border-bottom: 1px solid #23344f;
+}
+
+body.theme-dark .analytics-nav-tabs .nav-link,
+.theme-dark .analytics-nav-tabs .nav-link {
+    color: #8fa0c0;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 10px 10px 0 0;
+    transition: all 0.2s ease;
+}
+
+body.theme-dark .analytics-nav-tabs .nav-link:hover,
+.theme-dark .analytics-nav-tabs .nav-link:hover {
+    color: #cfe0f7;
+    background-color: rgba(37, 99, 235, 0.08);
+    border-color: #23344f #23344f transparent;
+}
+
+body.theme-dark .analytics-nav-tabs .nav-link.active,
+.theme-dark .analytics-nav-tabs .nav-link.active {
+    color: #ffffff !important;
+    background: #101b2f !important;
+    border-color: #2b3c5a #2b3c5a #101b2f !important;
+    font-weight: 700;
+}

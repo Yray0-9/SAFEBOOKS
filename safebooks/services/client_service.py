@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db.models import Max
+from django.utils import timezone
 
 from safebooks.models import Client
 
@@ -119,6 +120,9 @@ def _serialize_client(client: Client) -> dict:
         "custom_fields": client.custom_fields or [],
         "forecast_growth_percent": float((client.forecast_growth_percent or Decimal("0.00")).quantize(Decimal("0.01"))),
         "remarks": client.remarks,
+        "closure_reason": client.closure_reason or "",
+        "closure_notes": client.closure_notes or "",
+        "closed_at": client.closed_at.isoformat() if client.closed_at else "",
         "date_registered": client.date_registered.isoformat() if client.date_registered else "",
         "created_at": client.created_at.isoformat() if client.created_at else "",
         "updated_at": client.updated_at.isoformat() if client.updated_at else "",
@@ -140,29 +144,20 @@ def _build_clean_payload(data: dict):
     email_password = _normalize_text(data.get("email_password"))
     orus_account = _normalize_text(data.get("orus_account"))
     orus_password = _normalize_text(data.get("orus_password"))
-    
-    has_remarks = "remarks" in data
-    remarks = _normalize_remarks(data.get("remarks")) if has_remarks else None
-
-    custom_fields, custom_fields_error = _normalize_custom_fields(data.get("custom_fields"))
-    forecast_growth_percent, forecast_growth_error = _normalize_forecast_growth_percent(
-        data.get("forecast_growth_percent")
-    )
 
     birthday_value, birthday_error = _normalize_optional_date(data.get("birthday"))
+    forecast_growth_percent, growth_error = _normalize_forecast_growth_percent(data.get("forecast_growth_percent"))
+    custom_fields, custom_fields_error = _normalize_custom_fields(data.get("custom_fields"))
 
-    errors: list[str] = []
-
+    errors = []
     if not client_name:
         errors.append("Client name is required.")
     if not tin_number:
         errors.append("TIN is required.")
-    elif len(tin_digits) != 12:
+    elif len(_normalize_digits(tin_number)) != 12:
         errors.append("TIN must be 12 digits.")
     if not location:
         errors.append("Location is required.")
-    if birthday_error:
-        errors.append(birthday_error)
 
     if email:
         try:
@@ -170,10 +165,16 @@ def _build_clean_payload(data: dict):
         except ValidationError:
             errors.append("Email format is invalid.")
 
+    if birthday_error:
+        errors.append(birthday_error)
+    if growth_error:
+        errors.append(growth_error)
     if custom_fields_error:
         errors.append(custom_fields_error)
-    if forecast_growth_error:
-        errors.append(forecast_growth_error)
+
+    raw_remarks = data.get("remarks")
+    has_remarks = raw_remarks is not None and str(raw_remarks).strip() != ""
+    remarks = _normalize_remarks(raw_remarks) if has_remarks else Client.REMARK_NEW
 
     return {
         "client_name": client_name,
@@ -367,7 +368,7 @@ def update_client_for_bookkeeper(bookkeeper, client_id: int, data: dict) -> dict
     }
 
 
-def delete_client_for_bookkeeper(bookkeeper, client_id: int) -> dict:
+def delete_client_for_bookkeeper(bookkeeper, client_id: int, reason: str = "", notes: str = "") -> dict:
     client = Client.objects.filter(id=client_id, bookkeeper=bookkeeper).first()
     if client is None:
         return {
@@ -376,11 +377,40 @@ def delete_client_for_bookkeeper(bookkeeper, client_id: int) -> dict:
             "errors": ["Client not found."],
         }
 
+    clean_reason = _normalize_text(reason) or "Closed by bookkeeper"
+    clean_notes = _normalize_text(notes)
+
     client.remarks = Client.REMARK_CLOSED
-    client.save(update_fields=["remarks"])
+    client.closure_reason = clean_reason
+    client.closure_notes = clean_notes
+    client.closed_at = timezone.now()
+    client.save(update_fields=["remarks", "closure_reason", "closure_notes", "closed_at", "updated_at"])
 
     return {
         "ok": True,
         "message": "Client closed successfully.",
+        "client": _serialize_client(client),
+    }
+
+
+def reopen_client_for_bookkeeper(bookkeeper, client_id: int) -> dict:
+    client = Client.objects.filter(id=client_id, bookkeeper=bookkeeper).first()
+    if client is None:
+        return {
+            "ok": False,
+            "message": "Client not found.",
+            "errors": ["Client not found."],
+        }
+
+    client.remarks = Client.REMARK_NEW
+    client.closure_reason = ""
+    client.closure_notes = ""
+    client.closed_at = None
+    client.save(update_fields=["remarks", "closure_reason", "closure_notes", "closed_at", "updated_at"])
+    check_and_promote_new_client(client)
+
+    return {
+        "ok": True,
+        "message": "Client reopened successfully.",
         "client": _serialize_client(client),
     }

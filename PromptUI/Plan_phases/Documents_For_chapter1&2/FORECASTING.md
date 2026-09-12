@@ -2,7 +2,7 @@
 
 **Document purpose:** Plan the replacement of the current Weighted Moving Average (WMA) forecasting implementation with the selected Seasonal Autoregressive Integrated Moving Average (SARIMA) model.
 
-**Status:** Finalized migration plan. Planning only; this document does not authorize or contain an implementation.
+**Status:** SARIMA runtime migration completed and locally verified on July 25, 2026. The reproducibility, real-data readiness, adviser-acceptance, and deployment gates below remain required before the forecasting study is presented as fully validated.
 
 **Selected model:** SARIMA `(0,1,0)(0,1,0)s`
 
@@ -10,17 +10,17 @@
 
 ## 0. Final readiness decision
 
-Replacing WMA with SARIMA is technically feasible in the current Django application, but the replacement is **not yet implementation-ready**. The following blocking gates must pass first:
+Replacing WMA with SARIMA is now implemented in the current Django application. The local dependency, service, integration, and regression checks pass, but the following evidence and release gates must still be completed:
 
 | Blocking gate | Why it is required | Pass condition |
 |---|---|---|
 | Reproducible comparison | The reported 93.94% WAPE-based presentation value cannot be independently regenerated from the files currently in the repository. | A sanitized dataset and executable script reproduce the accepted model ranking within an agreed rounding tolerance. |
 | Evaluation-production series parity | The current service forecasts very granular groups, while the documents describe monthly sales and quarterly expense/tax series. A model that wins on one aggregation level is not automatically validated for another. | The evaluation script and production series builder use the same client scope, category, frequency, transaction grouping, period alignment, and missing-value policy. |
 | Client data-readiness audit | Existing SafeBooks clients may not have the consecutive 24 monthly or 8 quarterly observations required by this project policy. | A read-only audit reports how many real client series are eligible, irregular, insufficient, annual-only, or zero-only before the default model changes. |
-| Runtime and deployment check | SARIMA adds NumPy, SciPy, pandas, Patsy, and statsmodels and is substantially heavier than WMA. | The pinned dependency set installs and passes tests in the local Python 3.14.4 environment and the deployment Linux environment. |
+| Runtime and deployment check | SARIMA adds NumPy, SciPy, pandas, Patsy, and statsmodels and is substantially heavier than WMA. | The pinned dependency set passes locally under Python 3.14.3; the same installation and tests must still pass in the deployment Linux environment. |
 | Adviser acceptance of unavailable states | A truthful SARIMA-only migration may show no forecast for short or irregular histories instead of displaying a fallback value. | The adviser accepts the documented unavailable behavior and annual-frequency exclusion. |
 
-Until all gates pass, WMA remains the implemented production method and every interface must continue identifying it as WMA. The reported SARIMA result is evidence for a controlled migration, not permission to rename or silently replace the existing calculation.
+The running local system now identifies and calculates forecasts through SARIMA. Until the remaining gates pass, the documented 93.94% WAPE-based value must still be presented only as the result of the reported holdout evaluation and not as a universal accuracy guarantee or proof of deployment readiness.
 
 ### Decisions already locked
 
@@ -41,27 +41,27 @@ The implementation must never label a WMA result, a latest-value result, or anot
 
 ## 2. Verified current system behavior
 
-The present forecasting flow is mainly located in `safebooks/services/analytics_service.py`. It currently:
+The forecasting integration remains in `safebooks/services/analytics_service.py`, while the statistical model is isolated in `safebooks/services/forecasting_service.py`. It now:
 
-- groups transaction details by Bookkeeper/client, category, record frequency, and transaction-specific grouping key;
+- groups transaction details by Bookkeeper/client, financial category, and stored record frequency;
 - forecasts sales, expenses, and tax-related amounts separately;
-- keeps monthly, quarterly, and annual schedules separate;
-- applies a three-value WMA with weights `0.20`, `0.30`, and `0.50`;
-- uses the latest recorded value when fewer than three observations exist;
-- recursively uses predicted values for multi-period WMA forecasts;
+- keeps monthly and quarterly histories separate and preserves their established calendar anchors;
+- applies SARIMA `(0,1,0)(0,1,0)s`, with `s = 12` for monthly and `s = 4` for quarterly histories;
+- requires 24 consecutive monthly or 8 consecutive quarterly observations;
+- reports insufficient, irregular, annual, failed, negative, or non-finite cases as unavailable instead of using WMA or latest-value fallback;
 - returns future projections for the selected horizon and calculates expected net as sales minus expenses, with tax shown separately; and
-- exposes WMA labels and limited-data messages in the Analytics and Client Details interfaces.
+- exposes SARIMA labels and readiness messages in the Analytics and Client Details interfaces.
 
 Relevant implementation areas are:
 
 | Area | Current location | Planned treatment |
 |---|---|---|
-| Forecast grouping and response assembly | `safebooks/services/analytics_service.py` | Preserve the public response contract; finalize grouping only after proving evaluation-production parity. |
-| Forecast model code | `safebooks/services/analytics_service.py` | Move model-specific work into a focused forecasting service. |
-| API and forecasting tests | `safebooks/tests/test_analytics_summary_api.py` | Replace WMA expectations and add SARIMA eligibility, error, and frequency tests. |
-| Analytics labels and messages | `templates/base/analytics.html` | Replace static and JavaScript WMA wording with values returned by the service. |
-| Client analytics labels and messages | `templates/base/client_details.html` | Apply the same method and status wording. |
-| Statistical dependency | `requirements.txt` | Add a tested and pinned `statsmodels` release. |
+| Forecast grouping and response assembly | `safebooks/services/analytics_service.py` | Implemented; evaluation-production aggregation parity remains an evidence gate. |
+| Forecast model code | `safebooks/services/forecasting_service.py` | Implemented as an isolated SARIMA service. |
+| API and forecasting tests | `safebooks/tests/test_analytics_summary_api.py` and `test_sarima_forecasting_service.py` | Implemented and passing locally. |
+| Analytics labels and messages | `templates/base/analytics.html` | Updated to SARIMA and readiness-based wording. |
+| Client analytics labels and messages | `templates/base/client_details.html` | Updated to the same method and status wording. |
+| Statistical dependency | `requirements.txt` | `statsmodels==0.14.6` added and locally verified. |
 
 No database schema migration is expected for the algorithm replacement itself.
 

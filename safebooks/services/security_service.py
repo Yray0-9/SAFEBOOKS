@@ -1,6 +1,9 @@
+import base64
 import re
 
 import pyotp
+import qrcode
+import qrcode.image.svg
 from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
 
@@ -213,57 +216,74 @@ def _build_provisioning_uri(secret: str, account_label: str) -> str:
     return pyotp.TOTP(secret).provisioning_uri(name=account_label, issuer_name=TWO_FACTOR_ISSUER)
 
 
+def _qr_code_data_url(value: str) -> str:
+    image = qrcode.make(
+        value,
+        image_factory=qrcode.image.svg.SvgPathImage,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        border=4,
+    )
+    svg_bytes = image.to_string()
+    encoded = base64.b64encode(svg_bytes).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
 def _is_two_factor_code_valid(secret: str, code: str) -> bool:
     if not secret:
         return False
     normalized_code = _normalize_code(code)
-    if len(normalized_code) < 6:
+    if len(normalized_code) != 6 or not normalized_code.isdigit():
         return False
 
     return pyotp.TOTP(secret).verify(normalized_code, valid_window=1)
 
 
-def create_two_factor_setup(bookkeeper, payload: dict) -> dict:
-    if not isinstance(payload, dict):
-        return {
-            "ok": False,
-            "message": "Invalid request payload.",
-            "errors": ["Invalid request payload."],
-        }
+def get_bookkeeper_two_factor_status(bookkeeper) -> dict:
+    return {
+        "enabled": bool(bookkeeper.two_factor_enabled and bookkeeper.two_factor_secret),
+        "confirmed_at": (
+            bookkeeper.two_factor_confirmed_at.isoformat()
+            if bookkeeper.two_factor_confirmed_at
+            else ""
+        ),
+    }
 
-    current_password = str(payload.get("current_password", ""))
-    if not current_password:
-        return {
-            "ok": False,
-            "message": "Current password is required.",
-            "errors": ["Current password is required."],
-        }
 
-    if not _verify_current_password(bookkeeper, current_password):
+def create_bookkeeper_two_factor_setup(bookkeeper) -> dict:
+    if bookkeeper.two_factor_enabled and bookkeeper.two_factor_secret:
         return {
             "ok": False,
-            "message": "Current password is incorrect.",
-            "errors": ["Current password is incorrect."],
+            "message": "Two-factor authentication is already enabled.",
         }
 
     secret = _build_totp_secret()
-    bookkeeper.two_factor_secret = secret
-    bookkeeper.two_factor_enabled = False
-    bookkeeper.two_factor_confirmed_at = None
-    bookkeeper.save(update_fields=["two_factor_secret", "two_factor_enabled", "two_factor_confirmed_at"])
-
     account_label = _normalize_text(bookkeeper.email) or _normalize_text(bookkeeper.username) or "SafeBooks"
     provisioning_uri = _build_provisioning_uri(secret, account_label)
+    qr_data_url = _qr_code_data_url(provisioning_uri)
 
     return {
         "ok": True,
         "message": "Two-factor setup key generated.",
         "secret": secret,
         "otpauth_uri": provisioning_uri,
+        "provisioning_uri": provisioning_uri,
+        "qr_code_data_url": qr_data_url,
     }
 
 
-def enable_two_factor(bookkeeper, payload: dict) -> dict:
+def enable_bookkeeper_two_factor(bookkeeper, setup_secret: str, payload: dict) -> dict:
+    if bookkeeper.two_factor_enabled and bookkeeper.two_factor_secret:
+        return {
+            "ok": False,
+            "message": "Two-factor authentication is already enabled.",
+        }
+
+    if not setup_secret:
+        return {
+            "ok": False,
+            "message": "Start authenticator setup again before confirming.",
+        }
+
     if not isinstance(payload, dict):
         return {
             "ok": False,
@@ -271,30 +291,7 @@ def enable_two_factor(bookkeeper, payload: dict) -> dict:
             "errors": ["Invalid request payload."],
         }
 
-    current_password = str(payload.get("current_password", ""))
     code = payload.get("code") or payload.get("token") or payload.get("otp")
-
-    if not current_password:
-        return {
-            "ok": False,
-            "message": "Current password is required.",
-            "errors": ["Current password is required."],
-        }
-
-    if not _verify_current_password(bookkeeper, current_password):
-        return {
-            "ok": False,
-            "message": "Current password is incorrect.",
-            "errors": ["Current password is incorrect."],
-        }
-
-    if not bookkeeper.two_factor_secret:
-        return {
-            "ok": False,
-            "message": "Generate a setup key before enabling two-factor authentication.",
-            "errors": ["Two-factor setup key is missing."],
-        }
-
     if not code:
         return {
             "ok": False,
@@ -302,24 +299,28 @@ def enable_two_factor(bookkeeper, payload: dict) -> dict:
             "errors": ["Authenticator code is required."],
         }
 
-    if not _is_two_factor_code_valid(bookkeeper.two_factor_secret, str(code)):
+    if not _is_two_factor_code_valid(setup_secret, str(code)):
         return {
             "ok": False,
-            "message": "Invalid authenticator code.",
+            "message": "Invalid authenticator code. Please check your authenticator app and try again.",
             "errors": ["Invalid authenticator code."],
         }
 
     bookkeeper.two_factor_enabled = True
+    bookkeeper.two_factor_secret = setup_secret
     bookkeeper.two_factor_confirmed_at = timezone.now()
-    bookkeeper.save(update_fields=["two_factor_enabled", "two_factor_confirmed_at"])
+    bookkeeper.save(update_fields=["two_factor_enabled", "two_factor_secret", "two_factor_confirmed_at"])
 
+    status_dict = get_bookkeeper_two_factor_status(bookkeeper)
     return {
         "ok": True,
-        "message": "Two-factor authentication enabled.",
+        "message": "Two-factor authentication enabled successfully.",
+        "two_factor_enabled": True,
+        "two_factor": status_dict,
     }
 
 
-def disable_two_factor(bookkeeper, payload: dict) -> dict:
+def disable_bookkeeper_two_factor(bookkeeper, payload: dict) -> dict:
     if not isinstance(payload, dict):
         return {
             "ok": False,
@@ -328,8 +329,6 @@ def disable_two_factor(bookkeeper, payload: dict) -> dict:
         }
 
     current_password = str(payload.get("current_password", ""))
-    code = payload.get("code") or payload.get("token") or payload.get("otp")
-
     if not current_password:
         return {
             "ok": False,
@@ -344,32 +343,21 @@ def disable_two_factor(bookkeeper, payload: dict) -> dict:
             "errors": ["Current password is incorrect."],
         }
 
-    if bookkeeper.two_factor_enabled:
-        if not code:
-            return {
-                "ok": False,
-                "message": "Authenticator code is required to disable two-factor authentication.",
-                "errors": ["Authenticator code is required."],
-            }
-        if not _is_two_factor_code_valid(bookkeeper.two_factor_secret, str(code)):
-            return {
-                "ok": False,
-                "message": "Invalid authenticator code.",
-                "errors": ["Invalid authenticator code."],
-            }
-
     bookkeeper.two_factor_enabled = False
     bookkeeper.two_factor_secret = ""
     bookkeeper.two_factor_confirmed_at = None
     bookkeeper.save(update_fields=["two_factor_enabled", "two_factor_secret", "two_factor_confirmed_at"])
 
+    status_dict = get_bookkeeper_two_factor_status(bookkeeper)
     return {
         "ok": True,
-        "message": "Two-factor authentication disabled.",
+        "message": "Two-factor authentication disabled successfully.",
+        "two_factor_enabled": False,
+        "two_factor": status_dict,
     }
 
 
-def verify_two_factor_login(bookkeeper, code: str) -> dict:
+def verify_bookkeeper_two_factor_login(bookkeeper, code: str) -> dict:
     if not bookkeeper.two_factor_enabled or not bookkeeper.two_factor_secret:
         return {
             "ok": False,
@@ -395,3 +383,10 @@ def verify_two_factor_login(bookkeeper, code: str) -> dict:
         "ok": True,
         "message": "Two-factor verification successful.",
     }
+
+
+# Backwards compatibility aliases
+create_two_factor_setup = create_bookkeeper_two_factor_setup
+enable_two_factor = enable_bookkeeper_two_factor
+disable_two_factor = disable_bookkeeper_two_factor
+verify_two_factor_login = verify_bookkeeper_two_factor_login

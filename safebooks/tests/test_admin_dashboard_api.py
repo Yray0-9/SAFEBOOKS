@@ -169,3 +169,63 @@ class AdminDashboardApiTests(TestCase):
         load_ids = {item["id"] for item in payload["load_snapshot"]}
         self.assertIn(active.id, load_ids)
         self.assertIn(deactivated.id, load_ids)
+
+    def test_load_snapshot_pagination_and_navigation(self):
+        admin = self._create_admin()
+        self._login_admin(admin)
+
+        # Create 7 approved bookkeepers with distinct client counts
+        accounts = []
+        for i in range(7):
+            acc = self._create_bookkeeper(f"page-test-{i:02d}", BookkeeperAccount.STATUS_APPROVED)
+            accounts.append(acc)
+            for c_idx in range(i):
+                Client.objects.create(
+                    bookkeeper=acc,
+                    client_name=f"Client {c_idx} of {acc.full_name}",
+                    tin_number=f"888-000-{i:02d}{c_idx:02d}-000",
+                    location="Davao del Norte",
+                )
+
+        # 1. Page 1 (default page_size=5)
+        response = self.client.get(reverse("api_admin_dashboard_summary"), HTTP_ACCEPT="application/json")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+
+        self.assertIn("load_snapshot_pagination", payload)
+        pagination = payload["load_snapshot_pagination"]
+        self.assertEqual(pagination["page"], 1)
+        self.assertEqual(pagination["page_size"], 5)
+        self.assertEqual(pagination["total_count"], 7)
+        self.assertEqual(pagination["total_pages"], 2)
+        self.assertEqual(pagination["start_index"], 1)
+        self.assertEqual(pagination["end_index"], 5)
+        self.assertFalse(pagination["has_previous"])
+        self.assertTrue(pagination["has_next"])
+        self.assertEqual(len(payload["load_snapshot"]), 5)
+
+        # First item should have the highest client count (6 clients)
+        self.assertEqual(payload["load_snapshot"][0]["id"], accounts[6].id)
+        self.assertEqual(payload["load_snapshot"][0]["client_count"], 6)
+
+        # 2. Page 2
+        response_p2 = self.client.get(
+            f"{reverse('api_admin_dashboard_summary')}?load_page=2&load_page_size=5",
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertEqual(response_p2.status_code, 200)
+        payload_p2 = response_p2.json()
+        self.assertTrue(payload_p2["ok"])
+
+        pagination_p2 = payload_p2["load_snapshot_pagination"]
+        self.assertEqual(pagination_p2["page"], 2)
+        self.assertEqual(pagination_p2["page_size"], 5)
+        self.assertEqual(pagination_p2["total_count"], 7)
+        self.assertEqual(pagination_p2["total_pages"], 2)
+        self.assertEqual(pagination_p2["start_index"], 6)
+        self.assertEqual(pagination_p2["end_index"], 7)
+        self.assertTrue(pagination_p2["has_previous"])
+        self.assertFalse(pagination_p2["has_next"])
+        self.assertEqual(len(payload_p2["load_snapshot"]), 2)
+

@@ -127,7 +127,7 @@
                 <div>
                     <p class="stat-label">Total bookkeepers</p>
                     <h3 id="bookkeepersTotalCount">0</h3>
-                    <p class="stat-note">Directory data pending</p>
+                    <p class="stat-note">All registered bookkeepers</p>
                 </div>
             </article>
         </div>
@@ -137,7 +137,7 @@
                 <div>
                     <p class="stat-label">Active accounts</p>
                     <h3 id="bookkeepersActiveCount">0</h3>
-                    <p class="stat-note">Awaiting directory sync</p>
+                    <p class="stat-note">Can access workspace</p>
                 </div>
             </article>
         </div>
@@ -147,7 +147,7 @@
                 <div>
                     <p class="stat-label">Deactivated accounts</p>
                     <h3 id="bookkeepersDeactivatedCount">0</h3>
-                    <p class="stat-note">Status feed pending</p>
+                    <p class="stat-note">Access suspended</p>
                 </div>
             </article>
         </div>
@@ -195,7 +195,7 @@
                     </div>
                 </div>
               <!--  <p class="dashboard-filter-summary">Filters and sorting are UI-only in this phase.</p> -->
-                <div class="table-responsive">
+                <div class="table-responsive admin-bookkeepers-table-wrap">
                     <table class="table admin-table">
                         <thead>
                             <tr>
@@ -264,14 +264,19 @@
                 <div class="alert alert-warning mb-0" id="bookkeeperActionModalWarning" hidden></div>
                 <div class="mt-3">
                     <label class="form-label" for="bookkeeperActionPasswordInput">Admin password</label>
-                    <input type="password" class="form-control" id="bookkeeperActionPasswordInput" autocomplete="current-password" placeholder="Enter your admin password">
+                    <div class="auth-password-wrap position-relative">
+                        <input type="password" class="form-control" id="bookkeeperActionPasswordInput" autocomplete="current-password" placeholder="Enter your admin password">
+                        <button type="button" class="auth-password-toggle" id="bookkeeperActionPasswordToggle" data-password-toggle-target="bookkeeperActionPasswordInput" aria-label="Show password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div class="invalid-feedback" id="bookkeeperActionPasswordFeedback">Please enter your admin password.</div>
                     <div class="form-text">Required for account access changes.</div>
-                    <div class="invalid-feedback">Please enter your admin password.</div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn dashboard-action-btn primary" id="bookkeeperActionConfirm">Confirm</button>
+                <button type="button" class="btn dashboard-action-btn primary" id="bookkeeperActionConfirm" disabled>Confirm</button>
             </div>
         </div>
     </div>
@@ -289,5 +294,5 @@
         },
     };
 </script>
-<script src="{% static 'js/admin_bookkeepers_page.js' %}?v=20260714-pagination"></script>
+<script src="{% static 'js/admin_bookkeepers_page.js' %}?v=20260905-errorinside"></script>
 {% endblock %}

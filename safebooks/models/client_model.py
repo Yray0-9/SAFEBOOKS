@@ -39,6 +39,9 @@ class Client(models.Model):
         choices=REMARK_CHOICES,
         default=REMARK_NEW,
     )
+    closure_reason = models.CharField(max_length=255, blank=True, default="")
+    closure_notes = models.TextField(blank=True, default="")
+    closed_at = models.DateTimeField(null=True, blank=True)
     date_registered = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

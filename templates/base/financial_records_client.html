@@ -161,6 +161,21 @@
             </table>
         </div>
 
+        <nav class="financial-pagination" id="financialPagination" aria-label="Financial records pages" hidden>
+            <span class="financial-pagination-range" id="financialPageRange">Showing 1-10 of 0 entries</span>
+            <div class="financial-pagination-controls">
+                <button type="button" class="btn financial-page-button" id="financialPrevPage" aria-label="Previous page">
+                    <i class="bi bi-chevron-left"></i>
+                    <span>Previous</span>
+                </button>
+                <div class="financial-page-numbers" id="financialPageNumbers"></div>
+                <button type="button" class="btn financial-page-button" id="financialNextPage" aria-label="Next page">
+                    <span>Next</span>
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </nav>
+
         <div class="financial-empty-state" id="financialEmptyState" hidden>
             <p>No records for this period yet. Add the first entry when this client's record is ready.</p>
             <button type="button" class="btn dashboard-action-btn primary" data-bs-toggle="modal" data-bs-target="#addEntryModal">Add Entry for This Period</button>
@@ -358,7 +373,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="deleteEntryModal" tabindex="-1" aria-labelledby="deleteEntryModalTitle" aria-hidden="true">
+<div class="modal fade financial-manage-modal" id="deleteEntryModal" tabindex="-1" aria-labelledby="deleteEntryModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content financial-delete-modal">
             <div class="modal-header">
@@ -579,6 +594,12 @@
         const editEntryDuplicateWarning = document.getElementById("editEntryDuplicateWarning");
         const editEntryDuplicateWarningText = document.getElementById("editEntryDuplicateWarningText");
 
+        const financialPagination = document.getElementById("financialPagination");
+        const financialPageRange = document.getElementById("financialPageRange");
+        const financialPrevPage = document.getElementById("financialPrevPage");
+        const financialNextPage = document.getElementById("financialNextPage");
+        const financialPageNumbers = document.getElementById("financialPageNumbers");
+
         const addEntryModalElement = document.getElementById("addEntryModal");
         const editEntryModalElement = document.getElementById("editEntryModal");
         const deleteEntryModalElement = document.getElementById("deleteEntryModal");
@@ -633,6 +654,8 @@
 
         let activeRecords = [];
         let activeSummary = null;
+        let currentRecordsPage = 1;
+        const RECORDS_PAGE_SIZE = 10;
         let filterTransitionTimer = null;
         let pendingDeleteEntryId = null;
         let lineItemCounter = 20;
@@ -1102,7 +1125,7 @@
             }, lineItemAnimationMs);
         };
 
-        const collectLineItems = (tbodyElement) => {
+                const collectLineItems = (tbodyElement) => {
             if (!tbodyElement) {
                 return [];
             }
@@ -1279,6 +1302,10 @@
                 financialEmptyState.hidden = true;
             }
 
+            if (financialPagination && isRecordsLoading) {
+                financialPagination.hidden = true;
+            }
+
             if (periodEntriesTag && isRecordsLoading) {
                 periodEntriesTag.textContent = "Loading...";
             }
@@ -1292,26 +1319,129 @@
             }
         };
 
+        const generatePaginationPages = (currentPage, totalPages) => {
+            if (totalPages <= 5) {
+                const pages = [];
+                for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+                return pages;
+            }
+
+            if (currentPage <= 3) {
+                return [1, 2, 3, "...", totalPages];
+            }
+
+            if (currentPage >= totalPages - 2) {
+                return [1, "...", totalPages - 2, totalPages - 1, totalPages];
+            }
+
+            return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+        };
+
+        const scrollToTableTop = () => {
+            const tableCard = document.querySelector(".financial-record-list-card");
+            if (tableCard) {
+                tableCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        };
+
+        const renderPagination = (totalCount) => {
+            if (!financialPagination) {
+                return;
+            }
+
+            if (totalCount <= 0) {
+                financialPagination.hidden = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(totalCount / RECORDS_PAGE_SIZE) || 1;
+            if (currentRecordsPage > totalPages) {
+                currentRecordsPage = totalPages;
+            }
+            if (currentRecordsPage < 1) {
+                currentRecordsPage = 1;
+            }
+
+            if (totalPages <= 1) {
+                financialPagination.hidden = true;
+                return;
+            }
+
+            financialPagination.hidden = false;
+
+            const startIndex = (currentRecordsPage - 1) * RECORDS_PAGE_SIZE + 1;
+            const endIndex = Math.min(currentRecordsPage * RECORDS_PAGE_SIZE, totalCount);
+
+            if (financialPageRange) {
+                financialPageRange.textContent = `Showing ${startIndex}-${endIndex} of ${totalCount} ${totalCount === 1 ? "entry" : "entries"}`;
+            }
+
+            if (financialPrevPage) {
+                financialPrevPage.disabled = currentRecordsPage <= 1;
+            }
+
+            if (financialNextPage) {
+                financialNextPage.disabled = currentRecordsPage >= totalPages;
+            }
+
+            if (financialPageNumbers) {
+                financialPageNumbers.innerHTML = "";
+                const pages = generatePaginationPages(currentRecordsPage, totalPages);
+
+                pages.forEach((p) => {
+                    if (p === "...") {
+                        const ellipsis = document.createElement("span");
+                        ellipsis.className = "financial-page-ellipsis";
+                        ellipsis.textContent = "\u2026";
+                        ellipsis.setAttribute("aria-hidden", "true");
+                        financialPageNumbers.appendChild(ellipsis);
+                    } else {
+                        const pageBtn = document.createElement("button");
+                        pageBtn.type = "button";
+                        pageBtn.className = `btn financial-page-num${p === currentRecordsPage ? " active" : ""}`;
+                        pageBtn.textContent = String(p);
+                        pageBtn.setAttribute("aria-label", `Page ${p}`);
+                        if (p === currentRecordsPage) {
+                            pageBtn.setAttribute("aria-current", "page");
+                        }
+                        pageBtn.addEventListener("click", () => {
+                            if (currentRecordsPage !== p) {
+                                currentRecordsPage = p;
+                                renderEntriesTable();
+                                scrollToTableTop();
+                            }
+                        });
+                        financialPageNumbers.appendChild(pageBtn);
+                    }
+                });
+            }
+        };
+
         const renderEntriesTable = () => {
             if (!financialTableBody) {
                 return;
             }
 
-            const entries = activeRecords;
+            const totalCount = activeRecords.length;
             const periodLabel = getActivePeriodLabel();
 
             if (periodHeading) {
                 periodHeading.textContent = activeMonth === "all" ? "All Records" : `${periodLabel} Records`;
             }
             if (periodEntriesTag) {
-                periodEntriesTag.textContent = `${entries.length} ${entries.length === 1 ? "Entry" : "Entries"}`;
+                periodEntriesTag.textContent = `${totalCount} ${totalCount === 1 ? "Entry" : "Entries"}`;
             }
 
             financialTableBody.innerHTML = "";
 
-            if (!entries.length) {
+            if (!totalCount) {
                 if (financialTableWrap) {
                     financialTableWrap.hidden = true;
+                }
+                if (financialPagination) {
+                    financialPagination.hidden = true;
                 }
                 if (financialEmptyState) {
                     financialEmptyState.hidden = false;
@@ -1320,7 +1450,19 @@
                 return;
             }
 
-            entries.forEach((entry) => {
+            const totalPages = Math.ceil(totalCount / RECORDS_PAGE_SIZE) || 1;
+            if (currentRecordsPage > totalPages) {
+                currentRecordsPage = totalPages;
+            }
+            if (currentRecordsPage < 1) {
+                currentRecordsPage = 1;
+            }
+
+            const startIndex = (currentRecordsPage - 1) * RECORDS_PAGE_SIZE;
+            const endIndex = startIndex + RECORDS_PAGE_SIZE;
+            const pagedEntries = activeRecords.slice(startIndex, endIndex);
+
+            pagedEntries.forEach((entry) => {
                 const row = document.createElement("tr");
                 const detailsRow = document.createElement("tr");
                 const totalAmount = getEntryTotal(entry);
@@ -1388,6 +1530,7 @@
                 financialEmptyState.hidden = true;
             }
 
+            renderPagination(totalCount);
             renderSummary();
         };
 
@@ -1573,6 +1716,7 @@
                 periodSelector.value = String(activeMonth);
             }
 
+            currentRecordsPage = 1;
             expandedEntryIds.clear();
             syncAddEntryDateToActivePeriod();
             return true;
@@ -2064,12 +2208,34 @@
                     activeMonth = selectedMonth;
                 }
 
+                currentRecordsPage = 1;
                 expandedEntryIds.clear();
                 syncAddEntryDateToActivePeriod();
 
                 loadRecordsFromApi().catch(() => {
                     showToast("Unable to load financial records.");
                 });
+            });
+        }
+
+        if (financialPrevPage) {
+            financialPrevPage.addEventListener("click", () => {
+                if (currentRecordsPage > 1) {
+                    currentRecordsPage -= 1;
+                    renderEntriesTable();
+                    scrollToTableTop();
+                }
+            });
+        }
+
+        if (financialNextPage) {
+            financialNextPage.addEventListener("click", () => {
+                const totalPages = Math.ceil(activeRecords.length / RECORDS_PAGE_SIZE) || 1;
+                if (currentRecordsPage < totalPages) {
+                    currentRecordsPage += 1;
+                    renderEntriesTable();
+                    scrollToTableTop();
+                }
             });
         }
 

@@ -1515,6 +1515,43 @@ body.auth-page {
     background: #ffffff;
 }
 
+/* Disabled state for auth inputs & password fields */
+.auth-input:disabled,
+.auth-input[disabled] {
+    background-color: #eaecef !important;
+    border-color: #d2d5da !important;
+    color: #8c9bb0 !important;
+    cursor: not-allowed !important;
+}
+
+.auth-password-field:has(.auth-input:disabled),
+.auth-password-field:has(.form-control:disabled),
+.auth-password-field.is-disabled {
+    background-color: #eaecef !important;
+    border-color: #d2d5da !important;
+    box-shadow: none !important;
+}
+
+.auth-password-field:has(.auth-input:disabled) .auth-input,
+.auth-password-field:has(.form-control:disabled) .auth-input,
+.auth-password-field.is-disabled .auth-input,
+.auth-password-field .auth-input:disabled {
+    background-color: transparent !important;
+    color: #8c9bb0 !important;
+    cursor: not-allowed !important;
+}
+
+.auth-password-field:has(.auth-input:disabled) .auth-password-toggle,
+.auth-password-field:has(.form-control:disabled) .auth-password-toggle,
+.auth-password-field.is-disabled .auth-password-toggle,
+.auth-password-toggle:disabled,
+.auth-password-toggle[disabled] {
+    color: #a4b3c7 !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
 .auth-password-wrap {
     position: relative;
     display: block;
@@ -4389,6 +4426,32 @@ select.financial-form-input {
     background: #f1f6ff;
 }
 
+.dashboard-action-btn.reject {
+    background: #fff1f3;
+    border-color: #f7b5c1;
+    color: #b23a4d;
+}
+
+.dashboard-action-btn.reject:hover,
+.dashboard-action-btn.reject:focus-visible {
+    background: #ffe2e7;
+    border-color: #f191a3;
+    color: #8c2637;
+}
+
+.dashboard-action-btn.deactivate {
+    background: #fff0dc;
+    border-color: #f0b456;
+    color: #a46200;
+}
+
+.dashboard-action-btn.deactivate:hover,
+.dashboard-action-btn.deactivate:focus-visible {
+    background: #ffe6c2;
+    border-color: #df9e38;
+    color: #7d4a00;
+}
+
 .recent-activity-list {
     list-style: none;
     margin: 0;
@@ -4907,6 +4970,76 @@ body.dashboard-page.admin-console .dashboard-link-muted:focus-visible {
     gap: 0.35rem;
 }
 
+/* Bookkeepers Directory Table Layout */
+.admin-bookkeepers-table-wrap .admin-table {
+    width: 100%;
+    min-width: 740px;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th,
+.admin-bookkeepers-table-wrap .admin-table td {
+    padding: 0.72rem 0.62rem;
+    vertical-align: middle;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(1),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(1) {
+    min-width: 140px;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(2),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(2) {
+    min-width: 160px;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(3),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(3) {
+    min-width: 65px;
+    text-align: center;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(4),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(4) {
+    min-width: 95px;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(5),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(5) {
+    min-width: 95px;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(6),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(6) {
+    min-width: 90px;
+}
+
+.admin-bookkeepers-table-wrap .admin-table th:nth-child(7),
+.admin-bookkeepers-table-wrap .admin-table td:nth-child(7) {
+    min-width: 105px;
+    white-space: nowrap;
+}
+
+.admin-bookkeepers-table-wrap .admin-table-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.admin-bookkeepers-table-wrap .admin-action-btn {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.24rem 0.65rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
 .admin-row-main {
     font-weight: 800;
     color: #1f4178;
@@ -5031,9 +5164,14 @@ body.theme-dark .admin-deactivation-reason-text {
     color: #4e6897;
     font-size: 0.72rem;
     font-weight: 700;
-    padding: 0.2rem 0.55rem;
+    padding: 0.24rem 0.65rem;
     cursor: not-allowed;
     opacity: 0.85;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
 }
 
 .admin-action-btn.is-enabled {
@@ -5278,6 +5416,202 @@ body.theme-dark .admin-deactivation-reason-text {
     .admin-approval-page-actions {
         justify-content: space-between;
     }
+}
+
+/* ==========================================================================
+   Clients & Dashboard Pagination (Clients, Dashboard, Financial Records)
+   ========================================================================== */
+
+.clients-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid #e1e9f8;
+    margin-top: 0.85rem;
+    padding-top: 0.95rem;
+    flex-wrap: wrap;
+}
+
+.clients-pagination[hidden] {
+    display: none !important;
+}
+
+.clients-pagination-range {
+    color: #6079a6;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.clients-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.clients-page-button,
+.btn.clients-page-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 34px;
+    padding: 0.32rem 0.75rem;
+    border: 1px solid #caddff;
+    border-radius: 8px;
+    background: #f7faff;
+    color: #1f5ed9;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.clients-page-button:hover:not(:disabled),
+.btn.clients-page-button:hover:not(:disabled) {
+    background: #1f5ed9;
+    color: #ffffff;
+    border-color: #1f5ed9;
+    box-shadow: 0 4px 10px rgba(31, 94, 217, 0.2);
+}
+
+.clients-page-button:disabled,
+.btn.clients-page-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    border-color: #d8e2f1;
+    background: #f8fafc;
+    color: #94a3b8;
+}
+
+.clients-page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.clients-page-num,
+.btn.clients-page-num {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 0.4rem;
+    border-radius: 8px;
+    border: 1px solid #dce7fc;
+    background: #ffffff;
+    color: #324c7b;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.clients-page-num:hover:not(.active),
+.btn.clients-page-num:hover:not(.active) {
+    background: #eef4ff;
+    border-color: #bad3fe;
+    color: #1f5ed9;
+}
+
+.clients-page-num.active,
+.btn.clients-page-num.active {
+    background: #1f5ed9 !important;
+    color: #ffffff !important;
+    border-color: #1f5ed9 !important;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(31, 94, 217, 0.25);
+    cursor: default;
+}
+
+.clients-page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 34px;
+    color: #8fa0c0;
+    font-size: 0.84rem;
+    font-weight: 800;
+    user-select: none;
+}
+
+@media (max-width: 575px) {
+    .clients-pagination {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .clients-pagination-range {
+        text-align: center;
+    }
+
+    .clients-pagination-controls {
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+}
+
+/* Dark Theme */
+body.theme-dark .clients-pagination {
+    border-color: #334155;
+}
+
+body.theme-dark .clients-pagination-range {
+    color: #94a3b8;
+}
+
+body.theme-dark .clients-page-button,
+body.theme-dark .btn.clients-page-button {
+    border-color: #31558a;
+    background: #13233c;
+    color: #93c5fd;
+}
+
+body.theme-dark .clients-page-button:hover:not(:disabled),
+body.theme-dark .btn.clients-page-button:hover:not(:disabled) {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+body.theme-dark .clients-page-button:disabled,
+body.theme-dark .btn.clients-page-button:disabled {
+    border-color: #203350;
+    background: #0d1728;
+    color: #475569;
+}
+
+body.theme-dark .clients-page-num,
+body.theme-dark .btn.clients-page-num {
+    border-color: #273e66;
+    background: #101c33;
+    color: #cbd5e1;
+}
+
+body.theme-dark .clients-page-num:hover:not(.active),
+body.theme-dark .btn.clients-page-num:hover:not(.active) {
+    background: #182c52;
+    border-color: #3b5f9e;
+    color: #93c5fd;
+}
+
+body.theme-dark .clients-page-num.active,
+body.theme-dark .btn.clients-page-num.active {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .clients-page-ellipsis {
+    color: #64748b;
 }
 
 .admin-approval-detail {
@@ -6164,9 +6498,33 @@ body.theme-dark .dashboard-filter-summary {
 body.theme-dark .dashboard-filter-select,
 body.theme-dark .form-select,
 body.theme-dark .form-control {
-    background: #0f1c33;
+    background-color: #0f1c33;
     border-color: #25344f;
     color: #e6edf7;
+    color-scheme: dark;
+}
+
+body.theme-dark .form-select,
+body.theme-dark .dashboard-filter-select,
+body.theme-dark .financial-period-select {
+    --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239eb0d3' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-color: #0f1c33;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239eb0d3' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    padding-right: 2.25rem !important;
+    color-scheme: dark;
+}
+
+body.theme-dark option {
+    background-color: #0f1c33;
+    color: #e6edf7;
+}
+
+body.theme-dark optgroup {
+    background-color: #0f1c33;
+    color: #9eb0d3;
 }
 
 body.theme-dark .form-control::placeholder {
@@ -6385,24 +6743,31 @@ body.theme-dark .client-action-btn.delete:focus-visible {
     color: #f7b9b9;
 }
 
-body.theme-dark .client-action-btn.primary {
+body.theme-dark .client-action-btn.primary,
+body.theme-dark .client-action-btn.add-record {
     background: linear-gradient(145deg, #2b6de6, #1d4db8) !important;
     border-color: transparent !important;
     color: #ffffff !important;
 }
 
-body.theme-dark .client-action-btn.primary i {
+body.theme-dark .client-action-btn.primary i,
+body.theme-dark .client-action-btn.add-record i {
     color: #ffffff !important;
 }
 
 body.theme-dark .client-action-btn.primary:hover,
-body.theme-dark .client-action-btn.primary:focus-visible {
+body.theme-dark .client-action-btn.primary:focus-visible,
+body.theme-dark .client-action-btn.add-record:hover,
+body.theme-dark .client-action-btn.add-record:focus-visible {
     background: linear-gradient(145deg, #1d4db8, #153c94) !important;
+    border-color: transparent !important;
     color: #ffffff !important;
 }
 
 body.theme-dark .client-action-btn.primary:hover i,
-body.theme-dark .client-action-btn.primary:focus-visible i {
+body.theme-dark .client-action-btn.primary:focus-visible i,
+body.theme-dark .client-action-btn.add-record:hover i,
+body.theme-dark .client-action-btn.add-record:focus-visible i {
     color: #ffffff !important;
 }
 
@@ -6423,6 +6788,33 @@ body.theme-dark .client-custom-add-btn:focus-visible {
 body.theme-dark .client-custom-label-input {
     background: #0f1c33;
     border-color: #2a3c5a;
+    color: #e6edf7;
+}
+
+body.theme-dark .client-password-toggle {
+    background: transparent;
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-password-toggle:hover,
+body.theme-dark .client-password-toggle:focus-visible,
+body.theme-dark .client-password-toggle:focus {
+    background: #192a4a;
+    color: #aecdff;
+    box-shadow: 0 0 0 0.16rem rgba(61, 120, 230, 0.2);
+}
+
+body.theme-dark .client-delete-modal {
+    background: #101b2f;
+    border-color: #23324d;
+    color: #d0def3;
+}
+
+body.theme-dark .clients-delete-text {
+    color: #9eb0d3;
+}
+
+body.theme-dark .clients-delete-name {
     color: #e6edf7;
 }
 
@@ -6459,6 +6851,76 @@ body.theme-dark .client-manage-modal .modal-content {
 
 body.theme-dark .client-manage-modal .modal-header {
     border-bottom-color: #25344f;
+}
+
+.client-manage-modal.modal-dialog-scrollable .modal-body,
+.client-manage-modal .modal-dialog-scrollable .modal-body {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+}
+
+body.theme-dark .client-form-label,
+.theme-dark .client-form-label {
+    color: #adc0e6;
+}
+
+body.theme-dark .client-custom-fields-title,
+.theme-dark .client-custom-fields-title {
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-select-icon,
+.theme-dark .client-select-icon {
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-select-input,
+.theme-dark .client-select-input {
+    background-image: none !important;
+}
+
+body.theme-dark .client-edit-modal-subtitle,
+body.theme-dark .clients-access-modal-subtitle,
+body.theme-dark .clients-access-modal-note {
+    color: #9eb0d3;
+}
+
+body.theme-dark .client-report-modal .modal-content,
+.theme-dark .client-report-modal .modal-content {
+    background: #101b2f;
+    border-color: #23324d;
+    box-shadow: 0 18px 34px rgba(2, 8, 20, 0.6);
+}
+
+body.theme-dark .client-report-modal .modal-header,
+body.theme-dark .client-report-modal .modal-footer,
+.theme-dark .client-report-modal .modal-header,
+.theme-dark .client-report-modal .modal-footer {
+    background-color: #101b2f !important;
+    border-color: #25344f !important;
+}
+
+body.theme-dark .client-report-modal .modal-body,
+.theme-dark .client-report-modal .modal-body {
+    background-color: #0b1424 !important;
+}
+
+body.theme-dark .client-report-modal .modal-title,
+.theme-dark .client-report-modal .modal-title {
+    color: #f1f5f9 !important;
+}
+
+body.theme-dark .client-report-modal .btn-close,
+.theme-dark .client-report-modal .btn-close {
+    filter: invert(1);
+    opacity: 0.75;
+}
+
+body.theme-dark .client-report-modal .btn-close:hover,
+body.theme-dark .client-report-modal .btn-close:focus-visible,
+.theme-dark .client-report-modal .btn-close:hover,
+.theme-dark .client-report-modal .btn-close:focus-visible {
+    opacity: 1;
 }
 
 body.theme-dark .financial-manage-modal .modal-content {
@@ -6500,8 +6962,16 @@ body.theme-dark .financial-form-input {
     color: #e6edf7;
 }
 
-body.theme-dark select.financial-form-input {
+body.theme-dark select.financial-form-input,
+body.theme-dark select.financial-line-code-select {
+    --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239eb0d3' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-color: #0f1c33;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239eb0d3' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    padding-right: 2.25rem !important;
+    color-scheme: dark;
 }
 
 body.theme-dark .financial-form-input:focus {
@@ -6821,6 +7291,20 @@ body.theme-dark .financial-empty-state {
 
 body.theme-dark .financial-empty-state p {
     color: #9eb0d3;
+}
+
+body.theme-dark .financial-delete-modal {
+    background: #101b2f;
+    border-color: #23324d;
+    color: #d0def3;
+}
+
+body.theme-dark .financial-delete-text {
+    color: #9eb0d3;
+}
+
+body.theme-dark .financial-delete-period {
+    color: #e6edf7;
 }
 
 body.theme-dark .recent-activity-list li {
@@ -7427,3 +7911,766 @@ body.theme-dark .safebooks-tooltip-content {
 body.theme-dark .safebooks-tooltip-content::after {
     border-color: #0f172a transparent transparent transparent;
 }
+
+/* =====================================================================
+   ADMIN CONSOLE DARK MODE ADAPTATIONS
+   ===================================================================== */
+
+/* 1. Admin Tables (Audit Log, Approvals, Bookkeepers, Dashboard) */
+body.theme-dark .admin-table,
+body.theme-dark.dashboard-page.admin-console .admin-table {
+    --bs-table-bg: #0f1c33;
+    --bs-table-color: #d0def3;
+    --bs-table-hover-bg: #16263f;
+    --bs-table-border-color: #1f304d;
+    border-color: #1f304d;
+    background-color: #0f1c33;
+}
+
+body.theme-dark .admin-table thead th,
+body.theme-dark.dashboard-page.admin-console .admin-table thead th {
+    background-color: #122038 !important;
+    border-bottom-color: #2b3c5a;
+    color: #9eb0d3;
+}
+
+body.theme-dark .admin-table td,
+body.theme-dark .admin-table th,
+body.theme-dark .admin-table tbody tr td,
+body.theme-dark.dashboard-page.admin-console .admin-table td,
+body.theme-dark.dashboard-page.admin-console .admin-table th,
+body.theme-dark.dashboard-page.admin-console .admin-table tbody tr td {
+    background-color: #0f1c33 !important;
+    color: #d0def3;
+    border-top-color: #1f304d;
+    border-bottom-color: #1f304d;
+}
+
+body.theme-dark .admin-table tbody tr:hover td,
+body.theme-dark.dashboard-page.admin-console .admin-table tbody tr:hover td {
+    background-color: #16263f !important;
+    color: #ffffff;
+}
+
+body.theme-dark .admin-table tbody tr.is-selected td,
+body.theme-dark.dashboard-page.admin-console .admin-table tbody tr.is-selected td {
+    background-color: #14243d !important;
+    color: #ffffff;
+}
+
+body.theme-dark .admin-table tbody tr.is-selected td:first-child,
+body.theme-dark.dashboard-page.admin-console .admin-table tbody tr.is-selected td:first-child {
+    box-shadow: inset 3px 0 0 #7eafff;
+}
+
+body.theme-dark .admin-table .admin-table-empty td,
+body.theme-dark.dashboard-page.admin-console .admin-table .admin-table-empty td {
+    color: #9eb0d3;
+    background-color: #0f1c33 !important;
+}
+
+/* Bookkeeper Names & Table Row Text in Dark Mode */
+body.theme-dark .admin-row-main,
+body.theme-dark .admin-row-main span,
+body.theme-dark.dashboard-page.admin-console .admin-row-main,
+body.theme-dark.dashboard-page.admin-console .admin-row-main span {
+    color: #f1f5f9 !important;
+}
+
+body.theme-dark .admin-row-subnote,
+body.theme-dark.dashboard-page.admin-console .admin-row-subnote {
+    color: #9eb0d3 !important;
+}
+
+body.theme-dark .admin-deactivation-trigger {
+    background-color: #2b1f0d !important;
+    color: #fbbf24 !important;
+    border: 1px solid #78350f !important;
+}
+
+body.theme-dark .admin-deactivation-trigger:hover {
+    background-color: #3d2a0d !important;
+    border-color: #b45309 !important;
+    color: #fef3c7 !important;
+}
+
+/* 2. Audit Log Content Text & Badges */
+body.theme-dark .admin-audit-message span,
+body.theme-dark.dashboard-page.admin-console .admin-audit-message span {
+    color: #d0def3;
+}
+
+body.theme-dark .admin-audit-decision-note,
+body.theme-dark.dashboard-page.admin-console .admin-audit-decision-note {
+    color: #8da6cf;
+}
+
+body.theme-dark .admin-status-chip.pending,
+body.theme-dark.dashboard-page.admin-console .admin-status-chip.pending {
+    background: #3a2203;
+    color: #fcd34d;
+    border-color: #78350f;
+}
+
+body.theme-dark .admin-status-chip.approved,
+body.theme-dark.dashboard-page.admin-console .admin-status-chip.approved {
+    background: #043f30;
+    color: #6ee7b7;
+    border-color: #065f46;
+}
+
+body.theme-dark .admin-status-chip.rejected,
+body.theme-dark.dashboard-page.admin-console .admin-status-chip.rejected,
+body.theme-dark .admin-status-chip.suspended,
+body.theme-dark.dashboard-page.admin-console .admin-status-chip.suspended {
+    background: #440a18;
+    color: #fda4af;
+    border-color: #881337;
+}
+
+body.theme-dark .admin-status-chip.inactive,
+body.theme-dark.dashboard-page.admin-console .admin-status-chip.inactive {
+    background: #1e293b;
+    color: #cbd5e1;
+    border-color: #334155;
+}
+
+/* 3. Pagination Controls (Approvals & Audit Log) */
+body.theme-dark .admin-audit-page-button,
+body.theme-dark.dashboard-page.admin-console .admin-audit-page-button {
+    background: #152542;
+    border: 1px solid #2b3f63;
+    color: #93c5fd;
+}
+
+body.theme-dark .admin-audit-page-button:hover:not(:disabled),
+body.theme-dark.dashboard-page.admin-console .admin-audit-page-button:hover:not(:disabled) {
+    background: #1f5ed9;
+    border-color: #1f5ed9;
+    color: #ffffff;
+}
+
+body.theme-dark .admin-audit-page-button:disabled,
+body.theme-dark.dashboard-page.admin-console .admin-audit-page-button:disabled {
+    background: #0f1c33;
+    border-color: #1c2b42;
+    color: #435b7f;
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+body.theme-dark .admin-approval-pagination,
+body.theme-dark .admin-audit-pagination,
+body.theme-dark .admin-bookkeeper-pagination,
+body.theme-dark.dashboard-page.admin-console .admin-approval-pagination,
+body.theme-dark.dashboard-page.admin-console .admin-audit-pagination,
+body.theme-dark.dashboard-page.admin-console .admin-bookkeeper-pagination {
+    border-top-color: #1f304d;
+    color: #9eb0d3;
+}
+
+body.theme-dark .admin-approval-pagination > span,
+body.theme-dark .admin-approval-page-actions > span,
+body.theme-dark .admin-audit-pagination > span,
+body.theme-dark .admin-bookkeeper-pagination > span,
+body.theme-dark .admin-bookkeeper-page-actions > span,
+body.theme-dark.dashboard-page.admin-console .admin-approval-pagination > span,
+body.theme-dark.dashboard-page.admin-console .admin-approval-page-actions > span,
+body.theme-dark.dashboard-page.admin-console .admin-audit-pagination > span,
+body.theme-dark.dashboard-page.admin-console .admin-bookkeeper-pagination > span,
+body.theme-dark.dashboard-page.admin-console .admin-bookkeeper-page-actions > span {
+    color: #9eb0d3 !important;
+}
+
+/* 4. Audit Log Date Filters */
+body.theme-dark .admin-audit-date-filters label > span,
+body.theme-dark.dashboard-page.admin-console .admin-audit-date-filters label > span {
+    color: #9eb0d3;
+}
+
+body.theme-dark .admin-audit-date-filters .form-control,
+body.theme-dark.dashboard-page.admin-console .admin-audit-date-filters .form-control {
+    background: #0f1c33;
+    border-color: #25344f;
+    color: #e6edf7;
+    color-scheme: dark;
+}
+
+/* 5. System Settings Field Labels & Toggle Rows */
+body.theme-dark .settings-field-label,
+body.theme-dark.dashboard-page.admin-console .settings-field-label {
+    color: #e2ecfb;
+}
+
+body.theme-dark .settings-field-hint,
+body.theme-dark.dashboard-page.admin-console .settings-field-hint {
+    color: #94aacd;
+}
+
+body.theme-dark .settings-toggle-row,
+body.theme-dark.dashboard-page.admin-console .settings-toggle-row {
+    border-bottom-color: #1e304f;
+}
+
+/* 6. Admin Console Outline Buttons (Change Password, Enable 2FA, Modal Cancel, Print, Copy) */
+body.theme-dark.dashboard-page.admin-console .dashboard-action-btn.outline,
+body.theme-dark .dashboard-action-btn.outline {
+    background: #13233c !important;
+    border: 1px solid #2b3f63 !important;
+    color: #93c5fd !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .dashboard-action-btn.outline:hover,
+body.theme-dark.dashboard-page.admin-console .dashboard-action-btn.outline:focus-visible,
+body.theme-dark .dashboard-action-btn.outline:hover,
+body.theme-dark .dashboard-action-btn.outline:focus-visible {
+    background: #1f355c !important;
+    border-color: #3b598d !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .dashboard-action-btn.outline:disabled,
+body.theme-dark.dashboard-page.admin-console .dashboard-action-btn:disabled,
+body.theme-dark .dashboard-action-btn.outline:disabled,
+body.theme-dark .dashboard-action-btn:disabled {
+    background: #0f1c33 !important;
+    border-color: #1f2d45 !important;
+    color: #4b6287 !important;
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* 7. Modal Close Buttons in Dark Mode */
+body.theme-dark .btn-close,
+body.theme-dark.dashboard-page.admin-console .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.75;
+}
+
+body.theme-dark .btn-close:hover,
+body.theme-dark.dashboard-page.admin-console .btn-close:hover {
+    opacity: 1;
+}
+
+/* 8. Password Requirements Popover in Dark Mode */
+body.theme-dark .auth-input:disabled,
+body.theme-dark .auth-input[disabled] {
+    background-color: #0d1728 !important;
+    border-color: #1e2c44 !important;
+    color: #556d94 !important;
+    cursor: not-allowed !important;
+}
+
+body.theme-dark .auth-password-field:has(.auth-input:disabled),
+body.theme-dark .auth-password-field:has(.form-control:disabled),
+body.theme-dark .auth-password-field.is-disabled {
+    background-color: #0d1728 !important;
+    border-color: #1e2c44 !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .auth-password-field:has(.auth-input:disabled) .auth-input,
+body.theme-dark .auth-password-field:has(.form-control:disabled) .auth-input,
+body.theme-dark .auth-password-field.is-disabled .auth-input,
+body.theme-dark .auth-password-field .auth-input:disabled {
+    background-color: transparent !important;
+    color: #556d94 !important;
+    cursor: not-allowed !important;
+}
+
+body.theme-dark .auth-password-field:has(.auth-input:disabled) .auth-password-toggle,
+body.theme-dark .auth-password-field:has(.form-control:disabled) .auth-password-toggle,
+body.theme-dark .auth-password-field.is-disabled .auth-password-toggle,
+body.theme-dark .auth-password-toggle:disabled,
+body.theme-dark .auth-password-toggle[disabled] {
+    color: #4b6287 !important;
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+body.theme-dark .auth-password-field.has-requirements .auth-password-requirements {
+    background: #0d182b;
+    border-top: 1px solid #1f304d;
+}
+
+body.theme-dark .auth-password-requirements-title {
+    color: #94aacd;
+}
+
+body.theme-dark .auth-requirement-chip {
+    border-color: #25344f;
+    background: #122038;
+    color: #94aacd;
+}
+
+body.theme-dark .auth-requirement-chip.is-valid {
+    border-color: #065f46;
+    background: #043f30;
+    color: #6ee7b7;
+}
+
+/* 9. Admin Console Modals Dark Mode (Approvals & General Admin Modals) */
+body.theme-dark.dashboard-page.admin-console .modal-content,
+body.theme-dark .modal-content {
+    background-color: #101b2f !important;
+    border: 1px solid #22314c !important;
+    color: #e6edf7 !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65) !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .modal-header,
+body.theme-dark .modal-header {
+    border-bottom: 1px solid #1f304d !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .modal-title,
+body.theme-dark .modal-title {
+    color: #e6edf7 !important;
+    font-weight: 700;
+}
+
+body.theme-dark.dashboard-page.admin-console .modal-footer,
+body.theme-dark .modal-footer {
+    border-top: 1px solid #1f304d !important;
+}
+
+/* Approvals Details Modal Dark Mode */
+body.theme-dark #approvalDetailsModal .modal-title i {
+    color: #60a5fa !important;
+}
+
+body.theme-dark #approvalDetailsModal .col-md-6.border-end {
+    border-color: #1f304d !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalDetailName {
+    color: #e6edf7 !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalDetailEmail {
+    color: #93c5fd !important;
+}
+
+body.theme-dark #approvalDetailsModal .admin-detail-list div {
+    background: #0b1526 !important;
+    border-color: #1f304d !important;
+}
+
+body.theme-dark #approvalDetailsModal .admin-detail-list dt {
+    color: #7f98c0 !important;
+}
+
+body.theme-dark #approvalDetailsModal .admin-detail-list dd {
+    color: #e2ecfb !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalDetailReason {
+    background: #231219 !important;
+    border: 1px solid #5c202e !important;
+    border-left: 4px solid #ef4444 !important;
+    color: #fca5a5 !important;
+}
+
+/* Approvals Modal: Notification Decision Message Box */
+body.theme-dark #approvalDetailsModal .col-md-6 h6.text-muted {
+    color: #9eb0d3 !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalNotificationPreview {
+    background-color: #0b1526 !important;
+    border-color: #1f304d !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalNotificationPreview .text-primary,
+body.theme-dark #approvalDetailsModal #approvalNotificationPreview .text-primary i {
+    color: #60a5fa !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalNotificationText {
+    color: #cbd5e1 !important;
+}
+
+/* Approvals Modal Buttons */
+body.theme-dark #approvalDetailsModal #approvalDetailRejectBtn {
+    background: #2a151d !important;
+    border: 1px solid #5c202e !important;
+    color: #fca5a5 !important;
+    font-weight: 700;
+}
+
+body.theme-dark #approvalDetailsModal #approvalDetailRejectBtn:hover {
+    background: #e11d48 !important;
+    border-color: #e11d48 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark #approvalDetailsModal #approvalDetailApproveBtn {
+    background: linear-gradient(145deg, #1d4ed8, #2563eb) !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+body.theme-dark #approvalDetailsModal #approvalDetailApproveBtn:hover {
+    background: linear-gradient(145deg, #1e40af, #1d4ed8) !important;
+    border-color: #1d4ed8 !important;
+}
+
+/* Approvals Action Confirmation Modal Dark Mode */
+body.theme-dark #approvalsActionModal #approvalsActionModalMessage {
+    color: #cbd5e1 !important;
+}
+
+body.theme-dark #approvalsActionModal label {
+    color: #9eb0d3 !important;
+    font-weight: 700;
+}
+
+body.theme-dark #approvalsActionModal #approvalsActionReasonInput {
+    background: #0b1526 !important;
+    border-color: #1f304d !important;
+    color: #e6edf7 !important;
+}
+
+body.theme-dark #approvalsActionModal #approvalsActionReasonInput:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.2) !important;
+}
+
+body.theme-dark #approvalsActionModal .form-text {
+    color: #7f98c0 !important;
+}
+
+/* 10. Bookkeepers Modals Dark Mode */
+body.theme-dark #deactivationRequestModal label.text-muted,
+body.theme-dark #deactivationRequestModal label {
+    color: #9eb0d3 !important;
+    font-weight: 700;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalName {
+    color: #e6edf7 !important;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalDate {
+    color: #cbd5e1 !important;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalReason {
+    background-color: #0b1526 !important;
+    border: 1px solid #78350f !important;
+    border-left: 4px solid #f59e0b !important;
+    color: #fef3c7 !important;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalDeclineBtn {
+    background: #2a151d !important;
+    border: 1px solid #5c202e !important;
+    color: #fca5a5 !important;
+    font-weight: 700;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalDeclineBtn:hover {
+    background: #e11d48 !important;
+    border-color: #e11d48 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalApproveBtn {
+    background: #2b1f0d !important;
+    border: 1px solid #78350f !important;
+    color: #fcd34d !important;
+    font-weight: 700;
+}
+
+body.theme-dark #deactivationRequestModal #deactivationRequestModalApproveBtn:hover {
+    background: #d97706 !important;
+    border-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
+/* Bookkeepers Action Confirmation Modal Dark Mode */
+body.theme-dark #bookkeeperActionModal #bookkeeperActionModalMessage {
+    color: #cbd5e1 !important;
+}
+
+body.theme-dark #bookkeeperActionModal label {
+    color: #9eb0d3 !important;
+    font-weight: 700;
+}
+
+body.theme-dark #bookkeeperActionModal #bookkeeperActionPasswordInput {
+    background-color: #0b1526 !important;
+    border-color: #1f304d !important;
+    color: #e6edf7 !important;
+}
+
+body.theme-dark #bookkeeperActionModal #bookkeeperActionPasswordInput:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.2) !important;
+}
+
+body.theme-dark #bookkeeperActionModal #bookkeeperActionPasswordInput::placeholder {
+    color: #64748b !important;
+}
+
+body.theme-dark #bookkeeperActionModal .form-text {
+    color: #7f98c0 !important;
+}
+
+body.theme-dark #bookkeeperActionModal #bookkeeperActionModalWarning {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
+    color: #fcd34d !important;
+}
+
+/* Bookkeeper Action Modal Password Input & Eye Toggle */
+#bookkeeperActionModal .auth-password-wrap {
+    position: relative;
+    display: block;
+}
+
+#bookkeeperActionModal .auth-password-wrap .form-control {
+    padding-right: 2.85rem !important;
+}
+
+/* Invalid State Styling in Bookkeeper Action Modal */
+#bookkeeperActionModal .auth-password-wrap .form-control.is-invalid {
+    border-color: #ef4444 !important;
+    background-image: none !important;
+}
+
+#bookkeeperActionModal .auth-password-wrap .form-control.is-invalid:focus {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.25) !important;
+}
+
+body.theme-dark #bookkeeperActionModal .auth-password-wrap .form-control.is-invalid {
+    border-color: #f87171 !important;
+    background-color: #1c1017 !important;
+    color: #fee2e2 !important;
+    background-image: none !important;
+}
+
+body.theme-dark #bookkeeperActionModal .auth-password-wrap .form-control.is-invalid:focus {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.3) !important;
+}
+
+#bookkeeperActionModal .invalid-feedback {
+    display: none;
+    margin-top: 0.45rem;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: #dc2626;
+}
+
+body.theme-dark #bookkeeperActionModal .invalid-feedback {
+    color: #fca5a5 !important;
+}
+
+#bookkeeperActionModal .invalid-feedback.is-visible {
+    display: block !important;
+}
+
+/* Disabled Input and Toggle Styling while Submitting */
+#bookkeeperActionModal #bookkeeperActionPasswordInput:disabled {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed !important;
+    opacity: 0.7 !important;
+}
+
+body.theme-dark #bookkeeperActionModal #bookkeeperActionPasswordInput:disabled {
+    background-color: #070e1a !important;
+    border-color: #16243b !important;
+    color: #4b6287 !important;
+    cursor: not-allowed !important;
+    opacity: 0.65 !important;
+}
+
+#bookkeeperActionModal .auth-password-toggle:disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+#bookkeeperActionModal .auth-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    width: 2.2rem;
+    height: 2.2rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #6b82af;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 5;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+#bookkeeperActionModal .auth-password-toggle:hover,
+#bookkeeperActionModal .auth-password-toggle:focus-visible {
+    background: #eaf1ff;
+    color: #2b56ad;
+    outline: none;
+}
+
+#bookkeeperActionModal .auth-password-toggle i {
+    font-size: 1.15rem;
+    line-height: 1;
+    pointer-events: none;
+}
+
+body.theme-dark #bookkeeperActionModal .auth-password-toggle {
+    color: #7d96bd;
+}
+
+body.theme-dark #bookkeeperActionModal .auth-password-toggle:hover,
+body.theme-dark #bookkeeperActionModal .auth-password-toggle:focus-visible {
+    background: #1a2c4d;
+    color: #c2d8fc;
+}
+
+body.theme-dark #bookkeeperActionModal .auth-password-toggle:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+/* Modal Confirm Button Disabled States */
+#bookkeeperActionModal .dashboard-action-btn.primary:disabled {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+    color: #94a3b8 !important;
+    opacity: 0.7 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark #bookkeeperActionModal .dashboard-action-btn.primary:disabled {
+    background: #101d33 !important;
+    border-color: #1f2f4a !important;
+    color: #4b6287 !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .dashboard-action-btn.reject {
+    background: #2a151d !important;
+    border: 1px solid #5c202e !important;
+    color: #fca5a5 !important;
+}
+
+body.theme-dark .dashboard-action-btn.reject:hover,
+body.theme-dark .dashboard-action-btn.reject:focus-visible {
+    background: #e11d48 !important;
+    border-color: #e11d48 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .dashboard-action-btn.deactivate {
+    background: #2b1f0d !important;
+    border: 1px solid #78350f !important;
+    color: #fcd34d !important;
+}
+
+body.theme-dark .dashboard-action-btn.deactivate:hover,
+body.theme-dark .dashboard-action-btn.deactivate:focus-visible {
+    background: #d97706 !important;
+    border-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
+/* 11. Admin Table Action Buttons (Bookkeepers, Approvals) Dark Mode */
+body.theme-dark.dashboard-page.admin-console .admin-action-btn,
+body.theme-dark .admin-action-btn {
+    background: #111d33;
+    border: 1px solid #223454;
+    color: #aecdff;
+    white-space: nowrap;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn:disabled,
+body.theme-dark .admin-action-btn:disabled {
+    background: #0b1526 !important;
+    border-color: #1c2b42 !important;
+    color: #485c7d !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.deactivate.is-enabled,
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.suspend.is-enabled,
+body.theme-dark .admin-action-btn.deactivate.is-enabled,
+body.theme-dark .admin-action-btn.suspend.is-enabled {
+    background: #2b1f0d !important;
+    border-color: #78350f !important;
+    color: #fbbf24 !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.deactivate.is-enabled:hover,
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.suspend.is-enabled:hover,
+body.theme-dark .admin-action-btn.deactivate.is-enabled:hover,
+body.theme-dark .admin-action-btn.suspend.is-enabled:hover {
+    background: #d97706 !important;
+    border-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.reactivate.is-enabled,
+body.theme-dark .admin-action-btn.reactivate.is-enabled {
+    background: #0f2442 !important;
+    border-color: #1e40af !important;
+    color: #93c5fd !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.reactivate.is-enabled:hover,
+body.theme-dark .admin-action-btn.reactivate.is-enabled:hover {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.approve.is-enabled,
+body.theme-dark .admin-action-btn.approve.is-enabled {
+    background: #043f30 !important;
+    border-color: #065f46 !important;
+    color: #6ee7b7 !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.approve.is-enabled:hover,
+body.theme-dark .admin-action-btn.approve.is-enabled:hover {
+    background: #059669 !important;
+    border-color: #059669 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.reject.is-enabled,
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.delete.is-enabled,
+body.theme-dark .admin-action-btn.reject.is-enabled,
+body.theme-dark .admin-action-btn.delete.is-enabled {
+    background: #2a151d !important;
+    border-color: #5c202e !important;
+    color: #fca5a5 !important;
+}
+
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.reject.is-enabled:hover,
+body.theme-dark.dashboard-page.admin-console .admin-action-btn.delete.is-enabled:hover,
+body.theme-dark .admin-action-btn.reject.is-enabled:hover,
+body.theme-dark .admin-action-btn.delete.is-enabled:hover {
+    background: #e11d48 !important;
+    border-color: #e11d48 !important;
+    color: #ffffff !important;
+}
+
+
+
+

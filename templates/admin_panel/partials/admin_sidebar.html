@@ -18,8 +18,7 @@
         <a href="{% url 'admin_bookkeepers' %}" class="dashboard-nav-item{% if active_admin_nav == 'bookkeepers' %} active{% endif %}"{% if active_admin_nav == 'bookkeepers' %} aria-current="page"{% endif %}><i class="bi bi-people"></i><span>Bookkeepers</span></a>
         <a href="{% url 'admin_approvals' %}" class="dashboard-nav-item{% if active_admin_nav == 'approvals' %} active{% endif %}"{% if active_admin_nav == 'approvals' %} aria-current="page"{% endif %}><i class="bi bi-check2-circle"></i><span>Approvals</span></a>
         <a href="{% url 'admin_audit_log' %}" class="dashboard-nav-item{% if active_admin_nav == 'audit_log' %} active{% endif %}"{% if active_admin_nav == 'audit_log' %} aria-current="page"{% endif %}><i class="bi bi-journal-check"></i><span>Audit Log</span></a>
-        {% comment %} System Settings link visually hidden but preserved {% endcomment %}
-        <a href="{% url 'admin_system_settings' %}" class="dashboard-nav-item hidden-admin-settings{% if active_admin_nav == 'system_settings' %} active{% endif %}"{% if active_admin_nav == 'system_settings' %} aria-current="page"{% endif %} style="display:none !important;" aria-hidden="true" tabindex="-1"><i class="bi bi-gear"></i><span>System Settings</span></a>
+        <a href="{% url 'admin_system_settings' %}" class="dashboard-nav-item{% if active_admin_nav == 'system_settings' %} active{% endif %}"{% if active_admin_nav == 'system_settings' %} aria-current="page"{% endif %}><i class="bi bi-gear"></i><span>System Settings</span></a>
     </nav>
 
     <a href="{% url 'login' %}" class="dashboard-landing-link" data-admin-logout>

@@ -22,6 +22,17 @@
     const approvalWaiting = document.getElementById("adminDashboardApprovalWaiting");
     const approvalOverdue = document.getElementById("adminDashboardApprovalOverdue");
 
+    const adminDashboardLoadPagination = document.getElementById("adminDashboardLoadPagination");
+    const adminDashboardLoadPageRange = document.getElementById("adminDashboardLoadPageRange");
+    const adminDashboardLoadPageStatus = document.getElementById("adminDashboardLoadPageStatus");
+    const adminDashboardLoadPreviousPage = document.getElementById("adminDashboardLoadPreviousPage");
+    const adminDashboardLoadNextPage = document.getElementById("adminDashboardLoadNextPage");
+
+    const state = {
+        loadPage: 1,
+        isLoadingSnapshot: false,
+    };
+
     const uiToastContainer = document.getElementById("uiToastContainer");
 
     if (!totalBookkeepers || !pendingApprovals || !activeAccounts || !highLoad || !loadTableBody || !needsReviewList) {
@@ -178,6 +189,34 @@
             .join("");
     };
 
+    const renderLoadPagination = (pagination) => {
+        const totalCount = Number(pagination && pagination.total_count) || 0;
+        const page = Number(pagination && pagination.page) || 1;
+        const totalPages = Number(pagination && pagination.total_pages) || 1;
+        const startIndex = Number(pagination && pagination.start_index) || 0;
+        const endIndex = Number(pagination && pagination.end_index) || 0;
+
+        state.loadPage = page;
+
+        if (adminDashboardLoadPagination) {
+            adminDashboardLoadPagination.hidden = totalCount === 0 || totalPages <= 1;
+        }
+        if (adminDashboardLoadPageRange) {
+            adminDashboardLoadPageRange.textContent = totalCount
+                ? `Showing ${startIndex}-${endIndex} of ${totalCount}`
+                : "No load data available";
+        }
+        if (adminDashboardLoadPageStatus) {
+            adminDashboardLoadPageStatus.textContent = `Page ${page} of ${totalPages}`;
+        }
+        if (adminDashboardLoadPreviousPage) {
+            adminDashboardLoadPreviousPage.disabled = !Boolean(pagination && pagination.has_previous);
+        }
+        if (adminDashboardLoadNextPage) {
+            adminDashboardLoadNextPage.disabled = !Boolean(pagination && pagination.has_next);
+        }
+    };
+
     const setCounts = (payload) => {
         const kpis = payload.kpis || {};
         totalBookkeepers.textContent = String(getNumber(kpis.total_bookkeepers));
@@ -211,16 +250,33 @@
         }
     };
 
+    const buildSummaryUrl = (loadPage = 1) => {
+        const rawUrl = String(urls.dashboardSummaryApi || "");
+        if (!rawUrl) return "";
+        const url = new URL(rawUrl, window.location.origin);
+        url.searchParams.set("load_page", String(loadPage || 1));
+        return url.toString();
+    };
+
     const fetchDashboardSummary = async (options = {}) => {
         const shouldNotify = Boolean(options.notify);
-        const url = String(urls.dashboardSummaryApi || "");
+        const isLoadPageOnly = Boolean(options.loadPageOnly);
+        const targetPage = options.page !== undefined ? Number(options.page) : state.loadPage;
+        const url = buildSummaryUrl(targetPage);
         if (!url) {
             renderEmptyRow("Dashboard summary API is not configured.");
             return;
         }
 
-        renderEmptyRow("Loading summary...");
-        needsReviewList.innerHTML = '<div class="admin-empty-state admin-review-empty">Loading admin review items...</div>';
+        if (isLoadPageOnly) {
+            state.isLoadingSnapshot = true;
+            if (adminDashboardLoadPreviousPage) adminDashboardLoadPreviousPage.disabled = true;
+            if (adminDashboardLoadNextPage) adminDashboardLoadNextPage.disabled = true;
+            renderEmptyRow("Loading bookkeeper load...");
+        } else {
+            renderEmptyRow("Loading summary...");
+            needsReviewList.innerHTML = '<div class="admin-empty-state admin-review-empty">Loading admin review items...</div>';
+        }
 
         try {
             const response = await fetch(url, {
@@ -244,20 +300,51 @@
 
             if (!response.ok || !payload || !payload.ok) {
                 renderEmptyRow(payload && payload.message ? payload.message : "Unable to load dashboard summary.");
+                if (adminDashboardLoadPagination) {
+                    adminDashboardLoadPagination.hidden = true;
+                }
                 return;
             }
 
-            setCounts(payload);
-            renderNeedsReview(payload);
+            if (!isLoadPageOnly) {
+                setCounts(payload);
+                renderNeedsReview(payload);
+            }
             renderLoadSnapshot(payload.load_snapshot || []);
+            renderLoadPagination(payload.load_snapshot_pagination || payload.pagination || {});
             if (shouldNotify) {
                 showToast("Admin dashboard updated.", "success");
             }
         } catch (error) {
             renderEmptyRow("Unable to load dashboard summary right now.");
-            renderReviewEmpty();
+            if (!isLoadPageOnly) {
+                renderReviewEmpty();
+            }
+            if (adminDashboardLoadPagination) {
+                adminDashboardLoadPagination.hidden = true;
+            }
+        } finally {
+            state.isLoadingSnapshot = false;
         }
     };
+
+    if (adminDashboardLoadPreviousPage) {
+        adminDashboardLoadPreviousPage.addEventListener("click", () => {
+            if (state.loadPage <= 1 || state.isLoadingSnapshot) {
+                return;
+            }
+            fetchDashboardSummary({ loadPageOnly: true, page: state.loadPage - 1 });
+        });
+    }
+
+    if (adminDashboardLoadNextPage) {
+        adminDashboardLoadNextPage.addEventListener("click", () => {
+            if (state.isLoadingSnapshot) {
+                return;
+            }
+            fetchDashboardSummary({ loadPageOnly: true, page: state.loadPage + 1 });
+        });
+    }
 
     if (refreshButton) {
         refreshButton.addEventListener("click", () => {
