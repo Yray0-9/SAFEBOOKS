@@ -643,6 +643,97 @@
     color: #2f4f83;
 }
 
+/* Change-password strength feedback is scoped to the Settings modal. */
+.settings-password-strength {
+    margin: 0;
+    padding: 0.65rem 0.7rem 0.6rem;
+    border-top: 1px solid #e8eefb;
+    background: linear-gradient(180deg, #f9fbff 0%, #f4f8ff 100%);
+}
+
+.settings-password-strength-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+    color: #6a80aa;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.settings-password-strength-label {
+    color: #7b8ba8;
+    transition: color 180ms ease;
+}
+
+.settings-password-strength-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.3rem;
+}
+
+.settings-password-strength-segment {
+    height: 0.34rem;
+    border-radius: 999px;
+    background-color: #dbe6f7;
+    transition: background-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+
+.settings-password-strength[data-strength="weak"] .settings-password-strength-label {
+    color: #c2410c;
+}
+
+.settings-password-strength[data-strength="medium"] .settings-password-strength-label {
+    color: #a16207;
+}
+
+.settings-password-strength[data-strength="strong"] .settings-password-strength-label {
+    color: #15803d;
+}
+
+.settings-password-strength[data-strength="weak"] [data-strength-segment="1"],
+.settings-password-strength[data-strength="medium"] [data-strength-segment="1"] {
+    background-color: #f97316;
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.12);
+}
+
+.settings-password-strength[data-strength="medium"] [data-strength-segment="2"] {
+    background-color: #eab308;
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.12);
+}
+
+.settings-password-strength[data-strength="strong"] .settings-password-strength-segment {
+    background-color: #22c55e;
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12);
+    transform: scaleY(1.15);
+}
+
+.settings-manage-modal .auth-requirement-chip {
+    transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+
+.settings-manage-modal .auth-requirement-chip.is-active {
+    transform: translateY(-1px);
+}
+
+body.theme-dark .settings-password-strength {
+    border-top-color: #1f304d;
+    background: #0d182b;
+}
+
+body.theme-dark .settings-password-strength-header {
+    color: #94aacd;
+}
+
+body.theme-dark .settings-password-strength-label {
+    color: #7186a8;
+}
+
+body.theme-dark .settings-password-strength-segment {
+    background-color: #25344f;
+}
+
 .settings-switch {
     position: relative;
     width: 44px;

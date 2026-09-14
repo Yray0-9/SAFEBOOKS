@@ -47,6 +47,11 @@
     const newPasswordInput = document.getElementById("settingsNewPassword");
     const confirmPasswordInput = document.getElementById("settingsConfirmPassword");
     const passwordRulesContainer = document.getElementById("settingsPasswordRules");
+    const passwordStrengthContainer = document.getElementById("settingsPasswordStrength");
+    const passwordStrengthLabel = document.getElementById("settingsPasswordStrengthLabel");
+    const passwordStrengthBar = passwordStrengthContainer
+        ? passwordStrengthContainer.querySelector(".settings-password-strength-bar")
+        : null;
     const loginAlertsPanel = document.getElementById("settingsLoginAlertsPanel");
     const loginAlertsToggle = document.getElementById("settingsLoginAlertsToggle");
     const loginAlertsStatus = document.getElementById("settingsLoginAlertsStatus");
@@ -323,6 +328,16 @@
 
     const updatePasswordRequirementsUi = () => {
         const state = getPasswordRequirementState();
+        const passedRequirementCount = ["length", "uppercase", "lowercase", "number", "symbol"]
+            .filter((requirement) => state[requirement]).length;
+        const hasPassword = Boolean(newPasswordInput && newPasswordInput.value);
+        const strength = !hasPassword
+            ? "empty"
+            : passedRequirementCount <= 2
+                ? "weak"
+                : passedRequirementCount <= 4
+                    ? "medium"
+                    : "strong";
 
         if (passwordRulesContainer) {
             const ruleElements = passwordRulesContainer.querySelectorAll("[data-rule]");
@@ -330,7 +345,28 @@
                 const ruleName = ruleElement.getAttribute("data-rule");
                 const isValid = Boolean(ruleName && state[ruleName]);
                 ruleElement.classList.toggle("is-valid", isValid);
+                ruleElement.classList.toggle("is-active", isValid);
             });
+        }
+
+        if (passwordStrengthContainer) {
+            const strengthLabel = strength === "empty"
+                ? "—"
+                : `${strength.charAt(0).toUpperCase()}${strength.slice(1)}`;
+            passwordStrengthContainer.dataset.strength = strength;
+            passwordStrengthContainer.setAttribute(
+                "aria-label",
+                hasPassword ? `Password strength: ${strengthLabel}` : "Password strength: no password entered"
+            );
+            if (passwordStrengthBar) {
+                passwordStrengthBar.setAttribute(
+                    "aria-label",
+                    hasPassword ? `Password strength: ${strengthLabel}` : "Password strength: no password entered"
+                );
+            }
+            if (passwordStrengthLabel) {
+                passwordStrengthLabel.textContent = strengthLabel;
+            }
         }
 
         return state;
