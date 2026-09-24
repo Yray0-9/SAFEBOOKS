@@ -17,6 +17,9 @@ from safebooks.validators.password_validator import missing_password_requirement
 
 
 AUTH_FAILURE_MESSAGE = "Invalid credentials."
+AUTH_USER_NOT_FOUND_MESSAGE = "No account found with this email or username."
+AUTH_WRONG_PASSWORD_MESSAGE = "Incorrect password. Please try again."
+AUTH_INACTIVE_ACCOUNT_MESSAGE = "This account is inactive. Please contact support."
 GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
@@ -642,11 +645,29 @@ def login_user(data: dict) -> dict:
     identifier = str(data.get("identifier", "")).strip()
     password = str(data.get("password", ""))
 
-    if not identifier or not password:
+    if not identifier and not password:
         return {
             "ok": False,
             "message": "Email or username and password are required.",
             "errors": ["Email or username and password are required."],
+            "field": "both",
+            "error_code": "missing_credentials",
+        }
+    if not identifier:
+        return {
+            "ok": False,
+            "message": "Email or username is required.",
+            "errors": ["Email or username is required."],
+            "field": "identifier",
+            "error_code": "missing_identifier",
+        }
+    if not password:
+        return {
+            "ok": False,
+            "message": "Password is required.",
+            "errors": ["Password is required."],
+            "field": "password",
+            "error_code": "missing_password",
         }
 
     account = BookkeeperAccount.objects.filter(
@@ -656,8 +677,10 @@ def login_user(data: dict) -> dict:
     if account is None:
         return {
             "ok": False,
-            "message": AUTH_FAILURE_MESSAGE,
-            "errors": [AUTH_FAILURE_MESSAGE],
+            "message": AUTH_USER_NOT_FOUND_MESSAGE,
+            "errors": [AUTH_USER_NOT_FOUND_MESSAGE],
+            "field": "identifier",
+            "error_code": "account_not_found",
         }
 
     stored_password_hash = str(account.password_hash or "")
@@ -673,8 +696,10 @@ def login_user(data: dict) -> dict:
     if not is_authenticated:
         return {
             "ok": False,
-            "message": AUTH_FAILURE_MESSAGE,
-            "errors": [AUTH_FAILURE_MESSAGE],
+            "message": AUTH_WRONG_PASSWORD_MESSAGE,
+            "errors": [AUTH_WRONG_PASSWORD_MESSAGE],
+            "field": "password",
+            "error_code": "incorrect_password",
         }
 
     status = account.status or BookkeeperAccount.STATUS_PENDING
@@ -752,8 +777,10 @@ def _login_admin_account(account: AdminAccount, password: str) -> dict:
     if not account.is_active:
         return {
             "ok": False,
-            "message": AUTH_FAILURE_MESSAGE,
-            "errors": [AUTH_FAILURE_MESSAGE],
+            "message": AUTH_INACTIVE_ACCOUNT_MESSAGE,
+            "errors": [AUTH_INACTIVE_ACCOUNT_MESSAGE],
+            "field": "identifier",
+            "error_code": "account_inactive",
         }
 
     stored_password_hash = str(account.password_hash or "")
@@ -767,8 +794,10 @@ def _login_admin_account(account: AdminAccount, password: str) -> dict:
     if not is_authenticated:
         return {
             "ok": False,
-            "message": AUTH_FAILURE_MESSAGE,
-            "errors": [AUTH_FAILURE_MESSAGE],
+            "message": AUTH_WRONG_PASSWORD_MESSAGE,
+            "errors": [AUTH_WRONG_PASSWORD_MESSAGE],
+            "field": "password",
+            "error_code": "incorrect_password",
         }
 
     # A valid password is not a completed admin sign-in when a second factor
@@ -792,11 +821,29 @@ def login_user_or_admin(data: dict) -> dict:
     identifier = str(data.get("identifier", "")).strip()
     password = str(data.get("password", ""))
 
-    if not identifier or not password:
+    if not identifier and not password:
         return {
             "ok": False,
             "message": "Email or username and password are required.",
             "errors": ["Email or username and password are required."],
+            "field": "both",
+            "error_code": "missing_credentials",
+        }
+    if not identifier:
+        return {
+            "ok": False,
+            "message": "Email or username is required.",
+            "errors": ["Email or username is required."],
+            "field": "identifier",
+            "error_code": "missing_identifier",
+        }
+    if not password:
+        return {
+            "ok": False,
+            "message": "Password is required.",
+            "errors": ["Password is required."],
+            "field": "password",
+            "error_code": "missing_password",
         }
 
     admin_account = AdminAccount.objects.filter(email__iexact=identifier).first()

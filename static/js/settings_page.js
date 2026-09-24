@@ -922,6 +922,20 @@
         [currentPasswordInput, newPasswordInput, confirmPasswordInput].forEach((input) => {
             if (input) {
                 input.value = "";
+                if (input.type === "text") {
+                    input.type = "password";
+                    const toggleBtn = changePasswordModalElement
+                        ? changePasswordModalElement.querySelector(`[data-password-toggle-target="${input.id}"]`)
+                        : null;
+                    if (toggleBtn) {
+                        const icon = toggleBtn.querySelector("i");
+                        if (icon) {
+                            icon.classList.add("bi-eye");
+                            icon.classList.remove("bi-eye-slash");
+                        }
+                        toggleBtn.setAttribute("aria-label", "Show password");
+                    }
+                }
             }
         });
         updatePasswordRequirementsUi();
@@ -1022,9 +1036,16 @@
                 updatePasswordRequirementsUi();
             });
             changePasswordModalElement.addEventListener("hidden.bs.modal", () => {
-                resetChangePasswordInputs();
                 clearInlineStatus(changePasswordStatus);
             });
+
+            const changePasswordCancelBtn = document.getElementById("settingsChangePasswordCancelButton")
+                || changePasswordModalElement.querySelector('[data-bs-dismiss="modal"]');
+            if (changePasswordCancelBtn) {
+                changePasswordCancelBtn.addEventListener("click", () => {
+                    resetChangePasswordInputs();
+                });
+            }
         }
 
         if (changePasswordForm) {

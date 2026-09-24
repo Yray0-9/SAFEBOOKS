@@ -16,6 +16,3 @@ env/
 
 # Environment variables
 .env
-
-# PromptUI
-PromptUI/

@@ -63,7 +63,9 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload.get("ok"))
-        self.assertEqual(payload.get("message"), "Invalid credentials.")
+        self.assertEqual(payload.get("message"), "Incorrect password. Please try again.")
+        self.assertEqual(payload.get("field"), "password")
+        self.assertEqual(payload.get("error_code"), "incorrect_password")
 
     def test_login_legacy_plaintext_password_hash_is_upgraded(self):
         account = BookkeeperAccount.objects.create(
@@ -90,7 +92,7 @@ class AuthApiTests(TestCase):
         self.assertNotEqual(account.password_hash, "LegacyPass#123")
         self.assertTrue(check_password("LegacyPass#123", account.password_hash))
 
-    def test_login_user_not_found_returns_generic_invalid_credentials(self):
+    def test_login_user_not_found_returns_clear_account_not_found_message(self):
         response = self.client.post(
             reverse("api_login"),
             data=json.dumps({
@@ -103,4 +105,6 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload.get("ok"))
-        self.assertEqual(payload.get("message"), "Invalid credentials.")
+        self.assertEqual(payload.get("message"), "No account found with this email or username.")
+        self.assertEqual(payload.get("field"), "identifier")
+        self.assertEqual(payload.get("error_code"), "account_not_found")

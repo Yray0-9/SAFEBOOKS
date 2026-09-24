@@ -25,7 +25,7 @@ urlpatterns = [
     #path('django-admin/', admin.site.urls),
     path(
         'favicon.ico',
-        RedirectView.as_view(url=staticfiles_storage.url('images/Logo_safebooks.png'), permanent=False),
+        RedirectView.as_view(url=staticfiles_storage.url('images/favicon.ico'), permanent=False),
     ),
     path('', views.home_page_view, name='home'),
     path('login/', views.login_page_view, name='login'),

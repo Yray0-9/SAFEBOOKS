@@ -344,7 +344,7 @@
                 </div>
             </article>
 
-            <div class="modal fade settings-manage-modal" id="settingsChangePasswordModal" tabindex="-1" aria-labelledby="settingsChangePasswordModalLabel" aria-hidden="true">
+            <div class="modal fade settings-manage-modal" id="settingsChangePasswordModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="settingsChangePasswordModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <form class="modal-content" id="settingsChangePasswordForm" novalidate>
                         <div class="modal-header">
@@ -414,7 +414,7 @@
                         </div>
                         <div class="modal-footer">
                             <div class="settings-security-buttons">
-                                <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn dashboard-action-btn outline" id="settingsChangePasswordCancelButton" data-bs-dismiss="modal">Cancel</button>
                                 <button type="submit" class="btn dashboard-action-btn primary" id="settingsChangePasswordButton">Update Password</button>
                             </div>
                         </div>

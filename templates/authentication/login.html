@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafeBooks | Login</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}" />
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}" />
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -403,11 +407,48 @@
                 );
             };
 
+            const clearLoginFieldErrors = () => {
+                const identifierInput = document.getElementById("login_identifier");
+                const passwordInput = document.getElementById("login_password");
+                if (identifierInput) {
+                    identifierInput.classList.remove("is-invalid");
+                }
+                if (passwordInput) {
+                    passwordInput.classList.remove("is-invalid");
+                    const passwordField = passwordInput.closest(".auth-password-field");
+                    if (passwordField) {
+                        passwordField.classList.remove("is-invalid");
+                    }
+                }
+            };
+
+            const setupLoginInputListeners = () => {
+                const identifierInput = document.getElementById("login_identifier");
+                const passwordInput = document.getElementById("login_password");
+                if (identifierInput) {
+                    identifierInput.addEventListener("input", () => {
+                        identifierInput.classList.remove("is-invalid");
+                    });
+                }
+                if (passwordInput) {
+                    passwordInput.addEventListener("input", () => {
+                        passwordInput.classList.remove("is-invalid");
+                        const passwordField = passwordInput.closest(".auth-password-field");
+                        if (passwordField) {
+                            passwordField.classList.remove("is-invalid");
+                        }
+                    });
+                }
+            };
+
+            setupLoginInputListeners();
+
             const showLoginSection = (message = "") => {
                 if (adminTwoFactorSection) adminTwoFactorSection.classList.add("d-none");
                 if (forgotPasswordSection) forgotPasswordSection.classList.add("d-none");
                 if (loginFormSection) loginFormSection.classList.remove("d-none");
                 if (adminTwoFactorForm) adminTwoFactorForm.reset();
+                clearLoginFieldErrors();
                 const passwordInput = document.getElementById("login_password");
                 if (passwordInput) passwordInput.value = "";
                 if (message) setFeedback(message, "warning");
@@ -461,21 +502,32 @@
                 event.preventDefault();
                 redirecting = false;
                 clearSkeletonState();
+                clearLoginFieldErrors();
 
                 if (loginFeedback) {
                     loginFeedback.classList.add("d-none");
                     loginFeedback.classList.remove("animate-shake", "animate-fade-in");
                 }
 
+                const identifierInput = document.getElementById("login_identifier");
+                const passwordInput = document.getElementById("login_password");
+
                 if (!loginForm.checkValidity()) {
                     loginForm.reportValidity();
                     setFeedback("Please enter your email or username and password.", "error");
+                    if (identifierInput && !identifierInput.value.trim()) {
+                        identifierInput.classList.add("is-invalid");
+                        identifierInput.focus();
+                    } else if (passwordInput && !passwordInput.value) {
+                        passwordInput.classList.add("is-invalid");
+                        const passwordField = passwordInput.closest(".auth-password-field");
+                        if (passwordField) passwordField.classList.add("is-invalid");
+                        passwordInput.focus();
+                    }
                     clearSkeletonState();
                     return;
                 }
 
-                const identifierInput = document.getElementById("login_identifier");
-                const passwordInput = document.getElementById("login_password");
                 const nextPath = new URLSearchParams(window.location.search).get("next") || "";
 
                 const payload = {
@@ -499,7 +551,41 @@
                     const result = await response.json();
 
                     if (!response.ok || !result.ok) {
-                        setFeedback(result.message || "Unable to login.", "error");
+                        clearLoginFieldErrors();
+                        const errorMsg = result.message || "Unable to login.";
+                        setFeedback(errorMsg, "error");
+
+                        const targetField = result.field || (
+                            errorMsg.toLowerCase().includes("password") ? "password" :
+                            (errorMsg.toLowerCase().includes("account") || errorMsg.toLowerCase().includes("email") || errorMsg.toLowerCase().includes("username")) ? "identifier" : ""
+                        );
+
+                        if (targetField === "password") {
+                            if (passwordInput) {
+                                passwordInput.classList.add("is-invalid");
+                                const passwordField = passwordInput.closest(".auth-password-field");
+                                if (passwordField) {
+                                    passwordField.classList.add("is-invalid");
+                                }
+                                passwordInput.focus();
+                                passwordInput.select();
+                            }
+                        } else if (targetField === "identifier") {
+                            if (identifierInput) {
+                                identifierInput.classList.add("is-invalid");
+                                identifierInput.focus();
+                                identifierInput.select();
+                            }
+                        } else if (targetField === "both") {
+                            if (identifierInput) identifierInput.classList.add("is-invalid");
+                            if (passwordInput) {
+                                passwordInput.classList.add("is-invalid");
+                                const passwordField = passwordInput.closest(".auth-password-field");
+                                if (passwordField) passwordField.classList.add("is-invalid");
+                            }
+                            if (identifierInput) identifierInput.focus();
+                        }
+
                         clearSkeletonState();
                         return;
                     }

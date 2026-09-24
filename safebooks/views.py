@@ -2067,7 +2067,11 @@ def login_view(request):
         return JsonResponse(result)
 
     error_message = result.get("message", "Unable to login.")
-    if error_message == "Email or username and password are required.":
+    if error_message in {
+        "Email or username and password are required.",
+        "Email or username is required.",
+        "Password is required.",
+    } or result.get("error_code") in {"missing_credentials", "missing_identifier", "missing_password"}:
         return JsonResponse(result, status=400)
 
     # Keep expected auth failures as normal API responses to avoid noisy server warnings.

@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafeBooks | Sign Up</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}" />
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}" />
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -130,14 +134,27 @@
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
-                                        <div class="auth-password-requirements" id="signupPasswordRules" aria-live="polite">
-                                            <p class="auth-password-requirements-title">Password should include:</p>
-                                            <div class="auth-requirement-chips">
-                                                <span data-rule="length" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>8+ chars</span></span>
-                                                <span data-rule="uppercase" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Uppercase</span></span>
-                                                <span data-rule="lowercase" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Lowercase</span></span>
-                                                <span data-rule="number" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Number</span></span>
-                                                <span data-rule="symbol" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Symbol</span></span>
+                                        <div class="auth-password-disclosure" id="signupPasswordDisclosure" aria-hidden="true">
+                                            <div class="settings-password-strength auth-password-strength" id="signupPasswordStrength" data-strength="empty" aria-live="polite" aria-atomic="true">
+                                                <div class="settings-password-strength-header auth-password-strength-header">
+                                                    <span>Password strength</span>
+                                                    <span class="settings-password-strength-label auth-password-strength-label" id="signupPasswordStrengthLabel">—</span>
+                                                </div>
+                                                <div class="settings-password-strength-bar auth-password-strength-bar" role="img" aria-label="Password strength: no password entered">
+                                                    <span class="settings-password-strength-segment auth-password-strength-segment" data-strength-segment="1"></span>
+                                                    <span class="settings-password-strength-segment auth-password-strength-segment" data-strength-segment="2"></span>
+                                                    <span class="settings-password-strength-segment auth-password-strength-segment" data-strength-segment="3"></span>
+                                                </div>
+                                            </div>
+                                            <div class="auth-password-requirements" id="signupPasswordRules" aria-live="polite">
+                                                <p class="auth-password-requirements-title">Password should include:</p>
+                                                <div class="auth-requirement-chips">
+                                                    <span data-rule="length" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>8+ chars</span></span>
+                                                    <span data-rule="uppercase" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Uppercase</span></span>
+                                                    <span data-rule="lowercase" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Lowercase</span></span>
+                                                    <span data-rule="number" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Number</span></span>
+                                                    <span data-rule="symbol" class="auth-requirement-chip"><span class="auth-requirement-icon" aria-hidden="true"></span><span>Symbol</span></span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -315,6 +332,12 @@
                 };
             };
 
+            const passwordStrengthContainer = document.getElementById("signupPasswordStrength");
+            const passwordStrengthLabel = document.getElementById("signupPasswordStrengthLabel");
+            const passwordStrengthBar = passwordStrengthContainer
+                ? passwordStrengthContainer.querySelector(".settings-password-strength-bar, .auth-password-strength-bar")
+                : null;
+
             const updatePasswordRules = () => {
                 const rulesContainer = document.getElementById("signupPasswordRules");
                 if (!rulesContainer || !passwordInput) {
@@ -329,8 +352,75 @@
                     const isValid = Boolean(ruleName && status[ruleName]);
 
                     ruleElement.classList.toggle("is-valid", isValid);
+                    ruleElement.classList.toggle("is-active", isValid);
                 });
+
+                if (passwordStrengthContainer) {
+                    const passedRequirementCount = ["length", "uppercase", "lowercase", "number", "symbol"]
+                        .filter((requirement) => status[requirement]).length;
+                    const hasPassword = Boolean(passwordInput && passwordInput.value);
+                    const strength = !hasPassword
+                        ? "empty"
+                        : passedRequirementCount <= 2
+                            ? "weak"
+                            : passedRequirementCount <= 4
+                                ? "medium"
+                                : "strong";
+
+                    const strengthLabel = strength === "empty"
+                        ? "—"
+                        : `${strength.charAt(0).toUpperCase()}${strength.slice(1)}`;
+                    passwordStrengthContainer.dataset.strength = strength;
+                    passwordStrengthContainer.setAttribute(
+                        "aria-label",
+                        hasPassword ? `Password strength: ${strengthLabel}` : "Password strength: no password entered"
+                    );
+                    if (passwordStrengthBar) {
+                        passwordStrengthBar.setAttribute(
+                            "aria-label",
+                            hasPassword ? `Password strength: ${strengthLabel}` : "Password strength: no password entered"
+                        );
+                    }
+                    if (passwordStrengthLabel) {
+                        passwordStrengthLabel.textContent = strengthLabel;
+                    }
+                }
             };
+
+            const passwordFieldContainer = passwordInput ? passwordInput.closest(".auth-password-field") : null;
+            const passwordDisclosure = document.getElementById("signupPasswordDisclosure");
+
+            const showPasswordGuidance = () => {
+                if (passwordDisclosure) {
+                    passwordDisclosure.classList.add("is-visible");
+                    passwordDisclosure.setAttribute("aria-hidden", "false");
+                }
+                if (passwordFieldContainer) {
+                    passwordFieldContainer.classList.add("is-active");
+                }
+            };
+
+            const hidePasswordGuidance = () => {
+                if (passwordDisclosure) {
+                    passwordDisclosure.classList.remove("is-visible");
+                    passwordDisclosure.setAttribute("aria-hidden", "true");
+                }
+                if (passwordFieldContainer) {
+                    passwordFieldContainer.classList.remove("is-active");
+                }
+            };
+
+            if (passwordFieldContainer) {
+                passwordFieldContainer.addEventListener("focusin", () => {
+                    showPasswordGuidance();
+                });
+
+                passwordFieldContainer.addEventListener("focusout", (event) => {
+                    if (!passwordFieldContainer.contains(event.relatedTarget)) {
+                        hidePasswordGuidance();
+                    }
+                });
+            }
 
             if (passwordInput) {
                 passwordInput.addEventListener("input", updatePasswordRules);
