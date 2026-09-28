@@ -1,5 +1,7 @@
 # SAFEBOOKS ANALYTICS PAGE UI PROMPT
 
+Hello World
+
 ## Purpose
 
 Create a simple and user-friendly **Analytics Page** that provides meaningful financial insights for bookkeepers.
