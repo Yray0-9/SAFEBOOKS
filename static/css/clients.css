@@ -214,6 +214,14 @@
     font-weight: 700;
 }
 
+.client-location-summary[data-location-status="error"] {
+    color: #c44040;
+}
+
+.client-select-input[aria-busy="true"] {
+    cursor: wait;
+}
+
 .client-password-field {
     width: 100%;
 }

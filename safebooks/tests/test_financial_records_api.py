@@ -345,7 +345,7 @@ class FinancialRecordsApiTests(TestCase):
         self.assertIn(owner.full_name, email.body)
         self.assertIn(client.client_name, email.body)
         self.assertIn("Total recorded amount: PHP 1,120.00", email.body)
-        self.assertIn("Line items recorded: 2", email.body)
+        self.assertIn("Transactions recorded: 2", email.body)
 
     def test_creating_financial_record_skips_client_email_when_email_is_missing(self):
         owner = self._create_bookkeeper("owner-email-skip")

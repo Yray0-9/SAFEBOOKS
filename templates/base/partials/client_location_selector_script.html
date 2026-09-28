@@ -1,257 +1,9 @@
-        const DAVAO_REGION_PROVINCES = [
-            "Davao De Oro",
-            "Davao Del Norte",
-            "Davao Del Sur",
-            "Davao Occidental",
-            "Davao Oriental",
-        ];
-
-        const DAVAO_DEL_NORTE_PROVINCE = "Davao Del Norte";
-        const DAVAO_DEL_NORTE_LOCATIONS = {
-            "Asuncion": [
-                "Binancian",
-                "Buan",
-                "Buclad",
-                "Cabaywa",
-                "Camansa",
-                "Cambanogoy (Pob.)",
-                "Camoning",
-                "Canatan",
-                "Concepcion",
-                "Dona Andrea",
-                "Magatos",
-                "Napungas",
-                "New Bantayan",
-                "New Loon",
-                "New Santiago",
-                "Pamacaun",
-                "Sagayen",
-                "San Vicente",
-                "Santa Filomena",
-                "Sonlon",
-            ],
-            "Carmen": [
-                "Alejal",
-                "Anibongan",
-                "Asuncion",
-                "Cebulano",
-                "Guadalupe",
-                "Ising (Pob.)",
-                "La Paz",
-                "Mabaus",
-                "Mabuhay",
-                "Magsaysay",
-                "Mangalcal",
-                "Minda",
-                "New Camiling",
-                "Salvacion",
-                "San Isidro",
-                "Santo Nino",
-                "Taba",
-                "Tibulao",
-                "Tubod",
-                "Tuganay",
-            ],
-            "Kapalong": [
-                "Capungagan",
-                "Florida",
-                "Gabuyan",
-                "Gupitan",
-                "Katipunan",
-                "Luna",
-                "Mabantao",
-                "Mamacao",
-                "Maniki",
-                "Pag-asa",
-                "Sampao",
-                "Semong",
-                "Sua-on",
-                "Tiburcia",
-            ],
-            "New Corella": [
-                "Cabidianan",
-                "Carcor",
-                "Del Monte",
-                "Del Pilar",
-                "El Salvador",
-                "Limba-an",
-                "Macgum",
-                "Mambing",
-                "Mesaoy",
-                "New Bohol",
-                "New Cortez",
-                "New Sambog",
-                "Patrocenio",
-                "Poblacion",
-                "San Jose",
-                "San Roque",
-                "Santa Cruz",
-                "Santa Fe",
-                "Santo Nino",
-                "Suawon",
-            ],
-            "City of Panabo": [
-                "A. O. Floirendo",
-                "Buenavista",
-                "Cacao",
-                "Cagangohan",
-                "Consolacion",
-                "Dapco",
-                "Datu Abdul Dadia",
-                "Gredu (Pob.)",
-                "J.P. Laurel",
-                "Kasilak",
-                "Katipunan",
-                "Katualan",
-                "Kauswagan",
-                "Kiotoy",
-                "Little Panay",
-                "Lower Panaga",
-                "Mabunao",
-                "Maduao",
-                "Malativas",
-                "Manay",
-                "Nanyo",
-                "New Malaga",
-                "New Malitbog",
-                "New Pandan (Pob.)",
-                "New Visayas",
-                "Quezon",
-                "Salvacion",
-                "San Francisco (Pob.)",
-                "San Nicolas",
-                "San Pedro",
-                "San Roque",
-                "San Vicente",
-                "Santa Cruz",
-                "Santo Nino (Pob.)",
-                "Sindaton",
-                "Southern Davao",
-                "Tagpore",
-                "Tibungol",
-                "Upper Licanan",
-                "Waterfall",
-            ],
-            "Island Garden City of Samal": [
-                "Adecor",
-                "Anonang",
-                "Aumbay",
-                "Aundanao",
-                "Balet",
-                "Bandera",
-                "Caliclic",
-                "Camudmud",
-                "Catagman",
-                "Cawag",
-                "Cogon",
-                "Dadatan",
-                "Del Monte",
-                "Guilon",
-                "Kanaan",
-                "Kinawitnon",
-                "Libertad",
-                "Libuak",
-                "Licup",
-                "Limao",
-                "Linosutan",
-                "Mambago-A",
-                "Mambago-B",
-                "Miranda (Pob.)",
-                "Moncado (Pob.)",
-                "Pangubatan",
-                "Penaplata (Pob.)",
-                "Poblacion",
-                "San Agustin",
-                "San Antonio",
-                "San Isidro",
-                "San Jose",
-                "San Miguel",
-                "San Remigio",
-                "Santa Cruz",
-                "Santo Nino",
-                "Sion",
-                "Tagbaobo",
-                "Tagbay",
-                "Tagbitan-ag",
-                "Tagdaliao",
-                "Tagpopongan",
-                "Tambo",
-                "Toril",
-            ],
-            "Santo Tomas": [
-                "Balagunan",
-                "Bobongon",
-                "Casig-Ang",
-                "Esperanza",
-                "Kimamon",
-                "Kinamayan",
-                "La Libertad",
-                "Lungaog",
-                "Magwawa",
-                "New Katipunan",
-                "New Visayas",
-                "Pantaron",
-                "Salvacion",
-                "San Jose",
-                "San Miguel",
-                "San Vicente",
-                "Talomo",
-                "Tibal-og (Pob.)",
-                "Tulalian",
-            ],
-            "City of Tagum": [
-                "Apokon",
-                "Bincungan",
-                "Busaon",
-                "Canocotan",
-                "Cuambogan",
-                "La Filipina",
-                "Liboganon",
-                "Madaum",
-                "Magdum",
-                "Magugpo East",
-                "Magugpo North",
-                "Magugpo Poblacion",
-                "Magugpo South",
-                "Magugpo West",
-                "Mankilam",
-                "New Balamban",
-                "Nueva Fuerza",
-                "Pagsabangan",
-                "Pandapan",
-                "San Agustin",
-                "San Isidro",
-                "San Miguel",
-                "Visayan Village",
-            ],
-            "Talaingod": [
-                "Dagohoy",
-                "Palma Gil",
-                "Santo Nino",
-            ],
-            "Braulio E. Dujali": [
-                "Cabayangan",
-                "Dujali",
-                "Magupising",
-                "New Casay",
-                "Tanglaw",
-            ],
-            "San Isidro": [
-                "Dacudao",
-                "Datu Balong",
-                "Igangon",
-                "Kipalili",
-                "Libuton",
-                "Linao",
-                "Mamangan",
-                "Monte Dujali",
-                "Pinamuno",
-                "Sabangan",
-                "San Miguel",
-                "Santo Nino",
-                "Sawata",
-            ],
-        };
+        // Public Philippine Standard Geographic Code (PSGC) data, limited to Davao Region XI.
+        // Stored values remain "Province, City/Municipality, Barangay" for API compatibility.
+        const LOCATION_API_BASE_URL = "https://psgc.cloud/api/v2";
+        const DAVAO_REGION_XI_CODE = "1100000000";
+        const LOCATION_REQUEST_TIMEOUT_MS = 10000;
+        const locationApiCache = new Map();
 
         const LOCATION_STAGE = {
             province: "province",
@@ -260,16 +12,50 @@
         };
 
         const LOCATION_ACTIONS = {
-            backProvince: "__back_province",
-            backCity: "__back_city",
-            currentLocation: "__current_location",
+            backProvince: "__location_back_province",
+            backCity: "__location_back_city",
+            currentLocation: "__location_current",
+            retry: "__location_retry",
+        };
+
+        const normalizeLocationItem = (item) => ({
+            code: String(item && item.code ? item.code : "").trim(),
+            name: String(item && item.name ? item.name : "").trim(),
+        });
+
+        const sortLocationItems = (items) => items
+            .map(normalizeLocationItem)
+            .filter((item) => item.code && item.name)
+            .sort((first, second) => first.name.localeCompare(second.name));
+
+        const fetchLocationData = async (path) => {
+            if (locationApiCache.has(path)) return locationApiCache.get(path);
+
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), LOCATION_REQUEST_TIMEOUT_MS);
+            try {
+                const response = await fetch(`${LOCATION_API_BASE_URL}${path}`, {
+                    headers: { Accept: "application/json" },
+                    cache: "force-cache",
+                    signal: controller.signal,
+                });
+                if (!response.ok) throw new Error(`Location service returned ${response.status}.`);
+
+                const payload = await response.json();
+                if (!payload || !Array.isArray(payload.data)) {
+                    throw new Error("Location service returned an unexpected response.");
+                }
+
+                const data = sortLocationItems(payload.data);
+                locationApiCache.set(path, data);
+                return data;
+            } finally {
+                window.clearTimeout(timeoutId);
+            }
         };
 
         const resetSelectOptions = (selectElement, placeholder) => {
-            if (!selectElement) {
-                return;
-            }
-
+            if (!selectElement) return;
             selectElement.innerHTML = "";
             const option = document.createElement("option");
             option.value = "";
@@ -280,306 +66,290 @@
         };
 
         const appendSelectOption = (selectElement, value, label) => {
-            if (!selectElement) {
-                return;
-            }
-
+            if (!selectElement) return;
             const option = document.createElement("option");
             option.value = value;
             option.textContent = label;
             selectElement.appendChild(option);
         };
 
-        const populateSelectOptions = (selectElement, options, placeholder, selectedValue = "") => {
-            if (!selectElement) {
-                return;
-            }
+        const createLocationState = ({ hiddenInput, select, summary }) => ({
+            hiddenInput,
+            select,
+            summary,
+            stage: LOCATION_STAGE.province,
+            selectedProvince: null,
+            selectedCity: null,
+            selectedBarangay: null,
+            provinces: [],
+            cities: [],
+            barangays: [],
+            legacyValue: "",
+            isLoading: false,
+            errorMessage: "",
+            requestId: 0,
+            isBound: false,
+        });
 
-            resetSelectOptions(selectElement, placeholder);
-            options.forEach((optionValue) => {
-                appendSelectOption(selectElement, optionValue, optionValue);
-            });
-
-            if (selectedValue) {
-                selectElement.value = selectedValue;
-            }
-        };
-
-        const createLocationState = ({ hiddenInput, select, summary }) => {
-            return {
-                hiddenInput,
-                select,
-                summary,
-                stage: LOCATION_STAGE.province,
-                selectedProvince: "",
-                selectedCity: "",
-                selectedBarangay: "",
-                legacyValue: "",
-            };
-        };
+        const getLocationSummaryParts = (state) => state.legacyValue
+            ? [state.legacyValue]
+            : [
+                state.selectedProvince && state.selectedProvince.name,
+                state.selectedCity && state.selectedCity.name,
+                state.selectedBarangay && state.selectedBarangay.name,
+            ].filter(Boolean);
 
         const renderLocationSummary = (state) => {
-            if (!state || !state.summary) {
+            if (!state || !state.summary) return;
+            if (state.errorMessage) {
+                state.summary.textContent = "Location data could not be loaded. Please retry.";
+                state.summary.dataset.locationStatus = "error";
+                state.summary.hidden = false;
                 return;
             }
 
-            const parts = state.legacyValue
-                ? [state.legacyValue]
-                : [state.selectedProvince, state.selectedCity, state.selectedBarangay].filter(Boolean);
+            const parts = getLocationSummaryParts(state);
             if (!parts.length) {
                 state.summary.textContent = "";
+                delete state.summary.dataset.locationStatus;
                 state.summary.hidden = true;
                 return;
             }
 
             state.summary.textContent = parts.join(", ");
+            delete state.summary.dataset.locationStatus;
             state.summary.hidden = false;
         };
 
         const updateLocationHiddenValue = (state) => {
-            if (!state || !state.hiddenInput) {
-                return;
-            }
-
+            if (!state || !state.hiddenInput) return;
             if (state.legacyValue) {
                 state.hiddenInput.value = state.legacyValue;
                 return;
             }
+            const parts = [
+                state.selectedProvince && state.selectedProvince.name,
+                state.selectedCity && state.selectedCity.name,
+                state.selectedBarangay && state.selectedBarangay.name,
+            ].filter(Boolean);
+            state.hiddenInput.value = parts.length === 3 ? parts.join(", ") : "";
+        };
 
-            const province = state.selectedProvince;
-            if (!province) {
-                state.hiddenInput.value = "";
-                return;
+        const getStageConfiguration = (state) => {
+            if (state.stage === LOCATION_STAGE.province) {
+                return { items: state.provinces, placeholder: "Select province", ariaLabel: "Select province", backAction: "", backLabel: "", selected: state.selectedProvince };
             }
-
-            if (province !== DAVAO_DEL_NORTE_PROVINCE) {
-                state.hiddenInput.value = province;
-                return;
+            if (state.stage === LOCATION_STAGE.city) {
+                return { items: state.cities, placeholder: "Select city/municipality", ariaLabel: "Select city or municipality", backAction: LOCATION_ACTIONS.backProvince, backLabel: "Change province", selected: state.selectedCity };
             }
-
-            if (!state.selectedCity || !state.selectedBarangay) {
-                state.hiddenInput.value = "";
-                return;
-            }
-
-            state.hiddenInput.value = `${province}, ${state.selectedCity}, ${state.selectedBarangay}`;
+            return { items: state.barangays, placeholder: "Select barangay", ariaLabel: "Select barangay", backAction: LOCATION_ACTIONS.backCity, backLabel: "Change city/municipality", selected: state.selectedBarangay };
         };
 
         const renderLocationSelect = (state) => {
-            if (!state || !state.select) {
-                return;
-            }
-
-            if (state.stage === LOCATION_STAGE.province) {
-                populateSelectOptions(state.select, DAVAO_REGION_PROVINCES, "Select province", state.selectedProvince);
+            if (!state || !state.select) return;
+            if (state.isLoading) {
+                resetSelectOptions(state.select, "Loading locations...");
                 if (state.legacyValue) {
-                    appendSelectOption(
-                        state.select,
-                        LOCATION_ACTIONS.currentLocation,
-                        `Current: ${state.legacyValue}`,
-                    );
+                    appendSelectOption(state.select, LOCATION_ACTIONS.currentLocation, `Current: ${state.legacyValue}`);
                     state.select.value = LOCATION_ACTIONS.currentLocation;
                 }
-                state.select.setAttribute("aria-label", "Select province");
+                // Keep the required control enabled so a partial selection cannot bypass form validation.
+                state.select.disabled = false;
+                state.select.setAttribute("aria-busy", "true");
                 return;
             }
 
-            if (state.stage === LOCATION_STAGE.city) {
-                resetSelectOptions(state.select, "Select city/municipality");
-                appendSelectOption(state.select, LOCATION_ACTIONS.backProvince, "Change province");
+            const configuration = getStageConfiguration(state);
+            resetSelectOptions(state.select, state.errorMessage ? "Unable to load locations" : configuration.placeholder);
+            state.select.disabled = false;
+            state.select.removeAttribute("aria-busy");
 
-                const cities = Object.keys(DAVAO_DEL_NORTE_LOCATIONS).sort();
-                cities.forEach((city) => {
-                    appendSelectOption(state.select, city, city);
-                });
-
-                if (state.selectedCity) {
-                    state.select.value = state.selectedCity;
-                }
-                state.select.setAttribute("aria-label", "Select city or municipality");
-                return;
+            if (state.errorMessage) {
+                appendSelectOption(state.select, LOCATION_ACTIONS.retry, "Retry loading locations");
+                if (configuration.backAction) appendSelectOption(state.select, configuration.backAction, configuration.backLabel);
+            } else {
+                if (configuration.backAction) appendSelectOption(state.select, configuration.backAction, configuration.backLabel);
+                configuration.items.forEach((item) => appendSelectOption(state.select, item.code, item.name));
+                if (configuration.selected && configuration.selected.code) state.select.value = configuration.selected.code;
             }
 
-            resetSelectOptions(state.select, "Select barangay");
-            appendSelectOption(state.select, LOCATION_ACTIONS.backCity, "Change city/municipality");
-
-            const barangays = state.selectedCity ? (DAVAO_DEL_NORTE_LOCATIONS[state.selectedCity] || []) : [];
-            barangays.forEach((barangay) => {
-                appendSelectOption(state.select, barangay, barangay);
-            });
-
-            if (state.selectedBarangay) {
-                state.select.value = state.selectedBarangay;
+            if (state.stage === LOCATION_STAGE.province && state.legacyValue) {
+                appendSelectOption(state.select, LOCATION_ACTIONS.currentLocation, `Current: ${state.legacyValue}`);
+                state.select.value = LOCATION_ACTIONS.currentLocation;
             }
-            state.select.setAttribute("aria-label", "Select barangay");
+            state.select.setAttribute("aria-label", configuration.ariaLabel);
         };
+
+        const getLocationPathForStage = (state) => {
+            if (state.stage === LOCATION_STAGE.province) {
+                return `/regions/${DAVAO_REGION_XI_CODE}/provinces`;
+            }
+            if (state.stage === LOCATION_STAGE.city && state.selectedProvince) {
+                return `/regions/${DAVAO_REGION_XI_CODE}/provinces/${encodeURIComponent(state.selectedProvince.code)}/cities-municipalities`;
+            }
+            if (state.stage === LOCATION_STAGE.barangay && state.selectedProvince && state.selectedCity) {
+                return `/regions/${DAVAO_REGION_XI_CODE}/provinces/${encodeURIComponent(state.selectedProvince.code)}/cities-municipalities/${encodeURIComponent(state.selectedCity.code)}/barangays`;
+            }
+            return "";
+        };
+
+        const setStageItems = (state, items) => {
+            if (state.stage === LOCATION_STAGE.province) {
+                state.provinces = items;
+            } else if (state.stage === LOCATION_STAGE.city) {
+                state.cities = items;
+            } else {
+                state.barangays = items;
+            }
+        };
+
+        const updateLocationValidity = (state) => {
+            if (!state || !state.select) return;
+            const hasLocation = Boolean(state.hiddenInput && state.hiddenInput.value.trim());
+            state.select.setCustomValidity(hasLocation ? "" : "Select a complete Davao Region XI location.");
+        };
+
+        const loadLocationStage = async (state) => {
+            if (!state) return;
+            const path = getLocationPathForStage(state);
+            if (!path) {
+                state.errorMessage = "Location selection is incomplete.";
+                state.isLoading = false;
+                renderLocationSelect(state);
+                renderLocationSummary(state);
+                return;
+            }
+
+            const requestId = ++state.requestId;
+            state.isLoading = true;
+            state.errorMessage = "";
+            updateLocationHiddenValue(state);
+            updateLocationValidity(state);
+            renderLocationSelect(state);
+            renderLocationSummary(state);
+
+            try {
+                const items = await fetchLocationData(path);
+                if (requestId !== state.requestId) return;
+                setStageItems(state, items);
+                state.errorMessage = "";
+            } catch (error) {
+                if (requestId !== state.requestId) return;
+                state.errorMessage = error && error.name === "AbortError"
+                    ? "The location service timed out."
+                    : "The location service is unavailable.";
+            } finally {
+                if (requestId === state.requestId) {
+                    state.isLoading = false;
+                    renderLocationSelect(state);
+                    renderLocationSummary(state);
+                    updateLocationHiddenValue(state);
+                    updateLocationValidity(state);
+                }
+            }
+        };
+
+        const selectItemByCode = (items, code) => items.find((item) => item.code === code) || null;
 
         const handleLocationSelectChange = (state) => {
-            if (!state || !state.select) {
-                return;
-            }
-
+            if (!state || !state.select || state.isLoading) return;
             const value = state.select.value;
-            if (state.stage === LOCATION_STAGE.province) {
-                if (value === LOCATION_ACTIONS.currentLocation) {
-                    updateLocationHiddenValue(state);
-                    renderLocationSummary(state);
-                    return;
-                }
-
-                state.legacyValue = "";
-                state.selectedProvince = value;
-                state.selectedCity = "";
-                state.selectedBarangay = "";
-
-                if (!value) {
-                    renderLocationSelect(state);
-                    updateLocationHiddenValue(state);
-                    renderLocationSummary(state);
-                    return;
-                }
-
-                if (value === DAVAO_DEL_NORTE_PROVINCE) {
-                    state.stage = LOCATION_STAGE.city;
-                } else {
-                    state.stage = LOCATION_STAGE.province;
-                }
-            } else if (state.stage === LOCATION_STAGE.city) {
-                if (value === LOCATION_ACTIONS.backProvince) {
-                    state.stage = LOCATION_STAGE.province;
-                    state.selectedProvince = "";
-                    state.selectedCity = "";
-                    state.selectedBarangay = "";
-                } else if (value) {
-                    state.selectedCity = value;
-                    state.selectedBarangay = "";
-                    state.stage = LOCATION_STAGE.barangay;
-                }
-            } else if (state.stage === LOCATION_STAGE.barangay) {
-                if (value === LOCATION_ACTIONS.backCity) {
-                    state.stage = LOCATION_STAGE.city;
-                    state.selectedBarangay = "";
-                } else if (value) {
-                    state.selectedBarangay = value;
-                }
+            if (value === LOCATION_ACTIONS.currentLocation) {
+                syncLocationState(state);
+                return;
             }
-
-            renderLocationSelect(state);
-            updateLocationHiddenValue(state);
-            renderLocationSummary(state);
-        };
-
-        const bindLocationControls = (state) => {
-            if (!state || !state.select || !state.hiddenInput) {
+            if (value === LOCATION_ACTIONS.retry) {
+                loadLocationStage(state);
+                return;
+            }
+            if (value === LOCATION_ACTIONS.backProvince) {
+                state.stage = LOCATION_STAGE.province;
+                state.selectedProvince = null;
+                state.selectedCity = null;
+                state.selectedBarangay = null;
+                loadLocationStage(state);
+                return;
+            }
+            if (value === LOCATION_ACTIONS.backCity) {
+                state.stage = LOCATION_STAGE.city;
+                state.selectedCity = null;
+                state.selectedBarangay = null;
+                loadLocationStage(state);
                 return;
             }
 
-            state.select.required = true;
-            state.select.addEventListener("change", () => {
-                handleLocationSelectChange(state);
-            });
-
-            resetLocationState(state);
-        };
-
-        const resolveLocationParts = (locationValue) => {
-            const parts = String(locationValue || "")
-                .split(",")
-                .map((part) => part.trim())
-                .filter(Boolean);
-
-            if (!parts.length) {
-                return { province: "", city: "", barangay: "" };
+            if (state.stage === LOCATION_STAGE.province) {
+                const province = selectItemByCode(state.provinces, value);
+                if (!province) return;
+                state.selectedProvince = province;
+                state.selectedCity = null;
+                state.selectedBarangay = null;
+                state.stage = LOCATION_STAGE.city;
+                loadLocationStage(state);
+                return;
+            }
+            if (state.stage === LOCATION_STAGE.city) {
+                const city = selectItemByCode(state.cities, value);
+                if (!city) return;
+                state.selectedCity = city;
+                state.selectedBarangay = null;
+                state.stage = LOCATION_STAGE.barangay;
+                loadLocationStage(state);
+                return;
             }
 
-            const provinceIndex = parts.findIndex((part) => DAVAO_REGION_PROVINCES.includes(part));
-            if (provinceIndex === -1) {
-                return {
-                    province: parts[0] || "",
-                    city: parts[1] || "",
-                    barangay: parts[2] || "",
-                };
-            }
-
-            const province = parts[provinceIndex];
-            const remaining = parts.filter((_, index) => index !== provinceIndex);
-            if (provinceIndex === 2 && remaining.length === 2) {
-                return {
-                    province,
-                    city: remaining[1] || "",
-                    barangay: remaining[0] || "",
-                };
-            }
-
-            return {
-                province,
-                city: remaining[0] || "",
-                barangay: remaining[1] || "",
-            };
+            const barangay = selectItemByCode(state.barangays, value);
+            if (!barangay) return;
+            state.selectedBarangay = barangay;
+            syncLocationState(state);
         };
 
         const resetLocationState = (state) => {
-            if (!state) {
-                return;
-            }
-
+            if (!state) return;
             state.stage = LOCATION_STAGE.province;
-            state.selectedProvince = "";
-            state.selectedCity = "";
-            state.selectedBarangay = "";
+            state.selectedProvince = null;
+            state.selectedCity = null;
+            state.selectedBarangay = null;
             state.legacyValue = "";
-            renderLocationSelect(state);
-            updateLocationHiddenValue(state);
-            renderLocationSummary(state);
+            state.errorMessage = "";
+            loadLocationStage(state);
+        };
+
+        const bindLocationControls = (state) => {
+            if (!state || !state.select || !state.hiddenInput) return;
+            state.select.required = true;
+            if (!state.isBound) {
+                state.select.addEventListener("change", () => handleLocationSelectChange(state));
+                state.isBound = true;
+            }
+            resetLocationState(state);
         };
 
         const applyLocationSelection = (state, locationValue) => {
-            if (!state) {
+            if (!state) return;
+            const rawLocation = String(locationValue || "").trim();
+            if (!rawLocation) {
+                resetLocationState(state);
                 return;
             }
 
-            const rawLocation = String(locationValue || "").trim();
-            const resolved = resolveLocationParts(rawLocation);
-            const isKnownProvince = DAVAO_REGION_PROVINCES.includes(resolved.province);
-            const isCompleteDavaoDelNorte = resolved.province === DAVAO_DEL_NORTE_PROVINCE
-                && Boolean(resolved.city)
-                && Boolean(resolved.barangay)
-                && Array.isArray(DAVAO_DEL_NORTE_LOCATIONS[resolved.city])
-                && DAVAO_DEL_NORTE_LOCATIONS[resolved.city].includes(resolved.barangay);
-            const isSupportedSelection = !rawLocation
-                || (
-                    isKnownProvince
-                    && resolved.province !== DAVAO_DEL_NORTE_PROVINCE
-                    && rawLocation === resolved.province
-                )
-                || isCompleteDavaoDelNorte;
-
-            state.legacyValue = isSupportedSelection ? "" : rawLocation;
-            state.selectedProvince = resolved.province;
-            state.selectedCity = resolved.city;
-            state.selectedBarangay = resolved.barangay;
-
-            if (state.legacyValue || !state.selectedProvince) {
-                state.stage = LOCATION_STAGE.province;
-            } else if (state.selectedProvince !== DAVAO_DEL_NORTE_PROVINCE) {
-                state.stage = LOCATION_STAGE.province;
-            } else if (state.selectedCity && state.selectedBarangay) {
-                state.stage = LOCATION_STAGE.barangay;
-            } else if (state.selectedCity) {
-                state.stage = LOCATION_STAGE.city;
-            } else {
-                state.stage = LOCATION_STAGE.province;
-            }
-
-            renderLocationSelect(state);
+            // Preserve older or renamed locations unless the user deliberately chooses a new API value.
+            state.stage = LOCATION_STAGE.province;
+            state.selectedProvince = null;
+            state.selectedCity = null;
+            state.selectedBarangay = null;
+            state.legacyValue = rawLocation;
+            state.errorMessage = "";
             updateLocationHiddenValue(state);
+            updateLocationValidity(state);
+            renderLocationSelect(state);
             renderLocationSummary(state);
+            if (!state.provinces.length && !state.isLoading) loadLocationStage(state);
         };
 
         const syncLocationState = (state) => {
-            if (!state) {
-                return;
-            }
+            if (!state) return;
             updateLocationHiddenValue(state);
+            updateLocationValidity(state);
             renderLocationSummary(state);
         };
