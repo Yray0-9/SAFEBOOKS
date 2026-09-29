@@ -185,3 +185,11 @@ Next, we created two custom skills based on SafeBooks. The client-management ski
 Lastly, we downloaded OpenAI's `security-best-practices` skill. It provides additional Django security guidance when we explicitly request a security review.
 
 In short, this activity prepared SafeBooks for safer and more organized AI-assisted development. It did not change the application's existing functionality.
+
+
+
+## Srcipt
+
+I also created two custom skills based on SafeBooks. The first skill guides AI work involving client management. The second guides work involving financial records and calculations. These skills are not new website features; they are reusable instructions that help an AI understand which files to inspect, which rules to protect, and which tests to run.
+Lastly, I installed OpenAI’s security-best-practices skill. I chose it because SafeBooks handles authentication, client credentials, and financial information. It provides security guidance specifically for Django projects.
+In summary, this activity added project documentation and AI guidance without changing any existing SafeBooks functionality. The work is stored on feature-a and should only be merged into main after it has been reviewed and approved.
