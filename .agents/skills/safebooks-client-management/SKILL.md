@@ -5,7 +5,7 @@ description: Plan, implement, or review SafeBooks client-management changes invo
 
 # SafeBooks Client Management
 
-Read the repository-root `knowledge.md` and `AGENTS.md` before acting.
+Read the repository-root `AGENTS.md` before acting.
 
 ## Trace the whole client flow
 

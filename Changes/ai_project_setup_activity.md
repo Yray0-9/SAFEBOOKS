@@ -8,21 +8,19 @@ This is a simple reminder of the AI-project-setup activity. It does not change h
 
 We created a separate Git branch called `feature-a`. This keeps activity work separate from `main`, which protects the main SafeBooks project.
 
-We also created three project-guidance files in the SafeBooks root folder:
+The filenames separated by slashes in the activity are alternatives for different AI tools, not three files that every project must keep:
 
-| File | What it means in simple words |
+| AI tool | Main project instruction file |
 | --- | --- |
-| `knowledge.md` | The SafeBooks handbook. It explains what the project is, its technology, folders, workflows, security, configuration, and testing. |
-| `AGENTS.md` | The safety rules for coding assistants. It explains how an AI must work carefully without breaking client data, financial records, security, or existing features. |
-| `CLAUDE.md` | A short guide for Claude Code. It tells Claude to read `knowledge.md` and follow the safety rules in `AGENTS.md`. |
+| Codebuff | `knowledge.md` |
+| Codex | `AGENTS.md` |
+| Claude Code | `CLAUDE.md` |
 
-## How the three files work together
+The unclear name from the discussion was most likely **Codebuff**. Because this project is being prepared and demonstrated with **Codex**, SafeBooks keeps `AGENTS.md` as its main project instruction file.
 
-1. An AI reads `knowledge.md` to understand SafeBooks.
-2. The AI reads `AGENTS.md` to understand the rules it must follow.
-3. If the AI tool is Claude Code, it can read `CLAUDE.md` to follow the same SafeBooks guidance.
+## Purpose of `AGENTS.md` for this activity
 
-Codex mainly benefits from `knowledge.md` and `AGENTS.md`. `CLAUDE.md` was created because the activity asked for compatibility with Claude Code too.
+`AGENTS.md` gives Codex the SafeBooks context and working rules it needs. It describes the technology and important folders, protects ownership and sensitive data, keeps changes narrow, and lists the checks to run. We do not need separate `knowledge.md` or `CLAUDE.md` files for this Codex demonstration.
 
 ## Important safety idea
 
@@ -107,7 +105,7 @@ For the demo, explain that Codex will identify Django as the backend framework, 
 The requested setup steps are now present on the `feature-a` branch:
 
 1. A separate feature branch is being used.
-2. `knowledge.md`, `AGENTS.md`, and `CLAUDE.md` were created.
+2. `AGENTS.md` was created as the correct instruction file for Codex.
 3. Two custom SafeBooks skills were created.
 4. One external OpenAI skill was installed and verified as relevant to Django and SafeBooks.
 
@@ -131,7 +129,7 @@ The entire skill package was kept, including its main `SKILL.md`, license, metad
 >
 > First, I created and used a separate Git branch called `feature-a`. The purpose of the branch is to keep the activity changes separate from the main version of SafeBooks. This protects the `main` branch while I review and test the work.
 >
-> Next, I created three guidance files. The first is `knowledge.md`. I describe this as the SafeBooks handbook because it explains the project's purpose, technologies, folders, workflows, configuration, and testing. The second is `AGENTS.md`. This is the safety rulebook for AI coding assistants. It tells them to protect client ownership, financial records, credentials, security, and existing functionality. The third is `CLAUDE.md`. It is a short compatibility guide that tells Claude Code to read the project knowledge and follow the same safety rules.
+> Next, I selected the correct project instruction file for my AI tool. Codebuff uses `knowledge.md`, Codex uses `AGENTS.md`, and Claude Code uses `CLAUDE.md`. Because I am using Codex, I created `AGENTS.md`. It explains the SafeBooks project context and tells Codex to protect client ownership, financial records, credentials, security, and existing functionality.
 >
 > After that, I created two custom skills based on my project. A skill is not a website feature. It is a reusable instruction guide that helps an AI follow the correct process for a particular kind of development task.
 >
@@ -143,7 +141,7 @@ The entire skill package was kept, including its main `SKILL.md`, license, metad
 >
 > Installing a skill does not automatically change or scan my application. It only gives the AI additional guidance when I explicitly request a matching task. For example, I can ask Codex to use the security skill to explain which Django security areas should be reviewed before deployment, without modifying any files.
 >
-> In summary, the branch protects the main project, `knowledge.md` explains SafeBooks, `AGENTS.md` gives general safety rules, `CLAUDE.md` supports Claude Code, the two custom skills guide SafeBooks-specific work, and the downloaded security skill provides trusted Django security guidance. These are development-support files, so they do not add or change any user-facing SafeBooks feature.
+> In summary, the branch protects the main project, `AGENTS.md` guides Codex, the two custom skills guide SafeBooks-specific work, and the downloaded security skill provides trusted Django security guidance. These are development-support files, so they do not add or change any user-facing SafeBooks feature.
 
 ## Short demonstration prompts
 
@@ -174,11 +172,7 @@ No. They are documentation and AI guidance files only. They do not change pages,
 
 For this activity, we first used the `feature-a` branch so our work stayed separate from the main SafeBooks project.
 
-We then created three guidance files:
-
-- `knowledge.md` explains what SafeBooks is and how the project works.
-- `AGENTS.md` tells AI assistants how to work safely in the project.
-- `CLAUDE.md` gives Claude Code the same project guidance.
+We then chose `AGENTS.md` because the project is using Codex. It explains the SafeBooks context and tells Codex how to work safely. `knowledge.md` is the usual choice for Codebuff, while `CLAUDE.md` is the usual choice for Claude Code.
 
 Next, we created two custom skills based on SafeBooks. The client-management skill guides AI work involving clients, while the financial-records skill guides work involving records, amounts, reports, and related calculations. These skills are AI instructions, not new website features.
 

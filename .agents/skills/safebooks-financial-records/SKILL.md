@@ -5,7 +5,7 @@ description: Plan, implement, or review SafeBooks financial-record changes invol
 
 # SafeBooks Financial Records
 
-Read the repository-root `knowledge.md` and `AGENTS.md` before acting.
+Read the repository-root `AGENTS.md` before acting.
 
 ## Trace the financial flow
 

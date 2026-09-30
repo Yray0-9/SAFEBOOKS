@@ -2,9 +2,17 @@
 
 ## Read first
 
-Read `knowledge.md` before planning or editing. Then inspect the files directly related to the request, including the relevant view, service, model, template, browser-side code, and tests.
+Inspect only the files directly related to the request, including the relevant view, service, model, template, browser-side code, and tests.
 
 SafeBooks is a Django financial-management application. Changes must be narrow, explainable, and safe for bookkeepers and their clients.
+
+## Project context
+
+- SafeBooks uses Django 6, Django templates, vanilla JavaScript and CSS.
+- Page and API routes are in `safebooks/urls.py`; request boundaries are in `safebooks/views.py`.
+- Business logic belongs in `safebooks/services/`, persistent models in `safebooks/models/`, and tests in `safebooks/tests/`.
+- SQLite is the local default; PostgreSQL is supported through environment configuration.
+- The main workflows cover authentication, bookkeeper approvals, clients, financial records, dashboards, reports, settings, and audit logs.
 
 ## Working boundaries
 
@@ -51,6 +59,6 @@ For template, JavaScript, or CSS changes, also verify the affected page or templ
 
 ## Documentation and handoff
 
-- Update `knowledge.md` when a deliberate architecture, API, data-flow, security, or deployment decision changes.
+- Update `AGENTS.md` when a lasting project rule or important architectural boundary changes.
 - In the final handoff, name the changed files, summarize user-visible behavior, and call out any remaining limitation or external dependency.
 - Do not claim a test passed unless it was actually run and completed successfully.
