@@ -17,7 +17,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.2">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}?v=1.2">
-<link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=1.9">
+<link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=2.0">
 {% endblock %}
 
 {% block skeleton %}
@@ -671,6 +671,15 @@
                     <button type="button" class="btn-close client-report-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body client-report-modal-body">
+                    <div class="client-report-year-bar">
+                        <div class="client-report-year-field">
+                            <label for="modalReportYearFilter">Report Year</label>
+                            <select id="modalReportYearFilter" class="form-select" disabled>
+                                <option value="">Loading years...</option>
+                            </select>
+                        </div>
+                        <p id="modalReportYearHint">The preview and printed report will use the selected bookkeeping year.</p>
+                    </div>
                     <!-- Loading state -->
                     <div id="modalReportLoading" class="text-center py-5">
                         <div class="spinner-border text-primary client-report-spinner" role="status">
@@ -778,7 +787,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
 <script id="clientCustomFieldsData" type="application/json">
     [
         {% for field in client.custom_fields %}
@@ -2306,8 +2315,11 @@
         const modalReportWrapper = document.getElementById("modalReportWrapper");
         const modalReportSheet = document.getElementById("modalReportSheet");
         const modalPrintReportBtn = document.getElementById("modalPrintReportBtn");
+        const modalReportYearFilter = document.getElementById("modalReportYearFilter");
+        const modalReportYearHint = document.getElementById("modalReportYearHint");
         
         let modalLatestReport = null;
+        let modalReportSourcePayload = null;
 
         const modalReportMonthNames = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -2350,8 +2362,54 @@
             return typeCode || description || "Tax";
         };
 
-        const buildModalReportData = (payload) => {
+        const getModalReportRowYear = (row) => {
+            const match = String(row && row.entry_date || "").trim().match(/^(\d{4})-\d{2}-\d{2}$/);
+            return match ? match[1] : "";
+        };
+
+        const populateModalReportYearOptions = (payload) => {
+            if (!modalReportYearFilter) return;
+
+            const currentYear = String(new Date().getFullYear());
             const transactionRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+            const recordedYears = Array.from(new Set(
+                transactionRows.map(getModalReportRowYear).filter(Boolean)
+            )).sort((left, right) => Number(right) - Number(left));
+
+            modalReportYearFilter.replaceChildren();
+
+            const yearOptions = Array.from(new Set([currentYear, ...recordedYears]));
+            yearOptions.forEach((year) => {
+                const option = document.createElement("option");
+                option.value = year;
+                option.textContent = year === currentYear ? `${year} (Current Year)` : year;
+                modalReportYearFilter.appendChild(option);
+            });
+
+            const allYearsOption = document.createElement("option");
+            allYearsOption.value = "all";
+            allYearsOption.textContent = "All Years";
+            modalReportYearFilter.appendChild(allYearsOption);
+            modalReportYearFilter.value = currentYear;
+            modalReportYearFilter.disabled = false;
+        };
+
+        const getSelectedModalReportYear = () => {
+            const selectedValue = String(modalReportYearFilter && modalReportYearFilter.value || "").trim();
+            if (selectedValue === "all" || /^\d{4}$/.test(selectedValue)) {
+                return selectedValue;
+            }
+            return String(new Date().getFullYear());
+        };
+
+        const buildModalReportData = (payload, yearFilter) => {
+            const selectedYear = yearFilter === "all" || /^\d{4}$/.test(String(yearFilter || ""))
+                ? String(yearFilter)
+                : String(new Date().getFullYear());
+            const allTransactionRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+            const transactionRows = selectedYear === "all"
+                ? allTransactionRows
+                : allTransactionRows.filter((row) => getModalReportRowYear(row) === selectedYear);
             const periodMap = new Map();
             const taxLabelMap = new Map();
 
@@ -2414,17 +2472,14 @@
                     };
                 });
 
-            const firstPeriod = rows.length ? rows[0].period : "";
-            const lastPeriod = rows.length ? rows[rows.length - 1].period : "";
-            const dateRangeLabel = firstPeriod && lastPeriod && firstPeriod !== lastPeriod
-                ? `${firstPeriod} to ${lastPeriod}`
-                : (firstPeriod || "All recorded entries");
+            const dateRangeLabel = selectedYear === "all" ? "All Years" : selectedYear;
 
             return {
                 reportType: "financial_summary",
                 reportLabel: "Financial Summary Report",
                 dateRangeLabel,
                 generatedAt: new Date().toISOString(),
+                yearFilter: selectedYear,
                 clientId: CLIENT_ID,
                 scopeLabel: currentClientProfile.client_name,
                 columns: [
@@ -2481,7 +2536,7 @@
 
             return window.SafeBooksReportsShared.buildReportSheetHtml({
                 reportTitle: "SafeBooks Client Report Sheet",
-                reportSubtitle: "Client-facing format for quick review and print handover",
+                printedBy: "{{ current_user_name|default:'Bookkeeper User'|escapejs }}",
                 meta: {
                     reportTypeLabel,
                     dateRangeLabel,
@@ -2507,8 +2562,24 @@
                 },
                 rowHint: rows.length
                     ? "Prepared from generated report values."
-                    : "No rows matched the selected date range. Blank lines are available for manual notes.",
+                    : report.yearFilter === "all"
+                        ? "No transactions were found for this client."
+                        : `No transactions were recorded for ${report.yearFilter}.`,
             });
+        };
+
+        const renderModalReportForSelectedYear = () => {
+            if (!modalReportSourcePayload || !modalReportSheet) return;
+
+            const selectedYear = getSelectedModalReportYear();
+            modalLatestReport = buildModalReportData(modalReportSourcePayload, selectedYear);
+            modalReportSheet.innerHTML = buildModalLedgerSheetHtml(modalLatestReport);
+
+            if (modalReportYearHint) {
+                modalReportYearHint.textContent = selectedYear === "all"
+                    ? "Preview and print include transactions from all recorded years."
+                    : `Preview and print include only ${selectedYear} transactions.`;
+            }
         };
 
         const printModalLedgerLayout = () => {
@@ -2546,6 +2617,12 @@
                                 padding: 8px;
                                 width: 100%;
                             }
+                            .reports-ledger-heading {
+                                display: flex;
+                                align-items: baseline;
+                                justify-content: space-between;
+                                gap: 16px;
+                            }
                             .reports-ledger-title {
                                 margin: 0;
                                 color: #183365;
@@ -2554,11 +2631,13 @@
                                 text-transform: uppercase;
                                 letter-spacing: 0.04em;
                             }
-                            .reports-ledger-subtitle {
-                                margin: 2px 0 0;
+                            .reports-ledger-printed-by {
+                                margin: 0;
                                 color: #607ca9;
                                 font-size: 10px;
                                 font-weight: 700;
+                                text-align: right;
+                                white-space: nowrap;
                             }
                             .reports-ledger-meta-row {
                                 margin: 6px 0;
@@ -2678,6 +2757,17 @@
             if (modalReportError) modalReportError.hidden = true;
             if (modalReportWrapper) modalReportWrapper.hidden = true;
             if (modalPrintReportBtn) modalPrintReportBtn.disabled = true;
+            if (modalReportYearFilter) {
+                modalReportYearFilter.disabled = true;
+                modalReportYearFilter.replaceChildren();
+                const loadingOption = document.createElement("option");
+                loadingOption.value = "";
+                loadingOption.textContent = "Loading years...";
+                modalReportYearFilter.appendChild(loadingOption);
+            }
+            if (modalReportYearHint) {
+                modalReportYearHint.textContent = "Loading the available bookkeeping years...";
+            }
 
             try {
                 const params = new URLSearchParams();
@@ -2704,8 +2794,9 @@
                         throw new Error(result && result.message ? result.message : "Unable to generate report data.");
                     }
 
-                    modalLatestReport = buildModalReportData(result);
-                    modalReportSheet.innerHTML = buildModalLedgerSheetHtml(modalLatestReport);
+                    modalReportSourcePayload = result;
+                    populateModalReportYearOptions(result);
+                    renderModalReportForSelectedYear();
                     
                     if (modalReportLoading) modalReportLoading.hidden = true;
                     if (modalReportWrapper) modalReportWrapper.hidden = false;
@@ -2937,6 +3028,12 @@
             if (modalPrintReportBtn) {
                 modalPrintReportBtn.addEventListener("click", () => {
                     printModalLedgerLayout();
+                });
+            }
+
+            if (modalReportYearFilter) {
+                modalReportYearFilter.addEventListener("change", () => {
+                    renderModalReportForSelectedYear();
                 });
             }
 

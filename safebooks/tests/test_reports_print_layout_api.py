@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
+from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
@@ -87,6 +89,43 @@ class ReportsPrintLayoutApiTests(TestCase):
         self.assertFalse(payload.get("ok"))
         self.assertEqual(payload.get("message"), "Authentication required.")
 
+    def test_client_report_header_uses_authenticated_bookkeeper_name(self):
+        owner = self._create_bookkeeper("header")
+        self._login_as(owner)
+
+        response = self.client.get(reverse("clients"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'printedBy: "Reports Print header"')
+        self.assertNotContains(
+            response,
+            "Client-facing format for quick review and print handover",
+        )
+
+        shared_script_path = finders.find("js/reports_shared.js")
+        self.assertIsNotNone(shared_script_path)
+        shared_script = Path(shared_script_path).read_text(encoding="utf-8")
+        self.assertIn("Printed by:", shared_script)
+        self.assertNotIn(
+            "Client-facing format for quick review and print handover",
+            shared_script,
+        )
+
+    def test_client_details_report_provides_current_specific_and_all_year_choices(self):
+        owner = self._create_bookkeeper("year-filter")
+        owner.client_details_password_required = False
+        owner.save(update_fields=["client_details_password_required"])
+        self._login_as(owner)
+        client = self._create_client(bookkeeper=owner, suffix="year-filter")
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="modalReportYearFilter"')
+        self.assertContains(response, "(Current Year)")
+        self.assertContains(response, "All Years")
+        self.assertContains(response, "Preview and print include only")
+
     def test_reports_print_layout_returns_transactions_for_date_range(self):
         owner = self._create_bookkeeper("owner")
         self._login_as(owner)
@@ -108,6 +147,14 @@ class ReportsPrintLayoutApiTests(TestCase):
             entry_date=date(2026, 2, 10),
             lines=[
                 ("Sales", "February sale", Decimal("75.00")),
+            ],
+        )
+        self._create_record_with_lines(
+            bookkeeper=owner,
+            client=client,
+            entry_date=date(2025, 12, 20),
+            lines=[
+                ("Sales", "Previous-year sale", Decimal("500.00")),
             ],
         )
 
@@ -137,3 +184,4 @@ class ReportsPrintLayoutApiTests(TestCase):
         self.assertEqual(rows[0]["amount"], "100.00")
         self.assertEqual(rows[1]["type_code"], "Expenses")
         self.assertEqual(rows[1]["amount"], "50.00")
+        self.assertNotIn("Previous-year sale", {row["description"] for row in rows})

@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/auth/password/forgot/send-code/', views.forgot_password_send_code_api_view, name='api_forgot_password_send_code'),
     path('api/auth/password/forgot/verify-code/', views.forgot_password_verify_code_api_view, name='api_forgot_password_verify_code'),
     path('api/auth/password/forgot/reset/', views.forgot_password_reset_api_view, name='api_forgot_password_reset'),
+    path('api/feedback/submit/', views.submit_feedback_api_view, name='api_submit_feedback'),
     path('api/settings/workspace-defaults/', views.workspace_defaults_api_view, name='api_workspace_defaults'),
     path('api/settings/notifications/client-record-emails/', views.settings_client_record_email_notifications_api_view, name='api_settings_client_record_email_notifications'),
     path('api/settings/security/password/', views.security_change_password_api_view, name='api_security_change_password'),

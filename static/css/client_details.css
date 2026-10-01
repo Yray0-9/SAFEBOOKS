@@ -891,6 +891,47 @@
     background-color: var(--body-bg, #f8fafc);
 }
 
+.client-report-year-bar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: 960px;
+    margin: 0 auto 1rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #d9e5f7;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.client-report-year-field {
+    flex: 0 0 210px;
+}
+
+.client-report-year-field label {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: #36527d;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.client-report-year-field .form-select {
+    min-height: 40px;
+    border-color: #cbd9ee;
+    color: #244675;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.client-report-year-bar p {
+    margin: 0 0 0.48rem;
+    color: #60789e;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: right;
+}
+
 .client-report-spinner {
     width: 2.5rem;
     height: 2.5rem;
@@ -952,6 +993,20 @@
 }
 
 @media (max-width: 576px) {
+    .client-report-year-bar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .client-report-year-field {
+        flex-basis: auto;
+    }
+
+    .client-report-year-bar p {
+        margin-bottom: 0;
+        text-align: left;
+    }
+
     .client-details-actions-panel,
     .client-projections-controls {
         width: 100%;
@@ -1092,6 +1147,29 @@ body.theme-dark #formattedReportModal .modal-footer,
 body.theme-dark #formattedReportModal .client-report-modal-body,
 .theme-dark #formattedReportModal .client-report-modal-body {
     background-color: #0b1424 !important;
+}
+
+body.theme-dark .client-report-year-bar,
+.theme-dark .client-report-year-bar {
+    border-color: #2b3c5a;
+    background: #101b2f;
+}
+
+body.theme-dark .client-report-year-field label,
+.theme-dark .client-report-year-field label {
+    color: #c9d8ef;
+}
+
+body.theme-dark .client-report-year-field .form-select,
+.theme-dark .client-report-year-field .form-select {
+    border-color: #30466d;
+    background-color: #111f36;
+    color: #d7e6ff;
+}
+
+body.theme-dark .client-report-year-bar p,
+.theme-dark .client-report-year-bar p {
+    color: #9eb0d3;
 }
 
 body.theme-dark #formattedReportModal .modal-title,

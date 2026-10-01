@@ -22,6 +22,22 @@
         <a href="{% url 'settings' %}" class="dashboard-nav-item{% if active_nav == 'settings' %} active{% endif %}"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><i class="bi bi-gear"></i><span>Settings</span></a>
     </nav>
 
+    {% if feedback_enabled %}
+    <button
+        class="bookkeeper-feedback-trigger"
+        id="bookkeeperFeedbackTrigger"
+        type="button"
+        data-bs-toggle="modal"
+        data-bs-target="#bookkeeperFeedbackModal"
+        aria-controls="bookkeeperFeedbackModal"
+        aria-label="Send feedback to the SafeBooks developer"
+        title="Send Feedback"
+    >
+        <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+        <span>Send Feedback</span>
+    </button>
+    {% endif %}
+
     <a href="{% url 'login' %}" class="dashboard-landing-link" data-bookkeeper-logout>
         <i class="bi bi-box-arrow-left"></i>
         <span>Logout</span>

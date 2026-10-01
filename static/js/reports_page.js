@@ -623,7 +623,6 @@
             rowCount,
             rowHint,
             reportTitle: "SafeBooks Client Report Sheet",
-            reportSubtitle: "Client-facing format for quick review and print handover",
             minRows: 14,
         };
     };
@@ -997,7 +996,6 @@
         let rowHint = "";
         let minRows = 14;
         let reportTitle = "SafeBooks Client Report Sheet";
-        let reportSubtitle = "Client-facing format for quick review and print handover";
 
         if (usePrintLayout) {
             columns = printLayout.columns;
@@ -1005,7 +1003,6 @@
             rowHint = toDisplayText(printLayout.rowHint, "Prepared from generated report values.");
             minRows = Number.isFinite(printLayout.minRows) ? printLayout.minRows : minRows;
             reportTitle = toDisplayText(printLayout.reportTitle, reportTitle);
-            reportSubtitle = toDisplayText(printLayout.reportSubtitle, reportSubtitle);
         } else {
             const schema = buildLedgerColumnSchema(report);
             const periodLabel = toLedgerHeaderLabel(
@@ -1027,7 +1024,7 @@
 
         return reportsShared.buildReportSheetHtml({
             reportTitle,
-            reportSubtitle,
+            printedBy: String(config.defaultName || "Bookkeeper User"),
             meta: {
                 reportTypeLabel,
                 dateRangeLabel,
@@ -1157,6 +1154,13 @@
                             width: 100%;
                         }
 
+                        .reports-ledger-heading {
+                            display: flex;
+                            align-items: baseline;
+                            justify-content: space-between;
+                            gap: 16px;
+                        }
+
                         .reports-ledger-title {
                             margin: 0;
                             color: #183365;
@@ -1166,11 +1170,13 @@
                             letter-spacing: 0.04em;
                         }
 
-                        .reports-ledger-subtitle {
-                            margin: 2px 0 0;
+                        .reports-ledger-printed-by {
+                            margin: 0;
                             color: #607ca9;
                             font-size: 10px;
                             font-weight: 700;
+                            text-align: right;
+                            white-space: nowrap;
                         }
 
                         .reports-ledger-meta-row {

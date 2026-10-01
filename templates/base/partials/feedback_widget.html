@@ -1,0 +1,92 @@
+<div
+    class="bookkeeper-feedback-widget"
+    id="bookkeeperFeedbackWidget"
+    data-feedback-submit-url="{% url 'api_submit_feedback' %}"
+>
+    <div
+        class="modal fade bookkeeper-feedback-modal"
+        id="bookkeeperFeedbackModal"
+        tabindex="-1"
+        aria-labelledby="bookkeeperFeedbackTitle"
+        aria-describedby="bookkeeperFeedbackIntroduction bookkeeperFeedbackPrivacy"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <p class="bookkeeper-feedback-eyebrow">SafeBooks Beta</p>
+                        <h2 class="modal-title" id="bookkeeperFeedbackTitle">Send Feedback to the Developer</h2>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close feedback form"></button>
+                </div>
+
+                <form id="bookkeeperFeedbackForm" novalidate>
+                    <div class="modal-body">
+                        <p class="bookkeeper-feedback-introduction" id="bookkeeperFeedbackIntroduction">
+                            Found something confusing, have an idea, or noticed a problem? Send a message directly to the SafeBooks developer.
+                        </p>
+
+                        <fieldset class="bookkeeper-feedback-fieldset">
+                            <legend>What would you like to share?</legend>
+                            <div class="bookkeeper-feedback-categories">
+                                <label class="bookkeeper-feedback-category">
+                                    <input type="radio" name="feedbackCategory" value="suggestion" checked />
+                                    <span><i class="bi bi-lightbulb" aria-hidden="true"></i>Suggestion or feature idea</span>
+                                </label>
+                                <label class="bookkeeper-feedback-category">
+                                    <input type="radio" name="feedbackCategory" value="confusing" />
+                                    <span><i class="bi bi-question-circle" aria-hidden="true"></i>Something is confusing</span>
+                                </label>
+                                <label class="bookkeeper-feedback-category">
+                                    <input type="radio" name="feedbackCategory" value="bug" />
+                                    <span><i class="bi bi-bug" aria-hidden="true"></i>Bug or unexpected behavior</span>
+                                </label>
+                                <label class="bookkeeper-feedback-category">
+                                    <input type="radio" name="feedbackCategory" value="comment" />
+                                    <span><i class="bi bi-chat-heart" aria-hidden="true"></i>General comment or compliment</span>
+                                </label>
+                            </div>
+                        </fieldset>
+
+                        <div class="bookkeeper-feedback-message-field">
+                            <div class="bookkeeper-feedback-label-row">
+                                <label for="bookkeeperFeedbackMessage">Your message</label>
+                                <span id="bookkeeperFeedbackCharacterCount">0 / 2000</span>
+                            </div>
+                            <textarea
+                                id="bookkeeperFeedbackMessage"
+                                name="feedbackMessage"
+                                rows="6"
+                                minlength="10"
+                                maxlength="2000"
+                                placeholder="Tell us what happened, what you expected, or what would make SafeBooks easier to use."
+                                aria-describedby="bookkeeperFeedbackMessageHelp bookkeeperFeedbackStatus"
+                                required
+                            ></textarea>
+                            <small id="bookkeeperFeedbackMessageHelp">Please enter at least 10 characters.</small>
+                        </div>
+
+                        <div class="bookkeeper-feedback-privacy" id="bookkeeperFeedbackPrivacy">
+                            <i class="bi bi-shield-check" aria-hidden="true"></i>
+                            <p>Your SafeBooks account name, registered email, and current page will be included so the developer can understand and follow up on your feedback.</p>
+                        </div>
+
+                        <p class="bookkeeper-feedback-status" id="bookkeeperFeedbackStatus" role="alert" aria-live="assertive"></p>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="bookkeeper-feedback-cancel" type="button" data-bs-dismiss="modal">Cancel</button>
+                        <button class="bookkeeper-feedback-submit" id="bookkeeperFeedbackSubmit" type="submit">
+                            <span class="bookkeeper-feedback-submit-label"><i class="bi bi-send" aria-hidden="true"></i>Send Feedback</span>
+                            <span class="bookkeeper-feedback-submit-loading" aria-hidden="true">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                Sending...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

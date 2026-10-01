@@ -1,170 +1,328 @@
-# Strategic Plan: Temporary Remote Feedback System (Direct-to-Email)
+# Implementation Plan: Temporary Bookkeeper Feedback to Developer
 
-> **Status:** Architecture Approved & Finalized  
-> **Destination Email:** `rommmmagss@gmail.com`  
-> **Target Audience:** Remote Bookkeeper Beta Users  
-> **Risk Level:** Zero (No database migrations, 100% decoupled, 60-second clean removal)
+> **Status:** Implemented locally; automated checks passed; manual browser and SMTP delivery testing remains
+>
+> **Audience:** Approved SafeBooks bookkeeper beta users
+>
+> **Delivery:** Direct email to the configured SafeBooks developer address
+>
+> **Storage:** Email-only; no feedback database table or local server backup
+>
+> **Risk:** Low to moderate when the controls and tests in this plan are implemented
 
----
+## 1. Purpose
 
-## 1. Executive Summary & Problem Context
+SafeBooks will temporarily provide an obvious, easy-to-use feedback control on every authenticated bookkeeper page during remote beta testing. It will let bookkeepers send suggestions, questions, confusing experiences, and bug reports directly to the SafeBooks developer without leaving the page they are testing.
 
-You are deploying SafeBooks to remote bookkeeper users for real-world beta testing. Because you cannot physically visit their offices or watch them use the system in person, you need an effortless, in-app way for them to report:
-- 💡 **Suggestions & Feature Requests**
-- ❓ **Confusing Navigation or Layout Friction**
-- 🐞 **Bugs, Glitches, or Unexpected Behaviors**
-- ⭐ **General Comments & Praise**
+This is a temporary beta-support feature, not a permanent support ticket system. It does not guarantee durable storage when email delivery is unavailable. Failed submissions remain visible in the modal so the user can retry without retyping the message.
 
-### Key Principles of this Design:
-1. **Direct to Your Personal Email (`rommmmagss@gmail.com`)**:
-   - Every submission automatically sends an email to your inbox so you get instant notifications on your phone without logging into the admin console.
-2. **Zero Database Migrations (100% Safe)**:
-   - Does NOT touch SQLite or PostgreSQL. No new models, no migrations, and no schema pollution.
-3. **Zero Effort for the User**:
-   - Users only need to type their thoughts and click Send.
-   - The system automatically captures **who they are** (Name, Username, Email) and **where they were** (exact page URL) so they don't have to waste time explaining context.
-4. **Failsafe Redundancy**:
-   - If a temporary internet or SMTP connection delay happens, a silent local backup is automatically saved to `scratch/feedbacks_backup.json` so no feedback is ever lost.
-5. **60-Second Clean Deletion**:
-   - When beta testing is complete, you can completely remove the feature in under 1 minute with zero residue and zero risk to the rest of the application.
+## 2. User-facing experience
 
----
+### Floating control
 
-## 2. User Experience Flow (Bookkeeper Side)
+Show a clearly labeled control in the bottom-right corner of bookkeeper pages:
 
-### A. The Floating Action Pill
-- Positioned discreetly in the bottom-right corner of all bookkeeper pages:
-  ```
-  [ 💬 Feedback & Suggestions ]
-  ```
-- Styled to seamlessly match the SafeBooks modern aesthetic (soft blue gradient, elegant hover lift, unobtrusive so it never blocks data tables or action buttons).
+```text
+[ message icon ] Send Feedback
+```
 
-### B. The Feedback Modal
-Clicking the button opens a clean, centered modal dialog:
-1. **Category Pills (Quick Select)**:
-   - 💡 *Suggestion / Feature Idea* (Default)
-   - ❓ *Something was confusing*
-   - 🐞 *Bug or unexpected behavior*
-   - ⭐ *General compliment*
-2. **Message Input**:
-   - Multi-line textarea with a helpful, inviting placeholder:  
-     *"Tell us what you liked, what felt confusing, or what you would improve..."*
-3. **Invisible Context (Captured Automatically)**:
-   - The bookkeeper does NOT need to type their name or the page they are on. The system automatically gathers:
-     - Logged-in user's Full Name, Username, and Email.
-     - Exact Current Page URL (e.g., `http://127.0.0.1:8000/clients/5/`).
-     - Accurate Philippine Standard Timestamp (`Asia/Manila`).
-4. **Submission Feedback**:
-   - Clicking **"Send Feedback"** displays a brief loading spinner on the button.
-   - On success, the modal closes and displays a sleek toast notification:  
-     *"Thank you! Your feedback has been sent directly to the development team."*
+The desktop label must remain visible so users do not have to guess what an icon means. On very small screens it may use a compact label, but it must retain an accessible name such as `Send feedback to the SafeBooks developer`.
 
----
+The control must:
 
-## 3. Email Delivery Specification
+- Match the existing SafeBooks design and dark theme.
+- Remain visible without covering page actions, tables, mobile navigation, or toast messages.
+- Be keyboard accessible and have a clear focus style.
+- Be shown only when the feature flag is enabled.
 
-### Recipient & Delivery Settings:
-- **Destination Address:** `rommmmagss@gmail.com`
-- **Sender Backend:** SafeBooks Gmail SMTP (`smtp.gmail.com:587` already configured in `.env`)
-- **Sender Address:** `SafeBooks <romulomagos16@gmail.com>`
+### Feedback modal
 
-### Email Template Example:
+Use the following clear content:
+
+**Title:** `Send Feedback to the Developer`
+
+**Introduction:**
+
+> Found something confusing, have an idea, or noticed a problem? Send a message directly to the SafeBooks developer.
+
+**Categories:**
+
+- Suggestion or feature idea
+- Something is confusing
+- Bug or unexpected behavior
+- General comment or compliment
+
+**Message field:**
+
+```text
+Tell us what happened, what you expected, or what would make SafeBooks easier to use.
+```
+
+**Privacy notice:**
+
+> Your SafeBooks account name, registered email, and current page will be included so the developer can understand and follow up on your feedback.
+
+Do not include the bookkeeper's saved physical location. It is not necessary for ordinary product feedback.
+
+### Submission behavior
+
+- Disable the submit button and show a spinner while one request is in progress.
+- Prevent double submission.
+- On confirmed email delivery, close and reset the modal and show:
+
+  `Thank you - your feedback was sent to the SafeBooks developer.`
+
+- On validation failure, keep the modal open and show the relevant field message.
+- On network or email failure, keep the user's message and show:
+
+  `We could not send your feedback right now. Your message is still here - please try again.`
+
+- Restore focus to the floating control after the modal closes.
+- Warn before discarding a message when the user closes a modal containing unsent text.
+
+## 3. Information included in the email
+
+The server must obtain identity from the authenticated session, never from browser-supplied identity fields.
+
+Include:
+
+- Bookkeeper full name
+- Bookkeeper username
+- Registered email address
+- Philippine local submission time using the configured `Asia/Manila` timezone
+- Selected feedback category
+- Sanitized SafeBooks page title
+- Sanitized same-site page path, without query parameters or URL fragments
+- The submitted message
+
+Do not include:
+
+- Passwords, credentials, session values, cookies, CSRF tokens, or recovery codes
+- Bookkeeper physical location
+- Query-string values or arbitrary external URLs
+- Client financial data unless the user deliberately writes it in the feedback message
+
+### Example email
+
 ```text
 Subject: [SafeBooks Beta Feedback] Suggestion from Juan Dela Cruz
 
-SafeBooks Remote Beta Feedback Received
+SafeBooks Remote Beta Feedback
 
-SUBMITTED BY:
-• Bookkeeper: Juan Dela Cruz (Username: jdelacruz)
-• Registered Email: juan.delacruz@example.com
-• Date & Time: September 24, 2026, 02:45 PM (Asia/Manila)
-• Location: Davao City
+Submitted by: Juan Dela Cruz
+Username: jdelacruz
+Registered email: juan.delacruz@example.com
+Submitted at: September 24, 2026, 2:45 PM (Asia/Manila)
 
-PAGE CONTEXT:
-• Current URL: http://127.0.0.1:8000/clients/14/
-• Category: 💡 Suggestion / Feature Idea
+Category: Suggestion or feature idea
+Page: Client Details
+Path: /clients/14/
 
-----------------------------------------------------------------------
-USER MESSAGE:
-"The client detail page is very clean. However, it would be really helpful
-if we could sort the line items inside a financial entry by amount or
-date before saving."
-----------------------------------------------------------------------
-
-(Automated notification from SafeBooks Beta Testing)
+Message:
+It would help if I could sort financial line items before saving.
 ```
 
----
+The message should be sent as plain text, or user content must be escaped if an HTML email is added later.
 
-## 4. Failsafe Silent Backup Strategy
+## 4. Delivery and configuration
 
-To ensure you never lose a user's valuable feedback if Gmail SMTP experiences a momentary rate limit, timeout, or internet blip:
-1. The submission endpoint wraps the `send_mail` call inside a resilient `try/except` block.
-2. In all cases (or whenever SMTP is unavailable), the submission payload is appended into a local file:
-   - **Path:** `scratch/feedbacks_backup.json`
-3. This guarantees:
-   - The bookkeeper is never shown a frustrating error screen.
-   - Every single comment is safely backed up locally on your machine as well as sent to your inbox.
+Use the existing Django email configuration. Add these environment-backed settings:
 
----
-
-## 5. Architectural Components (Only 3 Isolated Touches)
-
-```mermaid
-graph TD
-    A[Bookkeeper Page] -->|Includes 1 Line| B[feedback_widget.html]
-    B -->|Fetch POST| C[/api/feedback/submit/]
-    C -->|Captures Session & URL| D[send_mail to rommmmagss@gmail.com]
-    C -->|Failsafe Backup| E[scratch/feedbacks_backup.json]
+```text
+SAFEBOOKS_FEEDBACK_ENABLED=0
+SAFEBOOKS_FEEDBACK_RECIPIENT_EMAIL=developer@example.com
+SAFEBOOKS_FEEDBACK_EMAIL_TIMEOUT_SECONDS=10
 ```
 
-### Files Involved:
-1. **Frontend Partial (New File)**:
-   - `templates/base/partials/feedback_widget.html`
-   - Contains the floating button, modal HTML, CSS styling, and vanilla JavaScript `fetch` handler.
-2. **Template Include (1 Existing File)**:
-   - `templates/base/bookkeeper_base.html`
-   - Simply add one line before `</body>`:
-     ```html
-     {% include 'base/partials/feedback_widget.html' %}
-     ```
-3. **Backend Endpoint & Route (2 Existing Files)**:
-   - `safebooks/urls.py` — add single path:
-     ```python
-     path('api/feedback/submit/', views.submit_feedback_api_view, name='api_submit_feedback'),
-     ```
-   - `safebooks/views.py` — add handler function:
-     ```python
-     @require_POST
-     def submit_feedback_api_view(request): ...
-     ```
+Rules:
 
----
+- Keep the real destination address in the private `.env`, not hard-coded in Python, templates, JavaScript, tests, or `.env.example`.
+- The feature is unavailable when disabled or when no recipient is configured.
+- The backend must use `settings.DEFAULT_FROM_EMAIL` as the sender.
+- A successful API response is returned only when the email backend confirms at least one message was sent.
+- Development's console email backend does not prove that a real email arrived. End-to-end delivery must be tested separately with the configured SMTP environment.
 
-## 6. The 60-Second Clean Deletion Guide (Post-Beta)
+## 5. Failure handling and storage decision
 
-When your beta testing period ends and you want to remove this temporary feature, follow these 3 simple steps:
+Do not write feedback to `scratch/feedbacks_backup.json` or another local server file. A deployed filesystem may be temporary, unavailable, shared by multiple processes, or lost during restart. A JSON append can also be corrupted by concurrent requests and would create an unmanaged file containing personal information.
 
-1. **Step 1 — Remove from Template**:
-   - Open [templates/base/bookkeeper_base.html](file:///c:/Users/Romul/SAFEBOOKS/templates/base/bookkeeper_base.html) and delete:
-     ```html
-     {% include 'base/partials/feedback_widget.html' %}
-     ```
-   - Delete the file `templates/base/partials/feedback_widget.html`.
+For this temporary version:
 
-2. **Step 2 — Remove Endpoint**:
-   - Open [safebooks/urls.py](file:///c:/Users/Romul/SAFEBOOKS/safebooks/urls.py) and remove the `api/feedback/submit/` line.
-   - Open [safebooks/views.py](file:///c:/Users/Romul/SAFEBOOKS/safebooks/views.py) and remove the `submit_feedback_api_view` function.
+- Email delivery is the only server-side delivery mechanism.
+- If delivery fails, return a temporary-service error and preserve the message in the open modal for retry.
+- Log only a delivery failure identifier and technical exception through normal server logging. Do not log the feedback message or account credentials.
 
-3. **Step 3 — Cleanup Backup File (Optional)**:
-   - Delete `scratch/feedbacks_backup.json` if no longer needed.
+If guaranteed storage becomes a requirement, replace this temporary design with a database-backed feedback model or a reliable external queue. That would be a separate, explicitly approved design requiring retention, access, and deletion rules.
 
-> **Result:** The system returns to its exact original state. No migrations were made, no database tables need dropping, and no other features are touched.
+## 6. Backend design
 
----
+### Route
 
-## 7. Next Action
+Add a named route in `safebooks/urls.py`:
 
-Once you have reviewed this document and feel confident with the plan:
-- Let me know to proceed with the implementation.
-- We will build the component carefully step-by-step and test it using your configured Gmail SMTP so you can verify that an email arrives at `rommmmagss@gmail.com`.
+```text
+POST /api/feedback/submit/
+```
+
+### View boundary
+
+Add a thin endpoint in `safebooks/views.py` using:
+
+```python
+@require_POST
+@require_bookkeeper_auth
+```
+
+The view must:
+
+- Decode the existing JSON request format.
+- Use `request.bookkeeper_account` as the submitting identity.
+- Pass the authenticated account and proposed feedback fields to the service.
+- Return a stable JSON envelope and appropriate HTTP status.
+
+### Service
+
+Create `safebooks/services/feedback_service.py` to:
+
+- Enforce the feature flag and configured recipient.
+- Validate and normalize category, message, page title, and page path.
+- Build the fixed email subject and plain-text body.
+- Convert the submission time to `Asia/Manila` through Django timezone utilities.
+- Send the email with a finite timeout.
+- Return a structured success or failure result without exposing SMTP details.
+
+### Validation and abuse controls
+
+- Allow only the four documented category values.
+- Require a trimmed message between 10 and 2,000 characters.
+- Limit page-title and page-path lengths.
+- Accept only a relative same-site path beginning with `/`.
+- Remove query parameters and fragments from page context.
+- Apply a small cache-based rate limit per authenticated bookkeeper, such as five submissions per ten minutes.
+- Return `429` with a helpful retry message when the limit is reached.
+- Keep CSRF protection enabled and use the existing same-origin CSRF header pattern.
+
+### Response behavior
+
+```text
+200  Feedback email delivery confirmed
+400  Invalid category, message, or page context
+401  No authenticated session
+403  Account not approved or feature unavailable
+429  Submission rate limit reached
+503  Email delivery temporarily unavailable
+```
+
+## 7. Frontend integration
+
+Create separate files that follow the existing project structure:
+
+```text
+templates/base/partials/feedback_widget.html
+static/css/feedback_widget.css
+static/js/feedback_widget.js
+```
+
+Update `templates/base/bookkeeper_base.html` to:
+
+- Load the feedback stylesheet when the feature is enabled.
+- Include the widget once for all bookkeeper pages when enabled.
+- Load the feedback script after `app_shared.js` when enabled.
+
+Reuse existing SafeBooks functionality where appropriate:
+
+- `window.SafeBooksShared.getCookieValue` for the CSRF token
+- `window.SafeBooksShared.parseJsonSafe` for API responses
+- `window.SafeBooksShared.showToast` for success messages
+- Existing Bootstrap modal behavior and SafeBooks visual conventions
+
+Do not copy account identity from `localStorage` into the submission. The backend session is authoritative.
+
+## 8. Expected file changes
+
+### New files
+
+```text
+templates/base/partials/feedback_widget.html
+static/css/feedback_widget.css
+static/js/feedback_widget.js
+safebooks/services/feedback_service.py
+safebooks/tests/test_feedback_api.py
+```
+
+### Existing files with narrow changes
+
+```text
+templates/base/bookkeeper_base.html
+safebooks/urls.py
+safebooks/views.py
+safebooks/settings.py
+.env.example
+```
+
+No model or migration is required for the approved email-only version.
+
+## 9. Verification plan
+
+### Automated checks
+
+Run:
+
+```powershell
+& .\.venv\Scripts\python.exe manage.py check
+& .\.venv\Scripts\python.exe manage.py test safebooks.tests.test_feedback_api
+```
+
+Tests must cover:
+
+- Confirmed delivery by an approved authenticated bookkeeper
+- Anonymous, pending, rejected, and suspended access rejection
+- Identity coming from the authenticated session rather than the request payload
+- Empty, short, oversized, and whitespace-only messages
+- Invalid categories and invalid page context
+- Query strings and fragments removed from page context
+- Configured recipient and sender use
+- Disabled feature and missing recipient behavior
+- Email exception and zero-message delivery behavior
+- Rate-limit response
+- No feedback message or credential leakage in API errors
+
+### Manual browser verification
+
+- The purpose is immediately understandable from the `Send Feedback` label and modal copy.
+- The widget appears on all intended bookkeeper pages and never on authentication or admin pages.
+- Desktop, mobile, light-theme, and dark-theme layouts remain usable.
+- Keyboard focus, Escape, close, cancel, and unsent-message warning work correctly.
+- The floating control does not cover important page controls.
+- Double clicks produce only one request.
+- A failed request preserves the message.
+- A successful request resets the form and displays the correct toast.
+- With real SMTP enabled, the configured developer inbox receives the expected email.
+
+## 10. Temporary-operation and removal plan
+
+### Immediate disable
+
+Set:
+
+```text
+SAFEBOOKS_FEEDBACK_ENABLED=0
+```
+
+After the application restarts, the widget should no longer appear and the endpoint should reject submissions. This provides a safe way to stop beta feedback without rushing to delete code.
+
+### Full removal after beta testing
+
+1. Remove the feedback include and static asset references from `bookkeeper_base.html`.
+2. Remove the route and thin view.
+3. Delete the feedback template, CSS, JavaScript, service, and focused tests.
+4. Remove the feedback settings and `.env.example` entries.
+5. Run `manage.py check` and the relevant bookkeeper test suite.
+
+There is no database cleanup for this email-only design.
+
+## 11. Readiness verdict
+
+**Implemented and ready for owner testing.**
+
+The feature will be easy for beta users to recognize because it explicitly says `Send Feedback`, the modal says the message goes to the SafeBooks developer, and the success message confirms delivery. The design remains temporary and isolated while avoiding unreliable local backup files, hidden personal-data collection, hard-coded recipient addresses, and misleading delivery guarantees.

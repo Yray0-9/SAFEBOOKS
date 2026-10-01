@@ -150,7 +150,7 @@
         const client = settings.client && typeof settings.client === "object" ? settings.client : {};
 
         const reportTitle = toDisplayText(settings.reportTitle, "SafeBooks Client Report Sheet");
-        const reportSubtitle = toDisplayText(settings.reportSubtitle, "Client-facing format for quick review and print handover");
+        const printedBy = toDisplayText(settings.printedBy, "Bookkeeper User");
 
         const reportTypeLabel = toDisplayText(meta.reportTypeLabel, "Client Report");
         const dateRangeLabel = toDisplayText(meta.dateRangeLabel, "-");
@@ -304,8 +304,10 @@
             .join("");
 
         return `
-            <h3 class="reports-ledger-title">${escapeHtml(reportTitle)}</h3>
-            <p class="reports-ledger-subtitle">${escapeHtml(reportSubtitle)}</p>
+            <div class="reports-ledger-heading">
+                <h3 class="reports-ledger-title">${escapeHtml(reportTitle)}</h3>
+                <p class="reports-ledger-printed-by">Printed by: ${escapeHtml(printedBy)}</p>
+            </div>
 
             <div class="reports-ledger-meta-row">
                 <span class="reports-ledger-meta-pill">Type: ${escapeHtml(reportTypeLabel)}</span>

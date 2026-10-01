@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.test import Client as TestClient, TestCase, override_settings
 from django.urls import reverse
@@ -81,6 +82,41 @@ class SessionSecurityTests(TestCase):
         self.assertNotIn(SESSION_ADMIN_ID_KEY, client.session)
         self.assertNotIn(SESSION_ADMIN_AUTHENTICATED_AT_KEY, client.session)
         self.assertNotIn(SESSION_ADMIN_LAST_ACTIVITY_AT_KEY, client.session)
+
+    def test_bookkeeper_login_session_expires_when_browser_closes(self):
+        bookkeeper = self._create_bookkeeper()
+
+        response = self.client.post(
+            reverse("api_login"),
+            data=json.dumps({
+                "identifier": bookkeeper.username,
+                "password": "BookkeeperPass#123",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.client.session.get_expire_at_browser_close())
+        session_cookie = self.client.cookies.get(settings.SESSION_COOKIE_NAME)
+        self.assertIsNotNone(session_cookie)
+        self.assertEqual(session_cookie["max-age"], "")
+        self.assertEqual(session_cookie["expires"], "")
+
+    def test_existing_bookkeeper_session_is_converted_to_browser_session(self):
+        bookkeeper = self._create_bookkeeper()
+        session = self.client.session
+        session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
+        session.set_expiry(60 * 60 * 24)
+        session.save()
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.client.session.get_expire_at_browser_close())
+        session_cookie = self.client.cookies.get(settings.SESSION_COOKIE_NAME)
+        self.assertIsNotNone(session_cookie)
+        self.assertEqual(session_cookie["max-age"], "")
+        self.assertEqual(session_cookie["expires"], "")
 
     @override_settings(SAFEBOOKS_ADMIN_SESSION_IDLE_TIMEOUT_SECONDS=60)
     def test_admin_session_expires_after_idle_timeout(self):

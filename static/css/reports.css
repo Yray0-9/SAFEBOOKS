@@ -260,6 +260,13 @@
     padding: 0.74rem;
 }
 
+.reports-ledger-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
 .reports-ledger-title {
     margin: 0;
     color: #183365;
@@ -269,11 +276,13 @@
     letter-spacing: 0.04em;
 }
 
-.reports-ledger-subtitle {
-    margin-top: 0.14rem;
+.reports-ledger-printed-by {
+    margin: 0;
     color: #607ca9;
-    font-size: 0.76rem;
+    font-size: 0.72rem;
     font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .reports-ledger-meta-row {
@@ -595,7 +604,7 @@ body.theme-dark .reports-ledger-title {
     color: #e6edf7;
 }
 
-body.theme-dark .reports-ledger-subtitle {
+body.theme-dark .reports-ledger-printed-by {
     color: #9eb0d3;
 }
 

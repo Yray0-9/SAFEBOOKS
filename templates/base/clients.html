@@ -514,7 +514,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=1.0.5"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -1617,7 +1617,7 @@
 
             return reportsShared.buildReportSheetHtml({
                 reportTitle: "SafeBooks Client Report Sheet",
-                reportSubtitle: "Client-facing format for quick review and print handover",
+                printedBy: "{{ current_user_name|default:'Bookkeeper User'|escapejs }}",
                 meta: {
                     reportTypeLabel,
                     dateRangeLabel,
