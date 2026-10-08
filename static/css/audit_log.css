@@ -98,60 +98,142 @@
     font-weight: 600;
 }
 
+@media (max-width: 991.98px) {
+    body.bookkeeper-audit-page .audit-log-table {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
 @media (max-width: 767.98px) {
-    .audit-log-toolbar {
-        grid-template-columns: 1fr;
+    body.bookkeeper-audit-page .dashboard-main {
+        --dashboard-main-padding-x: 0.72rem;
+        min-width: 0;
     }
 
-    .audit-log-table-wrap {
-        border: 0;
-        overflow: visible;
-    }
-
-    .audit-log-table,
-    .audit-log-table tbody,
-    .audit-log-table tr,
-    .audit-log-table td {
-        display: block;
+    body.bookkeeper-audit-page .dashboard-topbar {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 0.55rem;
+        padding: 0.75rem;
         width: 100%;
     }
 
-    .audit-log-table thead {
+    body.bookkeeper-audit-page .dashboard-topbar-left,
+    body.bookkeeper-audit-page .dashboard-topbar-left > div {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body.bookkeeper-audit-page .dashboard-topbar-left { align-items: flex-start; }
+    body.bookkeeper-audit-page .dashboard-topbar-right { flex: 0 0 auto; width: auto; }
+    body.bookkeeper-audit-page .dashboard-page-title { font-size: 1.28rem; line-height: 1.2; }
+    body.bookkeeper-audit-page .dashboard-page-subtitle { font-size: 0.76rem; line-height: 1.4; }
+    body.bookkeeper-audit-page .dashboard-menu-toggle,
+    body.bookkeeper-audit-page .dashboard-profile-btn { min-width: 44px; min-height: 44px; }
+
+    body.bookkeeper-audit-page .audit-log-content { min-width: 0; margin-top: 0.8rem; }
+    body.bookkeeper-audit-page .audit-log-card { min-width: 0; padding: 0.88rem; scroll-margin-top: 8rem; }
+    body.bookkeeper-audit-page .audit-log-head { align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; }
+    body.bookkeeper-audit-page .audit-log-head > div { flex: 1 1 180px; min-width: 0; }
+    body.bookkeeper-audit-page .audit-log-head h2 { font-size: 1rem; line-height: 1.4; }
+    body.bookkeeper-audit-page .audit-log-head p { font-size: 0.82rem; line-height: 1.5; }
+    body.bookkeeper-audit-page .audit-log-head .dashboard-tag { flex-shrink: 0; }
+
+    body.bookkeeper-audit-page .audit-log-toolbar {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.6rem;
+        margin-top: 0.8rem;
+    }
+
+    body.bookkeeper-audit-page .audit-log-search,
+    body.bookkeeper-audit-page .audit-log-sort {
+        min-width: 0;
+        min-height: 44px;
+        width: 100%;
+    }
+
+    body.bookkeeper-audit-page .audit-log-search input { min-width: 0; font-size: 1rem; }
+    body.bookkeeper-audit-page .audit-log-filters { flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.85rem; }
+    body.bookkeeper-audit-page .audit-log-filters .dashboard-filter-chip { min-height: 44px; padding: 0.45rem 0.75rem; }
+
+    body.bookkeeper-audit-page .audit-log-table-wrap {
+        border: 0;
+        overflow: visible;
+        min-width: 0;
+    }
+
+    body.bookkeeper-audit-page .audit-log-table,
+    body.bookkeeper-audit-page .audit-log-table tbody,
+    body.bookkeeper-audit-page .audit-log-table tr,
+    body.bookkeeper-audit-page .audit-log-table td {
+        display: block;
+        min-width: 0;
+        width: 100%;
+    }
+
+    body.bookkeeper-audit-page .audit-log-table thead {
         display: none;
     }
 
-    .audit-log-table tr {
+    body.bookkeeper-audit-page .audit-log-table tr {
         margin-bottom: 0.75rem;
-        padding: 0.8rem;
+        padding: 0.5rem 0.7rem;
         border: 1px solid #dbe6f8;
-        border-radius: 8px;
+        border-radius: 12px;
         background: #fff;
     }
 
-    .audit-log-table td {
+    body.bookkeeper-audit-page .audit-log-table td {
         display: grid;
-        grid-template-columns: 112px minmax(0, 1fr);
+        grid-template-columns: 82px minmax(0, 1fr);
         gap: 0.65rem;
-        padding: 0.4rem 0;
+        padding: 0.5rem 0;
         border: 0;
+        font-size: 0.84rem;
+        line-height: 1.5;
+        white-space: normal;
     }
 
-    .audit-log-table td::before {
+    body.bookkeeper-audit-page .audit-log-table td + td { border-top: 1px solid #e8effc; }
+
+    body.bookkeeper-audit-page .audit-log-table td::before {
         content: attr(data-label);
         color: #6b82aa;
-        font-size: 0.75rem;
+        font-size: 0.67rem;
         font-weight: 800;
         text-transform: uppercase;
     }
 
-    .audit-log-empty td {
-        display: block;
-        padding: 1.25rem;
+    body.bookkeeper-audit-page .audit-log-table td[data-label="Details"] {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.25rem;
     }
 
-    .audit-log-empty td::before {
+    body.bookkeeper-audit-page .audit-action-badge {
+        justify-self: start;
+        max-width: 100%;
+        min-width: 0;
+        white-space: normal;
+        line-height: 1.4;
+        border-radius: 10px;
+    }
+
+    body.bookkeeper-audit-page .audit-log-client { min-width: 0; overflow-wrap: anywhere; }
+
+    body.bookkeeper-audit-page .audit-log-empty td {
+        display: block;
+        padding: 1.25rem 0.5rem;
+    }
+
+    body.bookkeeper-audit-page .audit-log-empty td::before {
         content: none;
     }
+
+    body.bookkeeper-audit-page .audit-log-note { align-items: flex-start; line-height: 1.5; }
+    body.bookkeeper-audit-page .audit-log-note i { flex-shrink: 0; }
+    body.theme-dark.bookkeeper-audit-page .audit-log-table td + td { border-top-color: #263956; }
+    body.theme-dark.bookkeeper-audit-page .audit-log-table td::before { color: #94aad0; }
 }
 
 body.theme-dark .audit-log-head p,
@@ -369,4 +451,23 @@ body.theme-dark .audit-log-page-num.active {
 
 body.theme-dark .audit-log-page-ellipsis {
     color: #64748b;
+}
+
+@media (max-width: 767.98px) {
+    body.bookkeeper-audit-page .audit-log-pagination { flex-direction: column; align-items: stretch; gap: 0.7rem; }
+    body.bookkeeper-audit-page .audit-log-pagination-range { text-align: center; line-height: 1.4; }
+    body.bookkeeper-audit-page .audit-log-pagination-controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+        width: 100%;
+    }
+    body.bookkeeper-audit-page .audit-log-page-numbers {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    body.bookkeeper-audit-page .audit-log-page-button { min-width: 0; min-height: 44px; width: 100%; }
+    body.bookkeeper-audit-page .audit-log-page-num { min-width: 44px; height: 44px; }
 }

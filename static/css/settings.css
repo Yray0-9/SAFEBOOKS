@@ -905,6 +905,200 @@ body.theme-dark .settings-password-strength-segment {
     }
 }
 
+/* Bookkeeper-only responsive overrides; retain the desktop/admin layouts. */
+@media (max-width: 991.98px) {
+    body.settings-page .dashboard-layout,
+    body.settings-page .dashboard-main {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    body.settings-page .settings-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.settings-page .settings-nav {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        overflow: visible;
+    }
+
+    body.settings-page .settings-nav-link {
+        justify-content: center;
+        min-width: 0;
+        min-height: 44px;
+        padding: 0.55rem 0.4rem;
+        white-space: normal;
+        text-align: center;
+    }
+
+    body.settings-page .settings-layout,
+    body.settings-page .settings-panels,
+    body.settings-page .settings-card,
+    body.settings-page .settings-security-grid,
+    body.settings-page .settings-security-panel {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.settings-page .dashboard-main {
+        --dashboard-main-padding-x: 0.72rem;
+        min-width: 0;
+    }
+
+    body.settings-page .dashboard-topbar {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.55rem;
+        padding: 0.75rem;
+        width: 100%;
+    }
+
+    body.settings-page .dashboard-topbar-left,
+    body.settings-page .dashboard-topbar-left > div {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body.settings-page .dashboard-topbar-left { align-items: flex-start; }
+    body.settings-page .dashboard-topbar-right { flex: 0 0 auto; width: auto; }
+    body.settings-page .dashboard-page-title { font-size: 1.28rem; line-height: 1.2; }
+    body.settings-page .dashboard-page-subtitle { font-size: 0.76rem; line-height: 1.4; margin-bottom: 0; }
+    body.settings-page .dashboard-menu-toggle,
+    body.settings-page .dashboard-profile-btn { min-width: 44px; min-height: 44px; }
+
+    body.settings-page .dashboard-content { min-width: 0; margin-top: 0.8rem; }
+    body.settings-page .settings-layout,
+    body.settings-page .settings-panels { gap: 0.85rem; }
+    body.settings-page .settings-panels [data-settings-section] { scroll-margin-top: 9.5rem; }
+
+    body.settings-page .settings-nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0.5rem;
+    }
+
+    body.settings-page .settings-card { padding: 0.88rem; gap: 0.85rem; }
+    body.settings-page .settings-card-head { flex-wrap: wrap; align-items: center; }
+    body.settings-page .settings-card-head > div { min-width: 0; }
+    body.settings-page .settings-card-head h2 { font-size: 1.12rem; line-height: 1.35; margin: 0; }
+    body.settings-page .settings-card-head .dashboard-tag { max-width: 100%; white-space: normal; }
+
+    /* Centered, hidden tooltips near the right edge can widen the zoomable page.
+       Anchor them to the label/badge instead, including their hover state. */
+    body.settings-page .settings-card .settings-field-label,
+    body.settings-page .settings-card-head h2,
+    body.settings-page .settings-card-head .dashboard-tag {
+        position: relative;
+    }
+
+    body.settings-page .settings-card .safebooks-tooltip-wrap { position: static; }
+    body.settings-page .settings-card .safebooks-tooltip-content {
+        width: min(220px, calc(100vw - 4rem));
+        bottom: calc(100% + 0.5rem);
+        left: 0;
+        transform: none;
+    }
+
+    body.settings-page .settings-card .safebooks-tooltip-wrap:hover .safebooks-tooltip-content {
+        transform: translateY(-2px);
+    }
+
+    body.settings-page .settings-card .safebooks-tooltip-content::after { left: 1rem; }
+    body.settings-page .settings-card-head .dashboard-tag .safebooks-tooltip-content {
+        left: auto;
+        right: 0;
+    }
+
+    body.settings-page .settings-card-head .dashboard-tag .safebooks-tooltip-content::after {
+        left: auto;
+        right: 1rem;
+        margin-left: 0;
+    }
+
+    body.settings-page .settings-theme-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body.settings-page .settings-theme-swatch { min-width: 0; min-height: 86px; }
+    body.settings-page .settings-segment-btn { min-height: 44px; }
+    body.settings-page .settings-field-hint { line-height: 1.5; }
+
+    body.settings-page .settings-security-panel { padding: 0.8rem; gap: 0.75rem; }
+    body.settings-page .settings-security-header { gap: 0.5rem; }
+    body.settings-page .settings-security-header > div,
+    body.settings-page .settings-toggle-row > div { min-width: 0; flex: 1 1 auto; }
+    body.settings-page .settings-status-pill { flex-shrink: 0; align-self: flex-start; }
+    body.settings-page .settings-toggle-row { gap: 0.7rem; padding: 0.4rem 0; }
+
+    /* Enlarge the tap target without changing the switch's visible size. */
+    body.settings-page .settings-switch { height: 44px; }
+    body.settings-page .settings-switch-slider { inset: 10px 0; }
+    body.settings-page .settings-switch input:focus-visible + .settings-switch-slider {
+        outline: 3px solid #7aa7f5;
+        outline-offset: 3px;
+    }
+
+    body.settings-page #settingsNotifications .settings-section-footer {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    body.settings-page .settings-inline-status { min-width: 0; overflow-wrap: anywhere; }
+    body.settings-page .settings-two-factor-preview-info {
+        flex-direction: row;
+        align-items: flex-start;
+        padding: 0.75rem;
+    }
+
+    body.settings-page .settings-planned-row { padding: 0.75rem; }
+    body.settings-page .settings-input,
+    body.settings-page .auth-input { min-width: 0; font-size: 1rem; }
+    body.settings-page .auth-password-field,
+    body.settings-page .auth-password-wrap { min-width: 0; }
+    body.settings-page .auth-password-field .auth-input { min-height: 48px; padding-right: 3.25rem; }
+    body.settings-page .auth-password-toggle { width: 44px; height: 44px; right: 0.15rem; }
+
+    body.settings-page .settings-card .dashboard-action-btn,
+    body.settings-page .settings-manage-modal .dashboard-action-btn {
+        min-width: 0;
+        min-height: 44px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.88rem;
+        line-height: 1.35;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+
+    /* Keep dialog actions accessible on short screens and above the keyboard. */
+    body.settings-page .settings-manage-modal .modal-dialog { margin: 0.5rem; }
+    body.settings-page .settings-manage-modal .modal-content {
+        max-height: calc(100vh - 1rem);
+        max-height: calc(100dvh - 1rem);
+        overflow: hidden;
+    }
+
+    body.settings-page .settings-manage-modal .modal-header,
+    body.settings-page .settings-manage-modal .modal-body,
+    body.settings-page .settings-manage-modal .modal-footer { padding: 0.85rem; }
+    body.settings-page .settings-manage-modal .modal-header { gap: 0.5rem; align-items: flex-start; }
+    body.settings-page .settings-manage-modal .modal-title { font-size: 1.05rem; line-height: 1.4; }
+    body.settings-page .settings-manage-modal .btn-close { flex-shrink: 0; padding: 0.8rem; margin: -0.3rem; }
+    body.settings-page .settings-manage-modal .modal-body { min-height: 0; overflow-y: auto; }
+    body.settings-page .settings-manage-modal .modal-footer .settings-security-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    body.settings-page .settings-manage-modal .modal-footer .dashboard-action-btn { width: 100%; }
+    body.settings-page .settings-2fa-setup-grid { justify-items: stretch; gap: 1rem; }
+    body.settings-page .settings-2fa-info-col { min-width: 0; }
+    body.settings-page .settings-2fa-key-box { flex-wrap: wrap; }
+    body.settings-page .settings-2fa-key-input { min-height: 44px; font-size: 1rem; }
+    body.settings-page .settings-2fa-copy-btn { min-height: 44px; }
+    body.settings-page .settings-2fa-code-input { min-width: 0; min-height: 44px; }
+    body.settings-page .settings-manage-modal .alert { overflow-wrap: anywhere; }
+}
+
 body.theme-dark .settings-nav {
     background: #101a2c;
     border-color: #23324d;

@@ -10,7 +10,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/reports.css' %}">
-<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.1">
 {% endblock %}
 
 {% block skeleton %}
@@ -1307,10 +1307,10 @@
 
         const renderClientRowHtml = (data) => {
             return `
-                <td class="client-name-cell">${escapeHtml(data.clientName)}</td>
-                <td class="client-tin-cell">${escapeHtml(data.tin)}</td>
-                <td class="client-trade-cell">${escapeHtml(data.tradeName)}</td>
-                <td>${escapeHtml(data.location)}</td>
+                <td class="client-name-cell" data-label="Client">${escapeHtml(data.clientName)}</td>
+                <td class="client-tin-cell" data-label="TIN">${escapeHtml(data.tin)}</td>
+                <td class="client-trade-cell" data-label="Trade Name">${escapeHtml(data.tradeName)}</td>
+                <td data-label="Location">${escapeHtml(data.location)}</td>
             `;
         };
 

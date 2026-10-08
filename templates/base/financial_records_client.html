@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=1.1">
 {% endblock %}
 
 {% block skeleton %}
@@ -934,27 +934,27 @@
             const formOptionsMarkup = BIR_FORMS_LIST.map(form => `<option value="${escapeHtml(form.code)}">${escapeHtml(form.code)}</option>`).join("");
 
             row.innerHTML = `
-                <td>
+                <td data-label="Type / Code">
                     <div class="financial-line-code-wrapper">
-                        <select class="form-select financial-form-input financial-line-code-select" required>
+                        <select class="form-select financial-form-input financial-line-code-select" aria-label="Transaction type or code" required>
                             <option value="" disabled>Choose type/code</option>
                             ${formOptionsMarkup}
                             <option value="Others">Sales / Expenses / Other</option>
                         </select>
                         <div class="financial-line-code-custom-wrapper gap-1" hidden>
-                            <input type="text" class="form-control financial-form-input financial-line-code-custom-input" placeholder="Sales, Expenses, or custom type">
+                            <input type="text" class="form-control financial-form-input financial-line-code-custom-input" aria-label="Custom transaction type" placeholder="Sales, Expenses, or custom type">
                             <button type="button" class="btn financial-line-code-cancel-btn" title="Back to standard BIR Forms">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
                     </div>
                 </td>
-                <td>
-                    <input type="text" class="form-control financial-form-input financial-line-description-input" placeholder="Description" value="${safeDescription}" required>
+                <td data-label="Description">
+                    <input type="text" class="form-control financial-form-input financial-line-description-input" aria-label="Transaction description" placeholder="Description" value="${safeDescription}" required>
                 </td>
-                <td>
+                <td data-label="Amount">
                     <div class="financial-line-amount-wrap">
-                        <input type="number" class="form-control financial-form-input financial-line-amount-input" min="0" step="0.01" placeholder="0.00" value="${safeAmount}" required>
+                        <input type="number" class="form-control financial-form-input financial-line-amount-input" aria-label="Transaction amount" min="0" step="0.01" placeholder="0.00" value="${safeAmount}" required>
                     </div>
                 </td>
                 <td>
@@ -1220,9 +1220,9 @@
                     const safeDescription = escapeHtml(toDisplayText(lineItem.description));
                     return `
                         <tr>
-                            <td>${safeTypeCode}</td>
-                            <td>${safeDescription}</td>
-                            <td>${formatCurrency(parseAmount(lineItem.amount))}</td>
+                            <td data-label="Type / Code">${safeTypeCode}</td>
+                            <td data-label="Description">${safeDescription}</td>
+                            <td data-label="Amount">${formatCurrency(parseAmount(lineItem.amount))}</td>
                         </tr>
                     `;
                 })
@@ -1290,7 +1290,7 @@
             if (financialTableBody) {
                 financialTableBody.setAttribute("aria-busy", String(isRecordsLoading));
                 if (isRecordsLoading) {
-                    financialTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4">${escapeHtml(message)}</td></tr>`;
+                    financialTableBody.innerHTML = `<tr class="financial-loading-row"><td colspan="5" class="text-center py-4">${escapeHtml(message)}</td></tr>`;
                 }
             }
 
@@ -1480,15 +1480,15 @@
                 row.setAttribute("aria-label", `Toggle details for entry on ${toDisplayText(entry.date)}`);
 
                 row.innerHTML = `
-                    <td>
+                    <td data-label="Date">
                         <div>${safeDate}</div>
                     </td>
-                    <td>${safeFrequency}</td>
-                    <td><strong class="financial-entry-total">${formatCurrency(totalAmount)}</strong></td>
-                    <td><span class="financial-line-item-count">${lineItemCount} ${lineItemCount === 1 ? "Detail" : "Details"}</span></td>
+                    <td data-label="Frequency">${safeFrequency}</td>
+                    <td data-label="Amount"><strong class="financial-entry-total">${formatCurrency(totalAmount)}</strong></td>
+                    <td data-label="Transactions"><span class="financial-line-item-count">${lineItemCount} ${lineItemCount === 1 ? "Detail" : "Details"}</span></td>
                     <td class="financial-entry-actions-cell">
                         <div class="financial-entry-actions">
-                            <button type="button" class="btn financial-entry-btn toggle" data-entry-action="toggle" data-entry-id="${entry.id}"><i class="bi ${isExpanded ? "bi-chevron-up" : "bi-chevron-down"}"></i><span>${isExpanded ? "Collapse" : "Expand"}</span></button>
+                            <button type="button" class="btn financial-entry-btn toggle" data-entry-action="toggle" data-entry-id="${entry.id}" aria-expanded="${isExpanded}" aria-controls="entryDetails-${entry.id}"><i class="bi ${isExpanded ? "bi-chevron-up" : "bi-chevron-down"}"></i><span>${isExpanded ? "Collapse" : "Expand"}</span></button>
                             <button type="button" class="btn financial-entry-btn edit" data-entry-action="edit" data-entry-id="${entry.id}"><i class="bi bi-pencil-square"></i><span>Edit</span></button>
                             <button type="button" class="btn financial-entry-btn delete" data-entry-action="delete" data-entry-id="${entry.id}"><i class="bi bi-trash3"></i><span>Delete</span></button>
                         </div>
@@ -1496,6 +1496,7 @@
                 `;
 
                 detailsRow.className = "financial-entry-details-row";
+                detailsRow.id = `entryDetails-${entry.id}`;
                 detailsRow.setAttribute("aria-hidden", String(!isExpanded));
                 detailsRow.innerHTML = `
                     <td colspan="5">
@@ -2299,7 +2300,7 @@
 
             financialTableBody.addEventListener("keydown", (event) => {
                 const row = event.target.closest(".financial-entry-row");
-                if (!row) {
+                if (!row || event.target !== row) {
                     return;
                 }
 

@@ -8,7 +8,7 @@
 {% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.0">
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=1.1">
 {% endblock %}
 {% block topbar_meta %}
 <div class="dashboard-utility-strip" aria-label="Dashboard context">
@@ -980,11 +980,11 @@
 
                     return `
                         <tr class="dashboard-client-row" data-client-id="${escapeHtml(String(rowClientId))}" data-client-name="${escapeHtml(row.clientName)}" data-tin="${escapeHtml(tinDisplay)}" data-tin-raw="${escapeHtml(tinRaw)}" data-trade="${escapeHtml(row.tradeName)}" data-remarks="${escapeHtml(row.remarks)}" tabindex="0" role="button" aria-label="View details for ${escapeHtml(row.clientName)}">
-                            <td class="client-name-cell">${escapeHtml(row.clientName)}</td>
-                            <td class="client-tin-cell">${escapeHtml(tinDisplay)}</td>
-                            <td>${escapeHtml(formatEntryDate(row.lastEntryDate))}</td>
-                            <td>${escapeHtml(row.currentPeriod)}</td>
-                            <td>
+                            <td class="client-name-cell" data-label="Client">${escapeHtml(row.clientName)}</td>
+                            <td class="client-tin-cell" data-label="TIN">${escapeHtml(tinDisplay)}</td>
+                            <td data-label="Last Entry">${escapeHtml(formatEntryDate(row.lastEntryDate))}</td>
+                            <td data-label="Last Period">${escapeHtml(row.currentPeriod)}</td>
+                            <td data-label="Status">
                                 <span class="status-badge ${statusMeta.badgeClass}">${statusMeta.label}</span>
                                 ${deadlineBadge}
                             </td>
@@ -1108,9 +1108,9 @@
                 .map((entry) => {
                     return `
                         <tr>
-                            <td>${escapeHtml(entry.clientName)}</td>
-                            <td>${escapeHtml(formatEntryDate(entry.entryDate))}</td>
-                            <td>${escapeHtml(formatCurrency(entry.totalAmount))}</td>
+                            <td data-label="Client">${escapeHtml(entry.clientName)}</td>
+                            <td data-label="Entry Date">${escapeHtml(formatEntryDate(entry.entryDate))}</td>
+                            <td data-label="Total Amount">${escapeHtml(formatCurrency(entry.totalAmount))}</td>
                         </tr>
                     `;
                 })

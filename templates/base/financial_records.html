@@ -10,7 +10,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/reports.css' %}">
-<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.1">
+<link rel="stylesheet" href="{% static 'css/financial_records.css' %}?v=1.2">
 {% endblock %}
 
 {% block skeleton %}
@@ -364,7 +365,7 @@
             if (financialClientsTableBody) {
                 financialClientsTableBody.setAttribute("aria-busy", String(isFinancialClientsLoading));
                 if (isFinancialClientsLoading) {
-                    financialClientsTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4">${escapeHtml(message)}</td></tr>`;
+                    financialClientsTableBody.innerHTML = `<tr class="financial-clients-loading-row"><td colspan="5" class="text-center py-4">${escapeHtml(message)}</td></tr>`;
                 }
             }
 
@@ -664,8 +665,6 @@
                 const activityState = client.activity_state || (client.last_activity ? "active" : "none");
 
                 row.className = "clients-row";
-                row.setAttribute("tabindex", "0");
-                row.setAttribute("role", "button");
                 row.dataset.clientId = String(client.id || "");
                 row.dataset.clientName = client.client_name || "";
                 row.dataset.tin = client.tin_number || "";
@@ -673,7 +672,6 @@
                 row.dataset.lastActivity = lastActivity;
                 row.dataset.recentActivityAt = client.recent_activity_at || "";
                 row.dataset.activityState = activityState;
-                row.setAttribute("aria-label", `Open financial records for ${client.client_name || "selected client"}`);
 
                 let deadlineBadge = "";
                 if (client.days_remaining !== undefined && client.days_remaining !== null && client.deadline_date) {
@@ -692,14 +690,14 @@
                 }
 
                 row.innerHTML = `
-                    <td class="client-name-cell">${escapeHtml(client.client_name || "")}</td>
-                    <td class="client-tin-cell">${escapeHtml(formatTin(client.tin_number))}</td>
-                    <td class="client-trade-cell">${escapeHtml(client.trade_name || "")}</td>
-                    <td>
-                        <div>${escapeHtml(lastActivity)}</div>
+                    <td class="client-name-cell" data-label="Client">${escapeHtml(client.client_name || "")}</td>
+                    <td class="client-tin-cell" data-label="TIN">${escapeHtml(formatTin(client.tin_number))}</td>
+                    <td class="client-trade-cell" data-label="Trade Name">${escapeHtml(client.trade_name || "")}</td>
+                    <td class="financial-last-activity-cell" data-label="Last Activity">
+                        <div class="financial-last-activity">${escapeHtml(lastActivity)}</div>
                         ${deadlineBadge}
                     </td>
-                    <td class="clients-actions-cell">
+                    <td class="clients-actions-cell" data-label="Action">
                         <div class="clients-actions">
                             <button type="button" class="btn client-action-btn add-record" data-financial-action="open" title="Open client financial records"><i class="bi bi-journal-text"></i><span>View Financial Records</span></button>
                         </div>
@@ -839,30 +837,18 @@
 
         if (financialClientsTableBody) {
             financialClientsTableBody.addEventListener("click", (event) => {
-                const row = event.target.closest(".clients-row");
-                if (!row) {
-                    return;
-                }
-
                 const actionButton = event.target.closest("[data-financial-action='open']");
-                if (actionButton) {
-                    event.preventDefault();
-                    event.stopPropagation();
+                if (!actionButton) {
+                    return;
                 }
 
-                openClientRecords(row);
-            });
-
-            financialClientsTableBody.addEventListener("keydown", (event) => {
-                const row = event.target.closest(".clients-row");
+                const row = actionButton.closest(".clients-row");
                 if (!row) {
                     return;
                 }
 
-                if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    openClientRecords(row);
-                }
+                event.preventDefault();
+                openClientRecords(row);
             });
         }
 

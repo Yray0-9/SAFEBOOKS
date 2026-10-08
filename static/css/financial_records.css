@@ -1,0 +1,298 @@
+/* Financial Records client directory: page-specific responsive refinements. */
+
+body.financial-records-list-page #financialClientsTable tbody tr.clients-row {
+    cursor: default;
+}
+
+body.financial-records-list-page #financialClientsTable tbody tr.clients-row:hover td {
+    background-color: transparent;
+}
+
+@media (max-width: 767.98px) {
+    body.financial-records-list-page .dashboard-main {
+        min-width: 0;
+        padding-inline: 0.72rem;
+    }
+
+    body.financial-records-list-page .dashboard-topbar {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 0.55rem;
+        padding: 0.75rem;
+        width: 100%;
+    }
+
+    body.financial-records-list-page .dashboard-topbar-left {
+        align-items: flex-start;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body.financial-records-list-page .dashboard-topbar-left > div {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body.financial-records-list-page .dashboard-topbar-right {
+        flex: 0 0 auto;
+        width: auto;
+    }
+
+    body.financial-records-list-page .dashboard-menu-toggle,
+    body.financial-records-list-page .dashboard-profile-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    body.financial-records-list-page .dashboard-page-title {
+        font-size: 1.28rem;
+        line-height: 1.2;
+    }
+
+    body.financial-records-list-page .dashboard-page-subtitle {
+        font-size: 0.76rem;
+        line-height: 1.4;
+        margin-top: 0.16rem;
+    }
+
+    body.financial-records-list-page .dashboard-content {
+        margin-top: 0.78rem;
+        min-width: 0;
+    }
+
+    body.financial-records-list-page .clients-action-card,
+    body.financial-records-list-page .financial-clients-list-card {
+        min-width: 0;
+        padding: 0.88rem;
+    }
+
+    body.financial-records-list-page .financial-clients-list-card .dashboard-card-head {
+        align-items: flex-start;
+        gap: 0.55rem;
+    }
+
+    body.financial-records-list-page .financial-clients-list-card .dashboard-card-head h2 {
+        font-size: 0.98rem;
+        line-height: 1.35;
+    }
+
+    body.financial-records-list-page #financialClientsTableWrap {
+        min-height: 0;
+        overflow: visible;
+        width: 100%;
+    }
+
+    body.financial-records-list-page #financialClientsTable {
+        display: block;
+        min-width: 0;
+        width: 100%;
+    }
+
+    body.financial-records-list-page #financialClientsTable thead {
+        display: none;
+    }
+
+    body.financial-records-list-page #financialClientsTable tbody {
+        display: grid;
+        gap: 0.65rem;
+        width: 100%;
+    }
+
+    body.financial-records-list-page #financialClientsTable tbody tr.clients-row {
+        background: #fbfdff;
+        border: 1px solid #dce7fc;
+        border-radius: 12px;
+        box-shadow: 0 5px 14px rgba(18, 49, 112, 0.06);
+        display: grid;
+        padding: 0.42rem 0.68rem;
+        width: 100%;
+    }
+
+    body.financial-records-list-page #financialClientsTable tbody tr.clients-row td {
+        align-items: start;
+        background: transparent;
+        border: 0;
+        column-gap: 0.72rem;
+        display: grid;
+        font-size: 0.79rem;
+        grid-template-columns: minmax(76px, 0.78fr) minmax(0, 1.22fr);
+        line-height: 1.4;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        padding: 0.42rem 0;
+        text-align: right;
+        white-space: normal !important;
+    }
+
+    body.financial-records-list-page #financialClientsTable tbody tr.clients-row td + td {
+        border-top: 1px solid #e8effc;
+    }
+
+    body.financial-records-list-page #financialClientsTable tbody tr.clients-row td::before {
+        color: #6a83ad;
+        content: attr(data-label);
+        font-size: 0.67rem;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    body.financial-records-list-page #financialClientsTable tbody tr.clients-row td:empty {
+        display: none;
+    }
+
+    body.financial-records-list-page .financial-last-activity,
+    body.financial-records-list-page .financial-last-activity-cell .badge {
+        grid-column: 2;
+        justify-self: end;
+        margin-left: 0 !important;
+        max-width: 100%;
+        text-align: right !important;
+        white-space: normal;
+        width: auto !important;
+    }
+
+    body.financial-records-list-page #financialClientsTable .clients-actions-cell {
+        display: block;
+        min-width: 0 !important;
+        padding: 0.58rem 0 0 !important;
+        white-space: normal !important;
+        width: 100% !important;
+    }
+
+    body.financial-records-list-page #financialClientsTable .clients-actions-cell::before {
+        display: none;
+    }
+
+    body.financial-records-list-page #financialClientsTable .clients-actions {
+        display: flex !important;
+        justify-content: center;
+        width: 100% !important;
+    }
+
+    body.financial-records-list-page #financialClientsTable .client-action-btn {
+        box-sizing: border-box;
+        display: inline-flex !important;
+        flex: 1 1 auto !important;
+        gap: 0.42rem;
+        max-width: none !important;
+        min-height: 44px;
+        padding: 0.58rem 0.8rem;
+        white-space: nowrap;
+        width: 100% !important;
+    }
+
+    body.financial-records-list-page #financialClientsTable .client-action-btn span {
+        overflow-wrap: normal;
+        white-space: nowrap;
+    }
+
+    body.financial-records-list-page #financialClientsTable .financial-clients-loading-row {
+        display: block;
+        width: 100%;
+    }
+
+    body.financial-records-list-page #financialClientsTable .financial-clients-loading-row td {
+        display: block;
+        min-width: 0;
+        white-space: normal;
+        width: 100%;
+    }
+
+    body.financial-records-list-page .clients-pagination {
+        gap: 0.7rem;
+        margin-top: 0.88rem;
+    }
+
+    body.financial-records-list-page .clients-pagination-range {
+        line-height: 1.4;
+        text-align: center;
+    }
+
+    body.financial-records-list-page .clients-pagination-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        width: 100%;
+    }
+
+    body.financial-records-list-page .clients-page-button {
+        justify-content: center;
+        min-height: 44px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    body.financial-records-list-page .clients-page-num {
+        height: 44px;
+        min-width: 44px;
+    }
+
+    body.financial-records-list-page .clients-page-numbers {
+        justify-content: center;
+    }
+
+    body.financial-records-list-page .clients-empty-state .dashboard-action-btn {
+        min-height: 44px;
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    body.financial-records-list-page .clients-action-bar {
+        display: grid;
+        gap: 0.62rem;
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+    }
+
+    body.financial-records-list-page .clients-page-search,
+    body.financial-records-list-page .clients-action-bar .dashboard-filter-select {
+        flex: 0 0 auto;
+        min-height: 44px;
+        width: 100%;
+    }
+
+    body.financial-records-list-page .clients-page-search {
+        padding: 0.38rem 0.68rem;
+    }
+
+    body.financial-records-list-page .clients-page-search input {
+        min-height: 34px;
+    }
+}
+
+@media (max-width: 380px) {
+    body.financial-records-list-page .dashboard-page-title {
+        font-size: 1.12rem;
+    }
+
+    body.financial-records-list-page .dashboard-page-subtitle {
+        font-size: 0.7rem;
+    }
+
+    body.financial-records-list-page .dashboard-menu-toggle,
+    body.financial-records-list-page .dashboard-profile-btn {
+        min-width: 42px;
+    }
+
+    body.financial-records-list-page .clients-page-button span {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.theme-dark.financial-records-list-page #financialClientsTable tbody tr.clients-row {
+        background: #0f1c33;
+        border-color: #2a3c5a;
+        box-shadow: 0 5px 14px rgba(2, 8, 20, 0.28);
+    }
+
+    body.theme-dark.financial-records-list-page #financialClientsTable tbody tr.clients-row td + td {
+        border-top-color: #25344f;
+    }
+
+    body.theme-dark.financial-records-list-page #financialClientsTable tbody tr.clients-row td::before {
+        color: #9eb0d3;
+    }
+}

@@ -102,17 +102,299 @@ body.dashboard-page .dashboard-actions .dashboard-action-btn {
 }
 
 @media (max-width: 767.98px) {
+    body.dashboard-page .dashboard-main {
+        min-width: 0;
+        padding-inline: 0.72rem;
+    }
+
+    body.dashboard-page .dashboard-topbar {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 0.55rem;
+        padding: 0.75rem;
+        width: 100%;
+    }
+
+    body.dashboard-page .dashboard-topbar-left {
+        align-items: flex-start;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body.dashboard-page .dashboard-topbar-left > div {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body.dashboard-page .dashboard-topbar-right {
+        flex: 0 0 auto;
+        width: auto;
+    }
+
+    body.dashboard-page .dashboard-menu-toggle,
+    body.dashboard-page .dashboard-profile-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    body.dashboard-page .dashboard-page-title {
+        font-size: 1.28rem;
+        line-height: 1.2;
+    }
+
+    body.dashboard-page .dashboard-page-subtitle {
+        font-size: 0.76rem;
+        line-height: 1.4;
+        margin-top: 0.16rem;
+    }
+
     body.dashboard-page .dashboard-utility-strip {
         gap: 0.4rem;
+        margin-top: 0.5rem;
     }
 
     body.dashboard-page .dashboard-utility-item {
+        font-size: 0.68rem;
+        line-height: 1.25;
+        padding: 0.28rem 0.48rem;
         white-space: normal;
+    }
+
+    body.dashboard-page .dashboard-content {
+        margin-top: 0.78rem;
+        min-width: 0;
+    }
+
+    body.dashboard-page .dashboard-stats-row {
+        display: grid;
+        gap: 0.68rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    body.dashboard-page .dashboard-stats-row > * {
+        max-width: none;
+        padding: 0;
+        width: auto;
+    }
+
+    body.dashboard-page .dashboard-stat-card {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.55rem;
+        height: 100%;
+        min-height: 138px;
+        padding: 0.78rem;
+    }
+
+    body.dashboard-page .dashboard-stat-card .stat-icon {
+        border-radius: 10px;
+        height: 36px;
+        width: 36px;
+    }
+
+    body.dashboard-page .dashboard-stat-card h3 {
+        font-size: 1.35rem;
+    }
+
+    body.dashboard-page .dashboard-stat-card .stat-label {
+        font-size: 0.75rem;
+        line-height: 1.3;
+    }
+
+    body.dashboard-page .dashboard-stat-card .stat-note {
+        font-size: 0.7rem;
+        line-height: 1.35;
+    }
+
+    body.dashboard-page .dashboard-card {
+        min-width: 0;
+        padding: 0.88rem;
+    }
+
+    body.dashboard-page .dashboard-card-head {
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    body.dashboard-page .dashboard-card-head h2 {
+        font-size: 0.98rem;
+        line-height: 1.35;
+    }
+
+    body.dashboard-page .dashboard-link-muted {
+        min-height: 44px;
+    }
+
+    body.dashboard-page .dashboard-table-left-controls {
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: 1fr;
+        max-width: none;
+        width: 100%;
+    }
+
+    body.dashboard-page .dashboard-table-search,
+    body.dashboard-page .dashboard-filter-select {
+        min-height: 44px;
+        width: 100%;
+    }
+
+    body.dashboard-page .dashboard-filter-chips {
+        display: grid;
+        gap: 0.45rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    body.dashboard-page .dashboard-filter-chip {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+        min-height: 44px;
+        padding-inline: 0.48rem;
+        width: 100%;
+    }
+
+    body.dashboard-page .dashboard-filter-summary {
+        display: block;
+        line-height: 1.4;
+        margin-bottom: 0.7rem;
+    }
+
+    body.dashboard-page #clientTableWrap,
+    body.dashboard-page #recentEntriesWrap {
+        overflow: visible;
+        width: 100%;
+    }
+
+    body.dashboard-page #clientTable,
+    body.dashboard-page #recentEntriesTable {
+        display: block;
+        min-width: 0;
+        width: 100%;
+    }
+
+    body.dashboard-page #clientTable thead,
+    body.dashboard-page #recentEntriesTable thead {
+        display: none;
+    }
+
+    body.dashboard-page #clientTable tbody,
+    body.dashboard-page #recentEntriesTable tbody {
+        display: grid;
+        gap: 0.62rem;
+        width: 100%;
+    }
+
+    body.dashboard-page #clientTable tbody tr,
+    body.dashboard-page #recentEntriesTable tbody tr {
+        background: #fbfdff;
+        border: 1px solid #dce7fc;
+        border-radius: 12px;
+        box-shadow: 0 5px 14px rgba(18, 49, 112, 0.06);
+        display: grid;
+        padding: 0.42rem 0.68rem;
+        width: 100%;
+    }
+
+    body.dashboard-page #clientTable tbody td,
+    body.dashboard-page #recentEntriesTable tbody td {
+        align-items: start;
+        background: transparent;
+        border: 0;
+        column-gap: 0.72rem;
+        display: grid;
+        font-size: 0.79rem;
+        grid-template-columns: minmax(76px, 0.8fr) minmax(0, 1.2fr);
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+        padding: 0.38rem 0;
+        text-align: right;
+        white-space: normal;
+    }
+
+    body.dashboard-page #clientTable .client-name-cell,
+    body.dashboard-page #clientTable .client-tin-cell {
+        white-space: normal !important;
+    }
+
+    body.dashboard-page #clientTable tbody td + td,
+    body.dashboard-page #recentEntriesTable tbody td + td {
+        border-top: 1px solid #e8effc;
+    }
+
+    body.dashboard-page #clientTable tbody td::before,
+    body.dashboard-page #recentEntriesTable tbody td::before {
+        color: #6a83ad;
+        content: attr(data-label);
+        font-size: 0.67rem;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    body.dashboard-page #clientTable .status-badge,
+    body.dashboard-page #clientTable .dashboard-status-extra {
+        grid-column: 2;
+        justify-self: end;
+        max-width: 100%;
+        text-align: right;
+        white-space: normal;
+    }
+
+    body.dashboard-page #clientTable .dashboard-status-extra {
+        margin-top: 0.35rem;
+        width: fit-content;
+    }
+
+    body.dashboard-page .clients-pagination {
+        gap: 0.7rem;
+        margin-top: 0.88rem;
+    }
+
+    body.dashboard-page .clients-pagination-range {
+        line-height: 1.4;
+        text-align: center;
+    }
+
+    body.dashboard-page .clients-pagination-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        width: 100%;
+    }
+
+    body.dashboard-page .clients-page-button {
+        justify-content: center;
+        min-height: 44px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    body.dashboard-page .clients-page-num {
+        height: 44px;
+        min-width: 44px;
+    }
+
+    body.dashboard-page .clients-page-numbers {
+        justify-content: center;
     }
 
     body.dashboard-page .dashboard-recent-row {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+@media (max-width: 359.98px) {
+    body.dashboard-page .dashboard-stats-row {
+        grid-template-columns: 1fr;
+    }
+
+    body.dashboard-page .dashboard-stat-card {
+        min-height: 0;
     }
 }
 
@@ -122,4 +404,23 @@ body.theme-dark.dashboard-page .dashboard-recent-row-title {
 
 body.theme-dark.dashboard-page .dashboard-recent-row-meta {
     color: #aabbe0;
+}
+
+@media (max-width: 767.98px) {
+    body.theme-dark.dashboard-page #clientTable tbody tr,
+    body.theme-dark.dashboard-page #recentEntriesTable tbody tr {
+        background: #0f1c33;
+        border-color: #2a3c5a;
+        box-shadow: 0 5px 14px rgba(2, 8, 20, 0.28);
+    }
+
+    body.theme-dark.dashboard-page #clientTable tbody td + td,
+    body.theme-dark.dashboard-page #recentEntriesTable tbody td + td {
+        border-top-color: #25344f;
+    }
+
+    body.theme-dark.dashboard-page #clientTable tbody td::before,
+    body.theme-dark.dashboard-page #recentEntriesTable tbody td::before {
+        color: #9eb0d3;
+    }
 }

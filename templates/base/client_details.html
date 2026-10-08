@@ -17,7 +17,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.2">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}?v=1.2">
-<link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=2.1">
 {% endblock %}
 
 {% block skeleton %}
@@ -57,8 +57,8 @@
 {% block content %}
 <section class="dashboard-content client-details-container">
     <!-- Quick Actions Top Bar -->
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-1 animate-fade-in">
-        <div class="d-flex align-items-center gap-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-1 animate-fade-in client-details-summary-bar">
+        <div class="d-flex align-items-center gap-3 client-details-identity">
             <h2 class="h4 mb-0 font-weight-bold client-details-page-title" id="clientDetailsPageTitle">{{ client.client_name }}</h2>
             {% if client.remarks == 'new' %}
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1-5 client-details-status-badge">New</span>
@@ -437,7 +437,7 @@
                                             </tr>
                                         </thead>
                                         <tbody id="predictiveForecastTableBody">
-                                            <tr>
+                                            <tr class="analytics-predictive-empty-row">
                                                 <td colspan="5" class="text-center text-muted py-4">Needs historical data to compute forecasts.</td>
                                             </tr>
                                         </tbody>
@@ -1762,7 +1762,7 @@
             const safeProjections = Array.isArray(futureProjections) ? futureProjections : [];
             if (!safeProjections.length) {
                 predictiveForecastTableBody.innerHTML = `
-                    <tr>
+                    <tr class="analytics-predictive-empty-row">
                         <td colspan="5" class="text-center text-muted py-4">Add more records to compute forecasts.</td>
                     </tr>
                 `;
@@ -1784,11 +1784,11 @@
 
                     return `
                         <tr>
-                            <td><strong>${escapeHtml(period)}</strong></td>
-                            <td>${escapeHtml(sales)}</td>
-                            <td>${escapeHtml(expenses)}</td>
-                            <td>${escapeHtml(tax)}</td>
-                            <td><strong class="${netClass}">${escapeHtml(net)}</strong></td>
+                            <td data-label="Period"><strong>${escapeHtml(period)}</strong></td>
+                            <td data-label="Sales">${escapeHtml(sales)}</td>
+                            <td data-label="Expenses">${escapeHtml(expenses)}</td>
+                            <td data-label="Tax">${escapeHtml(tax)}</td>
+                            <td data-label="Net Value"><strong class="${netClass}">${escapeHtml(net)}</strong></td>
                         </tr>
                     `;
                 })
