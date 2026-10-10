@@ -1,13 +1,13 @@
 import json
 from functools import wraps
 import secrets
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -386,6 +386,39 @@ def _clear_client_details_access_verified(request) -> None:
     if SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY in request.session:
         request.session.pop(SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, None)
         request.session.modified = True
+
+
+def _get_client_details_access_target(request):
+    if request.GET.get("client_access_required") != "1" or not _client_details_lock_enabled(request.bookkeeper_account):
+        return None
+
+    target_url = request.GET.get("next", "")
+    if not target_url.startswith("/") or "\\" in target_url:
+        return None
+
+    try:
+        target = urlsplit(target_url)
+        match = resolve(target.path)
+    except (ValueError, Resolver404):
+        return None
+
+    if target.scheme or target.netloc or target.fragment or match.view_name != "client_details":
+        return None
+
+    client_id = match.kwargs.get("client_id")
+    detail_url = reverse("client_details", args=[client_id])
+    if target.path != detail_url:
+        return None
+
+    client = Client.objects.filter(id=client_id, bookkeeper=request.bookkeeper_account).values("id", "client_name").first()
+    if client is None:
+        return None
+
+    return {
+        "clientId": client["id"],
+        "clientName": client["client_name"],
+        "url": f"{detail_url}?{target.query}" if target.query else detail_url,
+    }
 
 
 def _mask_email_address(email: str) -> str:
@@ -790,6 +823,7 @@ def clients_page_view(request):
     context["client_details_password_required"] = _client_details_lock_enabled(request.bookkeeper_account)
     context["client_details_access_verified"] = False
     context["client_details_verified_until"] = 0
+    context["client_details_access_target"] = _get_client_details_access_target(request)
     return render(request, "base/clients.html", context)
 
 

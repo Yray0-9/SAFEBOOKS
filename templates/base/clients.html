@@ -490,7 +490,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label client-form-label" for="clientAccessConfirmPassword">Bookkeeper Password</label>
+                <label class="form-label client-form-label" for="clientAccessConfirmPassword">Password</label>
                 <div class="client-password-field">
                     <input class="form-control client-form-input client-password-input" id="clientAccessConfirmPassword" type="password" autocomplete="current-password" placeholder="Enter your password" required>
                     <button class="client-password-toggle" type="button" aria-label="Show password" aria-pressed="false">
@@ -515,6 +515,9 @@
 
 {% block extra_js %}
 <script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
+{% if client_details_access_target %}
+{{ client_details_access_target|json_script:"clientDetailsAccessTarget" }}
+{% endif %}
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -623,6 +626,8 @@
         const ANALYTICS_SUMMARY_API_URL = "{% url 'api_analytics_summary' %}";
         const CLIENT_DETAILS_ACCESS_CONFIRM_URL = "{% url 'api_security_client_details_access_confirm' %}";
         const CLIENT_DETAILS_PASSWORD_REQUIRED = "{{ client_details_password_required|yesno:'true,false' }}" === "true";
+        const clientDetailsAccessTargetElement = document.getElementById("clientDetailsAccessTarget");
+        const redirectedClientDetailsTarget = clientDetailsAccessTargetElement ? JSON.parse(clientDetailsAccessTargetElement.textContent) : null;
 
         let editingRow = null;
         let pendingDeleteRow = null;
@@ -1842,7 +1847,8 @@
         };
 
         const confirmClientDetailsAccess = async () => {
-            if (!pendingClientDetailsTarget || !pendingClientDetailsTarget.url) {
+            const target = pendingClientDetailsTarget;
+            if (!target || !target.url) {
                 return;
             }
 
@@ -1881,6 +1887,9 @@
                 }
 
                 const result = await parseJsonSafe(response);
+                if (pendingClientDetailsTarget !== target) {
+                    return;
+                }
                 if (!response.ok || !result || !result.ok) {
                     const message = result && result.message ? String(result.message) : "Unable to confirm access.";
                     throw new Error(message);
@@ -1888,12 +1897,16 @@
 
                 clientDetailsVerifiedUntil = 0;
                 setClientAccessStatus("Access confirmed.", "success");
-                window.location.assign(pendingClientDetailsTarget.url);
+                window.location.assign(target.url);
             } catch (error) {
-                setClientAccessStatus(error && error.message ? String(error.message) : "Unable to confirm access.", "danger");
-                showToast(error && error.message ? String(error.message) : "Unable to confirm access.");
+                if (pendingClientDetailsTarget === target) {
+                    setClientAccessStatus(error && error.message ? String(error.message) : "Unable to confirm access.", "danger");
+                    showToast(error && error.message ? String(error.message) : "Unable to confirm access.");
+                }
             } finally {
-                setClientAccessLoading(false);
+                if (pendingClientDetailsTarget === target) {
+                    setClientAccessLoading(false);
+                }
             }
         };
 
@@ -2630,6 +2643,9 @@
         }
 
         if (clientAccessConfirmModalElement) {
+            clientAccessConfirmModalElement.addEventListener("hide.bs.modal", () => {
+                pendingClientDetailsTarget = null;
+            });
             clientAccessConfirmModalElement.addEventListener("shown.bs.modal", () => {
                 if (clientAccessConfirmPassword) {
                     clientAccessConfirmPassword.focus();
@@ -2755,6 +2771,14 @@
         hydrateHeaderUser();
         initializeTooltips();
         loadClientsFromApi();
+
+        if (CLIENT_DETAILS_PASSWORD_REQUIRED && redirectedClientDetailsTarget) {
+            const directoryUrl = new URL(window.location.href);
+            directoryUrl.searchParams.delete("client_access_required");
+            directoryUrl.searchParams.delete("next");
+            window.history.replaceState(window.history.state, "", `${directoryUrl.pathname}${directoryUrl.search}${directoryUrl.hash}`);
+            openClientAccessConfirmModal(redirectedClientDetailsTarget, redirectedClientDetailsTarget.url);
+        }
 
         window.addEventListener("resize", () => {
             sidebarState.closeMobileSidebar();

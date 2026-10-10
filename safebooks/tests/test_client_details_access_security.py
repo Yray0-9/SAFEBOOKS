@@ -114,6 +114,133 @@ class ClientDetailsAccessSecurityTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json().get("ok"))
 
+    def test_protected_details_redirect_prepares_selected_client_prompt(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        self._login_as(account)
+        client = self._create_client(account)
+        detail_url = reverse("client_details", args=[client.id]) + "?year=2025&horizon=6"
+
+        response = self.client.get(detail_url, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "base/clients.html")
+        self.assertEqual(response.context["client_details_access_target"], {
+            "clientId": client.id,
+            "clientName": client.client_name,
+            "url": detail_url,
+        })
+        self.assertContains(response, 'id="clientDetailsAccessTarget"')
+        self.assertContains(response, "openClientAccessConfirmModal(redirectedClientDetailsTarget, redirectedClientDetailsTarget.url)")
+        self.assertContains(response, 'directoryUrl.searchParams.delete("client_access_required")')
+        self.assertContains(response, 'directoryUrl.searchParams.delete("next")')
+        self.assertContains(response, 'addEventListener("hide.bs.modal"')
+        self.assertContains(response, "if (pendingClientDetailsTarget !== target)")
+
+    def test_normal_directory_does_not_prepare_a_password_prompt(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        self._login_as(account)
+        client = self._create_client(account)
+
+        for params in ({}, {"next": reverse("client_details", args=[client.id])}):
+            with self.subTest(params=params):
+                response = self.client.get(reverse("clients"), params)
+                self.assertEqual(response.status_code, 200)
+                self.assertIsNone(response.context["client_details_access_target"])
+                self.assertNotContains(response, 'id="clientDetailsAccessTarget"')
+
+    def test_disabled_lock_ignores_stale_password_prompt_parameters(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+
+        response = self.client.get(reverse("clients"), {
+            "client_access_required": "1",
+            "next": reverse("client_details", args=[client.id]),
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["client_details_access_target"])
+        self.assertNotContains(response, 'id="clientDetailsAccessTarget"')
+
+    def test_password_prompt_rejects_unsafe_or_non_detail_return_targets(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        self._login_as(account)
+        client = self._create_client(account)
+        detail_url = reverse("client_details", args=[client.id])
+        invalid_targets = (
+            "", "https://example.com" + detail_url, "//example.com" + detail_url,
+            "https://testserver" + detail_url, "\\\\example.com" + detail_url,
+            detail_url.lstrip("/"), detail_url + "#section", "/clients/not-an-id/",
+            "/clients/999999/", detail_url + "../", reverse("dashboard"),
+            reverse("api_client_detail", kwargs={"client_id": client.id}),
+        )
+
+        for target in invalid_targets:
+            with self.subTest(target=target):
+                response = self.client.get(reverse("clients"), {
+                    "client_access_required": "1", "next": target,
+                })
+                self.assertEqual(response.status_code, 200)
+                self.assertIsNone(response.context["client_details_access_target"])
+                self.assertNotContains(response, 'id="clientDetailsAccessTarget"')
+
+    def test_password_prompt_does_not_expose_another_bookkeepers_client(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        other_account = self._create_bookkeeper(lock_enabled=False)
+        foreign_client = self._create_client(other_account)
+        self._login_as(account)
+        detail_url = reverse("client_details", args=[foreign_client.id])
+
+        response = self.client.get(reverse("clients"), {
+            "client_access_required": "1", "next": detail_url,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["client_details_access_target"])
+        self.assertNotContains(response, 'id="clientDetailsAccessTarget"')
+        self.assertNotContains(response, foreign_client.client_name)
+        self.assertEqual(self.client.get(detail_url).status_code, 404)
+
+    def test_password_prompt_escapes_client_name_as_json_data(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        self._login_as(account)
+        client = self._create_client(account)
+        client.client_name = '</script><script>alert("client")</script>'
+        client.save(update_fields=["client_name"])
+
+        response = self.client.get(reverse("client_details", args=[client.id]), follow=True)
+
+        self.assertEqual(response.context["client_details_access_target"]["clientName"], client.client_name)
+        self.assertContains(response, r"\u003C/script\u003E\u003Cscript\u003E")
+        self.assertNotContains(response, client.client_name)
+
+    def test_selected_client_prompt_still_requires_correct_password(self):
+        account = self._create_bookkeeper(lock_enabled=True)
+        self._login_as(account)
+        client = self._create_client(account)
+        detail_url = reverse("client_details", args=[client.id])
+        response = self.client.get(detail_url, follow=True)
+        target = response.context["client_details_access_target"]
+
+        wrong_response = self.client.post(
+            reverse("api_security_client_details_access_confirm"),
+            data=json.dumps({"current_password": "WrongPassword#123"}),
+            content_type="application/json",
+        )
+        self.assertEqual(wrong_response.status_code, 400)
+        self.assertEqual(self.client.get(target["url"]).status_code, 302)
+
+        correct_response = self.client.post(
+            reverse("api_security_client_details_access_confirm"),
+            data=json.dumps({"current_password": "SafeBooks#123"}),
+            content_type="application/json",
+        )
+        self.assertEqual(correct_response.status_code, 200)
+        detail_response = self.client.get(target["url"])
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(detail_response.context["client"].id, client.id)
+        self.assertEqual(self.client.get(target["url"]).status_code, 302)
+
     def test_client_details_confirmation_allows_recent_access(self):
         account = self._create_bookkeeper(lock_enabled=True)
         self._login_as(account)
