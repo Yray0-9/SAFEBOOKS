@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 from datetime import date
 from decimal import Decimal
 
@@ -22,6 +24,7 @@ class DashboardSummaryApiTests(TestCase):
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _build_tin(self, token: str) -> str:

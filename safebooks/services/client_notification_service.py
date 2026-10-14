@@ -6,6 +6,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 from safebooks.models import FinancialRecord, Period
+from safebooks.services.email_delivery_service import email_count_confirmed, preview_only_email_backend
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,9 @@ def send_financial_record_created_email(record: FinancialRecord) -> dict:
             "reason": "Client email is not provided.",
         }
 
+    if preview_only_email_backend():
+        return {"sent": False, "skipped": True, "reason": "The local email backend does not send emails to inboxes."}
+
     bookkeeper_name = (
         str(getattr(bookkeeper, "full_name", "") or "").strip()
         or str(getattr(bookkeeper, "username", "") or "").strip()
@@ -79,8 +83,9 @@ def send_financial_record_created_email(record: FinancialRecord) -> dict:
         else "N/A"
     )
 
-    line_items_qs = record.line_items.all().order_by("sort_order", "id")
-    line_item_count = line_items_qs.count()
+    # Financial saves supply a prefetched, ordered snapshot before commit.
+    line_items_qs = list(record.line_items.all())
+    line_item_count = len(line_items_qs)
 
     line_items_data = [
         {
@@ -127,16 +132,14 @@ def send_financial_record_created_email(record: FinancialRecord) -> dict:
             "emails/client_financial_record_notification.html",
             html_context,
         )
-    except Exception:
+    except Exception as error:
         logger.warning(
-            "Failed to render client record notification HTML template for record %s, falling back to plain text.",
-            record.id,
-            exc_info=True,
+            "Client notification template failed (%s); using plain text.", type(error).__name__,
         )
         html_message = None
 
     try:
-        send_mail(
+        sent_count = send_mail(
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
@@ -144,17 +147,18 @@ def send_financial_record_created_email(record: FinancialRecord) -> dict:
             html_message=html_message,
             fail_silently=False,
         )
-    except Exception:
+    except Exception as error:
         logger.warning(
-            "Failed to send financial record notification email for record %s.",
-            record.id,
-            exc_info=True,
+            "Client notification failed (%s).", type(error).__name__,
         )
         return {
             "sent": False,
             "skipped": False,
             "reason": "Email delivery failed.",
         }
+
+    if not email_count_confirmed(sent_count):
+        return {"sent": False, "skipped": False, "reason": "The email backend did not accept the email."}
 
     return {
         "sent": True,

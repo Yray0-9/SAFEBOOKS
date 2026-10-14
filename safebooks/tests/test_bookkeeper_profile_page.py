@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
 
 from django.test import TestCase
@@ -22,6 +24,7 @@ class BookkeeperProfilePageTests(TestCase):
     def login_bookkeeper(self):
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = self.bookkeeper.id
+        bind_authenticated_session(session)
         session.save()
 
     def test_profile_page_and_api_require_authentication(self):

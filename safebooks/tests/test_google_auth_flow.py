@@ -99,4 +99,5 @@ class GoogleAuthFlowTests(TestCase):
         self.assertFalse(result.get("requires_signup_completion", False))
         account.refresh_from_db()
         self.assertEqual(account.google_sub, "existing-google-sub")
-        self.assertIsNotNone(account.last_login)
+        # Linking and the primary factor alone are not a completed sign-in.
+        self.assertIsNone(account.last_login)

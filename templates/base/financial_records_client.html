@@ -176,6 +176,7 @@
             </div>
         </nav>
 
+        <p class="text-danger" id="financialLoadError" role="alert" hidden></p>
         <div class="financial-empty-state" id="financialEmptyState" hidden>
             <p>No records for this period yet. Add the first entry when this client's record is ready.</p>
             <button type="button" class="btn dashboard-action-btn primary" data-bs-toggle="modal" data-bs-target="#addEntryModal">Add Entry for This Period</button>
@@ -297,6 +298,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <form class="modal-content" id="editEntryForm" novalidate>
             <input type="hidden" id="editEntryId" name="entry_id">
+            <input type="hidden" id="editEntryRevision" name="expected_revision">
             <div class="modal-header">
                 <h2 class="modal-title h5" id="editEntryModalTitle">
                     Edit Record Entry
@@ -304,6 +306,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <p class="alert alert-warning" id="editEntryStatus" role="alert" hidden></p>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label financial-form-label" for="editEntryDate">Record Date</label>
@@ -383,6 +386,7 @@
             <div class="modal-body">
                 <p class="financial-delete-text">Are you sure you want to delete this entry?</p>
                 <p class="financial-delete-period" id="deleteEntryPeriodLabel">-</p>
+                <p class="alert alert-warning" id="deleteEntryStatus" role="alert" hidden></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
@@ -658,9 +662,11 @@
         const RECORDS_PAGE_SIZE = 10;
         let filterTransitionTimer = null;
         let pendingDeleteEntryId = null;
+        let pendingDeleteRevision = "";
         let lineItemCounter = 20;
         let isAddSubmitting = false;
         let isEditSubmitting = false;
+        let isDeleteSubmitting = false;
         let isReuseLoading = false;
         let recordsLoadRequestToken = 0;
         let activePriorFrequencies = new Set();
@@ -773,7 +779,7 @@
 
         const logoutCurrentUser = async () => {
             if (!shared || typeof shared.logoutCurrentUser !== "function") {
-                return "{% url 'login' %}";
+                throw new Error("Logout is unavailable. Reload this page and try again.");
             }
 
             return shared.logoutCurrentUser({
@@ -835,7 +841,7 @@
                 return "";
             }
             if (notification.sent) {
-                return "Client email sent.";
+                return "Client email accepted for delivery (inbox receipt is not confirmed).";
             }
             if (notification.skipped) {
                 return notification.reason ? `Client email skipped: ${notification.reason}` : "Client email skipped.";
@@ -1536,6 +1542,8 @@
         };
 
         const populateEditForm = (entry) => {
+            document.getElementById("editEntryRevision").value = String(entry.revision || "");
+            document.getElementById("editEntryStatus").hidden = true;
             const editEntryId = document.getElementById("editEntryId");
             const editEntryDate = document.getElementById("editEntryDate");
             const editEntryNotes = document.getElementById("editEntryNotes");
@@ -1567,7 +1575,7 @@
 
             const lineItems = collectLineItems(lineItemsBody);
 
-            return {
+            const payload = {
                 month: activeMonth,
                 year: activeYear,
                 date: dateInput ? dateInput.value.trim() : "",
@@ -1575,6 +1583,10 @@
                 frequency: frequencyInput ? String(frequencyInput.value || "monthly") : "monthly",
                 line_items: lineItems,
             };
+            if (isEdit) {
+                payload.expected_revision = document.getElementById("editEntryRevision").value;
+            }
+            return payload;
         };
 
         const parseIsoDateParts = (value) => {
@@ -1868,7 +1880,7 @@
 
                 const typeCode = String(lineItem.type_code || "").trim();
                 const description = String(lineItem.description || "").trim();
-                const amountText = String(lineItem.amount || "").trim();
+                const amountText = String(lineItem.amount ?? "").trim();
 
                 if (!typeCode) {
                     return `Line item #${lineNumber} type/code is required.`;
@@ -1880,8 +1892,9 @@
                     return `Line item #${lineNumber}: Amount is required.`;
                 }
 
-                const amountValue = Number.parseFloat(amountText);
-                if (!Number.isFinite(amountValue)) {
+                const amountValue = Number(amountText);
+                const decimalNumberPattern = /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
+                if (!decimalNumberPattern.test(amountText) || !Number.isFinite(amountValue)) {
                     return `Line item #${lineNumber}: Amount must be a valid number.`;
                 }
                 if (amountValue < 0) {
@@ -1919,6 +1932,15 @@
 
             submitButton.disabled = isSubmitting;
             submitButton.textContent = isSubmitting ? loadingLabel : idleLabel;
+        };
+
+        const showMutationFailure = (formType, message) => {
+            const status = document.getElementById(`${formType}EntryStatus`);
+            if (status) {
+                status.textContent = message;
+                status.hidden = false;
+            }
+            showToast(message);
         };
 
         const resolveClientIdFromTin = async () => {
@@ -1959,6 +1981,15 @@
             clientContext.tradeName = matchedClient.trade_name || clientContext.tradeName;
         };
 
+        const setRecordsLoadFailure = (message) => {
+            const loadError = document.getElementById("financialLoadError");
+            if (loadError) { loadError.textContent = message; loadError.hidden = false; }
+            if (financialEmptyState) financialEmptyState.hidden = true;
+            if (periodEntriesTag) periodEntriesTag.textContent = "Not loaded";
+            const summaryCard = document.querySelector(".financial-summary-card");
+            if (summaryCard) summaryCard.hidden = true;
+        };
+
         const loadRecordsFromApi = async () => {
             if (!hasValidClientId()) {
                 setRecordsLoadingState(false);
@@ -1976,6 +2007,8 @@
             }
             recordsLoadAbortController = new AbortController();
             setRecordsLoadingState(true);
+            const loadError = document.getElementById("financialLoadError");
+            if (loadError) loadError.hidden = true;
 
             const params = new URLSearchParams();
             params.set("month", String(activeMonth));
@@ -2011,6 +2044,7 @@
                     activePriorFrequencies = new Set();
                     setReusePanelVisibility(false);
                     renderEntriesTable();
+                    setRecordsLoadFailure(message);
                     return;
                 }
 
@@ -2064,6 +2098,8 @@
 
                 expandedEntryIds.clear();
                 setRecordsLoadingState(false);
+                const summaryCard = document.querySelector(".financial-summary-card");
+                if (summaryCard) summaryCard.hidden = false;
                 renderEntriesTable();
             } catch (error) {
                 if (error && error.name === "AbortError") {
@@ -2081,6 +2117,7 @@
                 activePriorFrequencies = new Set();
                 setReusePanelVisibility(false);
                 renderEntriesTable();
+                setRecordsLoadFailure("Unable to load financial records. Please retry.");
             }
         };
 
@@ -2193,6 +2230,8 @@
                 if (editEntryDuplicateWarning) {
                     editEntryDuplicateWarning.hidden = true;
                 }
+                document.getElementById("editEntryRevision").value = "";
+                document.getElementById("editEntryStatus").hidden = true;
             });
         }
 
@@ -2289,6 +2328,8 @@
                     }
 
                     pendingDeleteEntryId = entryId;
+                    pendingDeleteRevision = String(entry.revision || "");
+                    document.getElementById("deleteEntryStatus").hidden = true;
                     if (deleteEntryPeriodLabel) {
                         deleteEntryPeriodLabel.textContent = `${getActivePeriodLabel()} \u2022 ${toDisplayText(entry.date)} \u2022 ${formatCurrency(getEntryTotal(entry))}`;
                     }
@@ -2374,6 +2415,7 @@
                     }
 
                     addEntryFormDirty = false;
+                    isAddSubmitting = false;
                     if (addEntryModal) {
                         addEntryModal.hide();
                     }
@@ -2384,6 +2426,8 @@
                     const baseMessage = result.message || "Financial entry added successfully.";
                     const finalMessage = periodChanged ? `${baseMessage} Switched to ${getActivePeriodLabel()}.` : baseMessage;
                     showToast(finalMessage);
+                } catch (error) {
+                    showMutationFailure("add", "No response received. Your draft is kept. Check the records before trying again; the entry may have saved.");
                 } finally {
                     isAddSubmitting = false;
                     setFormSubmitState(addEntryForm, false, "Save Entry", "Saving...");
@@ -2446,11 +2490,12 @@
                     const result = await parseJsonSafe(response);
                     if (!response.ok || !result || !result.ok) {
                         const message = result && result.message ? result.message : "Unable to update financial entry.";
-                        showToast(message);
+                        showMutationFailure("edit", message);
                         return;
                     }
 
                     editEntryFormDirty = false;
+                    isEditSubmitting = false;
                     if (editEntryModal) {
                         editEntryModal.hide();
                     }
@@ -2461,6 +2506,8 @@
                     const baseMessage = result.message || "Financial entry updated successfully.";
                     const finalMessage = periodChanged ? `${baseMessage} Switched to ${getActivePeriodLabel()}.` : baseMessage;
                     showToast(finalMessage);
+                } catch (error) {
+                    showMutationFailure("edit", "No response received. Your draft is kept. Check the records before trying again; the change may have saved.");
                 } finally {
                     isEditSubmitting = false;
                     setFormSubmitState(editEntryForm, false, "Update Entry", "Updating...");
@@ -2470,7 +2517,7 @@
 
         if (confirmDeleteEntryBtn) {
             confirmDeleteEntryBtn.addEventListener("click", async () => {
-                if (!Number.isFinite(pendingDeleteEntryId)) {
+                if (isDeleteSubmitting || !Number.isFinite(pendingDeleteEntryId)) {
                     return;
                 }
 
@@ -2480,33 +2527,46 @@
                 }
 
                 const csrfToken = getCookieValue("csrftoken");
-                const response = await fetch(buildRecordDetailApiUrl(activeClientId, pendingDeleteEntryId), {
-                    method: "DELETE",
-                    headers: {
-                        "X-CSRFToken": csrfToken
-                    },
-                    credentials: "same-origin"
-                });
+                isDeleteSubmitting = true;
+                confirmDeleteEntryBtn.disabled = true;
+                try {
+                    const response = await fetch(buildRecordDetailApiUrl(activeClientId, pendingDeleteEntryId), {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": csrfToken
+                        },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ expected_revision: pendingDeleteRevision })
+                    });
 
-                if (response.status === 401) {
-                    redirectToLogin();
-                    return;
+                    if (response.status === 401) {
+                        redirectToLogin();
+                        return;
+                    }
+
+                    const result = await parseJsonSafe(response);
+                    if (!response.ok || !result || !result.ok) {
+                        const message = result && result.message ? result.message : "Unable to delete financial entry.";
+                        showMutationFailure("delete", message);
+                        return;
+                    }
+
+                    pendingDeleteEntryId = null;
+                    pendingDeleteRevision = "";
+                    isDeleteSubmitting = false;
+                    if (deleteEntryModal) {
+                        deleteEntryModal.hide();
+                    }
+
+                    await loadRecordsFromApi();
+                    showToast(result.message || "Financial entry deleted successfully.");
+                } catch (error) {
+                    showMutationFailure("delete", "No response received. Check the records before trying again; the entry may have been deleted.");
+                } finally {
+                    isDeleteSubmitting = false;
+                    confirmDeleteEntryBtn.disabled = false;
                 }
-
-                const result = await parseJsonSafe(response);
-                if (!response.ok || !result || !result.ok) {
-                    const message = result && result.message ? result.message : "Unable to delete financial entry.";
-                    showToast(message);
-                    return;
-                }
-
-                pendingDeleteEntryId = null;
-                if (deleteEntryModal) {
-                    deleteEntryModal.hide();
-                }
-
-                await loadRecordsFromApi();
-                showToast(result.message || "Financial entry deleted successfully.");
             });
         }
 
@@ -2524,6 +2584,10 @@
                 addEntryFormDirty = false;
             });
             addEntryModalElement.addEventListener("hide.bs.modal", (event) => {
+                if (isAddSubmitting) {
+                    event.preventDefault();
+                    return;
+                }
                 if (addEntryFormDirty) {
                     event.preventDefault();
                     if (shared && typeof shared.showConfirmDiscard === "function") {
@@ -2553,6 +2617,10 @@
 
         if (editEntryModalElement) {
             editEntryModalElement.addEventListener("hide.bs.modal", (event) => {
+                if (isEditSubmitting) {
+                    event.preventDefault();
+                    return;
+                }
                 if (editEntryFormDirty) {
                     event.preventDefault();
                     if (shared && typeof shared.showConfirmDiscard === "function") {
@@ -2581,8 +2649,15 @@
         }
 
         if (deleteEntryModalElement) {
+            deleteEntryModalElement.addEventListener("hide.bs.modal", (event) => {
+                if (isDeleteSubmitting) {
+                    event.preventDefault();
+                }
+            });
             deleteEntryModalElement.addEventListener("hidden.bs.modal", () => {
                 pendingDeleteEntryId = null;
+                pendingDeleteRevision = "";
+                document.getElementById("deleteEntryStatus").hidden = true;
             });
         }
 
@@ -2601,6 +2676,8 @@
                     const redirectUrl = await logoutCurrentUser();
                     showToast("Logging out...");
                     window.location.assign(redirectUrl);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                 } finally {
                     dashboardLogoutAction.disabled = false;
                 }

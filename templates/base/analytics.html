@@ -329,6 +329,7 @@
         </div> <!-- End Tab 2 -->
     </div>
 
+    <p class="text-danger" id="analyticsLoadError" role="alert" hidden></p>
     <article class="analytics-empty-state" id="analyticsEmptyState" hidden>
         <div class="dashboard-data-empty">
             <p>No financial data available yet.</p>
@@ -522,7 +523,7 @@
 
         const logoutCurrentUser = async () => {
             if (!shared || typeof shared.logoutCurrentUser !== "function") {
-                return "{% url 'login' %}";
+                throw new Error("Logout is unavailable. Reload this page and try again.");
             }
 
             return shared.logoutCurrentUser({
@@ -2083,6 +2084,8 @@
             }
             analyticsAbortController = new AbortController();
             setAnalyticsLoadingState(true);
+            const loadError = document.getElementById("analyticsLoadError");
+            if (loadError) loadError.hidden = true;
 
             try {
                 const response = await fetch(buildAnalyticsSummaryApiUrl(clientId), {
@@ -2109,7 +2112,13 @@
                 if (!response.ok || !result || !result.ok) {
                     setAnalyticsLoadingState(false);
                     applyAnalyticsFallbackState();
-                    showToast("Unable to load analytics right now. Please try again.", "danger");
+                    if (result && Array.isArray(result.available_clients)) {
+                        populateClientSelector(result.available_clients, clientId);
+                    }
+                    const message = result && result.message ? result.message : "Unable to load analytics right now. Please try again.";
+                    if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+                    if (loadError) { loadError.textContent = message; loadError.hidden = false; }
+                    showToast(message, "danger");
                     return;
                 }
 
@@ -2139,6 +2148,8 @@
 
                 setAnalyticsLoadingState(false);
                 applyAnalyticsFallbackState();
+                if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+                if (loadError) { loadError.textContent = "Network issue detected while loading analytics. Please retry."; loadError.hidden = false; }
                 showToast("Network issue detected while loading analytics.", "warning");
             }
         };
@@ -2284,6 +2295,8 @@
                         const redirectUrl = await logoutCurrentUser();
                         showToast("Logging out...", "success");
                         window.location.assign(redirectUrl);
+                    } catch (error) {
+                        showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                     } finally {
                         dashboardLogoutAction.disabled = false;
                     }

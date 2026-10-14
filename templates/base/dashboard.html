@@ -1419,7 +1419,7 @@
 
         const logoutCurrentUser = async () => {
             if (!shared || typeof shared.logoutCurrentUser !== "function") {
-                return "{% url 'login' %}";
+                throw new Error("Logout is unavailable. Reload this page and try again.");
             }
 
             return shared.logoutCurrentUser({
@@ -1590,16 +1590,20 @@
         if (dashboardLogoutAction) {
             dashboardLogoutAction.addEventListener("click", async (event) => {
                 event.preventDefault();
-
-                const redirectUrl = await logoutCurrentUser();
-
-                showToast("You have been logged out.");
-
-                window.setTimeout(() => {
-                    document.body.classList.remove("skeleton-loaded");
-                    document.body.classList.add("skeleton-active");
-                    window.location.assign(redirectUrl);
-                }, 300);
+                if (dashboardLogoutAction.disabled) return;
+                dashboardLogoutAction.disabled = true;
+                try {
+                    const redirectUrl = await logoutCurrentUser();
+                    showToast("You have been logged out.");
+                    window.setTimeout(() => {
+                        document.body.classList.remove("skeleton-loaded");
+                        document.body.classList.add("skeleton-active");
+                        window.location.assign(redirectUrl);
+                    }, 300);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
+                    dashboardLogoutAction.disabled = false;
+                }
             });
         }
 

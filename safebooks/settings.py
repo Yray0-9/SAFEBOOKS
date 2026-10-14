@@ -17,7 +17,10 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# Production must use hosting secrets, never accidentally inherit a developer's
+# local database, SMTP, or OAuth credentials from a copied .env file.
+if os.environ.get("DJANGO_SETTINGS_MODULE") != "safebooks.settings_production":
+    load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production

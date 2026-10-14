@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
 from unittest.mock import patch
 
@@ -39,6 +41,7 @@ class FeedbackApiTests(TestCase):
     def _login_bookkeeper(self, account):
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _payload(self, **overrides):
@@ -192,6 +195,7 @@ class FeedbackApiTests(TestCase):
         csrf_client = Client(enforce_csrf_checks=True)
         session = csrf_client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = self.bookkeeper.id
+        bind_authenticated_session(session)
         session.save()
 
         response = csrf_client.post(

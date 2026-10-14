@@ -9,6 +9,7 @@ import qrcode.image.svg
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
+from safebooks.services.session_security_service import save_account_security_change
 from django.utils import timezone
 
 from safebooks.models import AdminAccount, AdminAuditLog
@@ -195,7 +196,7 @@ def enable_admin_two_factor(admin_account: AdminAccount, setup_secret: str, payl
         admin_account.two_factor_secret = setup_secret
         admin_account.two_factor_confirmed_at = timezone.now()
         admin_account.two_factor_recovery_codes = recovery_code_hashes
-        admin_account.save(update_fields=[
+        save_account_security_change(admin_account, [
             "two_factor_enabled",
             "two_factor_secret",
             "two_factor_confirmed_at",
@@ -238,7 +239,7 @@ def regenerate_admin_two_factor_recovery_codes(
     recovery_codes, recovery_code_hashes = _build_recovery_code_set()
     with transaction.atomic():
         admin_account.two_factor_recovery_codes = recovery_code_hashes
-        admin_account.save(update_fields=["two_factor_recovery_codes"])
+        save_account_security_change(admin_account, ["two_factor_recovery_codes"])
         _create_security_audit(
             admin_account,
             AdminAuditLog.ACTION_ADMIN_TWO_FACTOR_RECOVERY_CODES_REGENERATED,
@@ -294,7 +295,7 @@ def disable_admin_two_factor(admin_account: AdminAccount, payload: dict) -> dict
         admin_account.two_factor_secret = ""
         admin_account.two_factor_confirmed_at = None
         admin_account.two_factor_recovery_codes = []
-        admin_account.save(update_fields=[
+        save_account_security_change(admin_account, [
             "two_factor_enabled",
             "two_factor_secret",
             "two_factor_confirmed_at",

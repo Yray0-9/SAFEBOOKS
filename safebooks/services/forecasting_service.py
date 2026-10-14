@@ -4,6 +4,7 @@ import math
 import logging
 import warnings
 from decimal import Decimal, InvalidOperation
+from safebooks.services.workload_limits import MAX_FORECAST_OBSERVATIONS, WorkloadLimitExceeded
 
 
 logger = logging.getLogger(__name__)
@@ -44,11 +45,13 @@ def _future_periods(
     current = last_period
     through_index = _period_index(forecast_through)
 
-    for _ in range(240):
+    for _ in range(241):
         current = _next_period(current, frequency)
         if _period_index(current) > through_index:
             break
         periods.append(current)
+        if len(periods) > 240:
+            raise WorkloadLimitExceeded("This forecast spans more than 240 scheduled periods. Select one client or a narrower year range. No partial forecast was returned.")
 
     return periods
 
@@ -140,12 +143,28 @@ def _fit_sarima(values: list[float], seasonal_period: int, steps: int) -> list[f
     return predicted_values
 
 
+def requires_sarima_fit(*, period_totals, frequency, forecast_through):
+    """Plan synchronous work without fitting or changing forecast decisions."""
+    config = FREQUENCY_CONFIG.get(frequency)
+    periods = sorted(period_totals)
+    if not config or len(periods) < config["minimum_observations"]:
+        return False
+    if not _validate_regular_periods(periods, frequency) or not _future_periods(periods[-1], frequency, forecast_through):
+        return False
+    try:
+        return all(Decimal(period_totals[period]).is_finite() for period in periods)
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+
+
 def build_sarima_forecast(
     *,
     period_totals: dict[tuple[int, int], Decimal],
     frequency: str,
     forecast_through: tuple[int, int],
 ) -> dict | None:
+    if len(period_totals) > MAX_FORECAST_OBSERVATIONS:
+        raise WorkloadLimitExceeded("This forecast exceeds 240 observations. Select a narrower year range. No historical values were truncated.")
     periods = sorted(period_totals)
     if not periods:
         return None

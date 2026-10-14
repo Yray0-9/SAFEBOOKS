@@ -1,5 +1,7 @@
 from datetime import timedelta
+from hashlib import sha256
 import json
+import logging
 import secrets
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -9,14 +11,19 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db.models import Q
+from django.db import IntegrityError, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 
 from safebooks.models import AdminAccount, BookkeeperAccount
+from safebooks.services.session_security_service import account_session_auth_hash
 from safebooks.validators.password_validator import missing_password_requirements
+from safebooks.validators.data_validator import model_text_errors
+from safebooks.services.email_delivery_service import email_count_confirmed, LOCAL_EMAIL_BACKENDS
 
 
 AUTH_FAILURE_MESSAGE = "Invalid credentials."
+logger = logging.getLogger(__name__)
 AUTH_USER_NOT_FOUND_MESSAGE = "No account found with this email or username."
 AUTH_WRONG_PASSWORD_MESSAGE = "Incorrect password. Please try again."
 AUTH_INACTIVE_ACCOUNT_MESSAGE = "This account is inactive. Please contact support."
@@ -24,6 +31,21 @@ GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
 GOOGLE_OAUTH_TIMEOUT_SECONDS = 10
+
+
+def _create_bookkeeper_with_unique_checks(values):
+    try:
+        with transaction.atomic():
+            return BookkeeperAccount.objects.create(**values), None
+    except IntegrityError:
+        # Uniqueness can change after the friendly pre-check; query after rollback.
+        for field, message in (("email", "Email already exists."), ("username", "Username already exists."),
+                               ("google_sub", "This Google account is already linked to SafeBooks.")):
+            value = values.get(field)
+            if value and BookkeeperAccount.objects.filter(**{f"{field}__iexact": value}).exists():
+                return None, {"ok": False, "message": message, "errors": [message]}
+        message = "Unable to create the account. Refresh and try again."
+        return None, {"ok": False, "message": message, "errors": [message]}
 
 EMAIL_VERIFICATION_CODE_LENGTH = 6
 DEFAULT_VERIFICATION_TTL_MINUTES = 10
@@ -38,6 +60,7 @@ PASSWORD_RESET_CACHE_PREFIX = "safebooks:password-reset"
 PASSWORD_RESET_CACHE_CODE_SUFFIX = "code"
 PASSWORD_RESET_CACHE_SENT_SUFFIX = "sent"
 PASSWORD_RESET_CACHE_VERIFIED_SUFFIX = "verified"
+PASSWORD_RESET_AUTHORIZATION_TTL_SECONDS = 5 * 60
 
 
 def _get_google_client_id() -> str:
@@ -235,18 +258,18 @@ def authenticate_google_bookkeeper(profile: dict) -> dict:
             "message": "Account pending approval. You will get access once approved.",
             "user": _build_bookkeeper_payload(account),
             "role": "bookkeeper",
+            "_auth_hash": account_session_auth_hash(account),
         }
 
-    account.last_login = timezone.now()
-    update_fields.append("last_login")
-    account.save(update_fields=update_fields)
-    _maybe_send_login_alert(account)
+    if update_fields:
+        account.save(update_fields=update_fields)
 
     return {
         "ok": True,
         "message": "Google sign-in successful.",
         "user": _build_bookkeeper_payload(account),
         "role": "bookkeeper",
+        "_auth_hash": account_session_auth_hash(account),
     }
 
 
@@ -273,6 +296,11 @@ def complete_google_signup(profile: dict, data: dict) -> dict:
     password_requirement_errors = missing_password_requirements(password)
     if password and password_requirement_errors:
         errors.append("Password does not meet requirements.")
+
+    errors.extend(model_text_errors(BookkeeperAccount, {
+        **data, "google_sub": google_sub, "email": email,
+        "full_name": data.get("full_name") or profile.get("full_name"),
+    }))
 
     if errors:
         return {
@@ -303,15 +331,14 @@ def complete_google_signup(profile: dict, data: dict) -> dict:
             "errors": ["This Google account is already linked to SafeBooks."],
         }
 
-    account = BookkeeperAccount.objects.create(
-        full_name=full_name,
-        email=email,
-        username=username,
-        google_sub=google_sub,
-        password_hash=make_password(password),
-        status=BookkeeperAccount.STATUS_PENDING,
-        email_verified=True,
-    )
+    account, create_error = _create_bookkeeper_with_unique_checks({
+        "full_name": full_name, "email": email, "username": username, "google_sub": google_sub,
+        "password_hash": make_password(password), "status": BookkeeperAccount.STATUS_PENDING, "email_verified": True,
+    })
+    if create_error:
+        if create_error["message"] == "Email already exists.":
+            create_error["message"] = "Email already exists. Please sign in with Google instead."
+        return create_error
 
     return {
         "ok": True,
@@ -404,16 +431,27 @@ def _maybe_send_login_alert(account: BookkeeperAccount) -> None:
 
     try:
         subject, message = _build_login_alert_email(account, timezone.now())
-        send_mail(
+        sent_count = send_mail(
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
             [account.email],
             fail_silently=False,
         )
-    except Exception:
+        if not email_count_confirmed(sent_count):
+            logger.warning("Login alert was not accepted by the email backend.")
+    except Exception as error:
         # Avoid blocking logins if email delivery fails.
+        logger.warning("Login alert failed (%s).", type(error).__name__)
         return
+
+
+def complete_bookkeeper_login(account: BookkeeperAccount) -> None:
+    """Record a sign-in only after all configured factors have succeeded."""
+    if account.email_verified and account.status == BookkeeperAccount.STATUS_APPROVED:
+        account.last_login = timezone.now()
+        account.save(update_fields=["last_login"])
+        _maybe_send_login_alert(account)
 
 
 def send_email_verification_code(account: BookkeeperAccount, force: bool = False) -> dict:
@@ -454,13 +492,15 @@ def send_email_verification_code(account: BookkeeperAccount, force: bool = False
     subject, message = _build_verification_email(account, code, ttl_minutes)
 
     try:
-        send_mail(
+        sent_count = send_mail(
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
             [account.email],
             fail_silently=False,
         )
+        if not email_count_confirmed(sent_count):
+            return {"ok": False, "message": "The email backend did not accept the verification email. Please try again later."}
     except Exception:
         return {
             "ok": False,
@@ -480,7 +520,7 @@ def send_email_verification_code(account: BookkeeperAccount, force: bool = False
 
     result = {
         "ok": True,
-        "message": "Verification code sent.",
+        "message": "Verification code prepared locally; no inbox delivery." if settings.EMAIL_BACKEND in LOCAL_EMAIL_BACKENDS else "Verification email accepted for delivery. Check your inbox or spam folder.",
         "retry_after_seconds": cooldown_seconds,
     }
 
@@ -565,9 +605,9 @@ def _looks_like_supported_hash(password_hash: str) -> bool:
 
 
 def register_user(data: dict) -> dict:
-    full_name = str(data.get("full_name", "")).strip()
-    email = str(data.get("email", "")).strip()
-    username = str(data.get("username", "")).strip()
+    full_name = str(data.get("full_name") or "").strip()
+    email = str(data.get("email") or "").strip()
+    username = str(data.get("username") or "").strip()
     password = str(data.get("password", ""))
     confirm_password = str(data.get("confirm_password", ""))
 
@@ -587,6 +627,8 @@ def register_user(data: dict) -> dict:
     password_requirement_errors = missing_password_requirements(password)
     if password and password_requirement_errors:
         errors.append("Password does not meet requirements.")
+
+    errors.extend(model_text_errors(BookkeeperAccount, data))
 
     if errors:
         return {
@@ -610,14 +652,12 @@ def register_user(data: dict) -> dict:
             "errors": ["Username already exists."],
         }
 
-    account = BookkeeperAccount.objects.create(
-        full_name=full_name,
-        email=email,
-        username=username,
-        password_hash=make_password(password),
-        status=BookkeeperAccount.STATUS_PENDING,
-        email_verified=False,
-    )
+    account, create_error = _create_bookkeeper_with_unique_checks({
+        "full_name": full_name, "email": email, "username": username,
+        "password_hash": make_password(password), "status": BookkeeperAccount.STATUS_PENDING, "email_verified": False,
+    })
+    if create_error:
+        return create_error
 
     verification_result = send_email_verification_code(account, force=True)
     verification_sent = verification_result.get("ok", False)
@@ -728,6 +768,7 @@ def login_user(data: dict) -> dict:
             "ok": True,
             "message": "Email verification required. Check your inbox for a 6-digit code.",
             "requires_email_verification": True,
+            "_auth_hash": account_session_auth_hash(account),
             "user": {
                 "id": account.id,
                 "full_name": account.full_name,
@@ -743,6 +784,7 @@ def login_user(data: dict) -> dict:
         return {
             "ok": True,
             "message": "Account pending approval. You will get access once approved.",
+            "_auth_hash": account_session_auth_hash(account),
             "user": {
                 "id": account.id,
                 "full_name": account.full_name,
@@ -754,13 +796,10 @@ def login_user(data: dict) -> dict:
             },
         }
 
-    account.last_login = timezone.now()
-    account.save(update_fields=["last_login"])
-    _maybe_send_login_alert(account)
-
     return {
         "ok": True,
         "message": "Login successful.",
+        "_auth_hash": account_session_auth_hash(account),
         "user": {
             "id": account.id,
             "full_name": account.full_name,
@@ -814,6 +853,7 @@ def _login_admin_account(account: AdminAccount, password: str) -> dict:
             "email": account.email,
         },
         "role": "admin",
+        "_auth_hash": account_session_auth_hash(account),
     }
 
 
@@ -905,13 +945,15 @@ def send_password_reset_code(email: str) -> dict:
     )
 
     try:
-        send_mail(
+        sent_count = send_mail(
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
             [account.email],
             fail_silently=False,
         )
+        if not email_count_confirmed(sent_count):
+            return {"ok": False, "message": "The email backend did not accept the password reset email. Please try again later."}
     except Exception:
         return {
             "ok": False,
@@ -921,6 +963,8 @@ def send_password_reset_code(email: str) -> dict:
     ttl_seconds = int(timedelta(minutes=ttl_minutes).total_seconds())
     code_key = _password_reset_cache_key(normalized_email, PASSWORD_RESET_CACHE_CODE_SUFFIX)
 
+    # A newly issued code replaces any previous reset authorization for this account.
+    cache.delete(_password_reset_cache_key(normalized_email, PASSWORD_RESET_CACHE_VERIFIED_SUFFIX))
     cache.set(
         code_key,
         {"hash": make_password(code), "expires_at": now_ts + ttl_seconds},
@@ -930,7 +974,7 @@ def send_password_reset_code(email: str) -> dict:
 
     result = {
         "ok": True,
-        "message": "Password reset code sent successfully.",
+        "message": "Password reset code prepared locally; no inbox delivery." if settings.EMAIL_BACKEND in LOCAL_EMAIL_BACKENDS else "Password reset email accepted for delivery. Check your inbox or spam folder.",
         "retry_after_seconds": cooldown_seconds,
     }
 
@@ -972,7 +1016,7 @@ def verify_password_reset_code(email: str, code: str) -> dict:
             expires_ts = None
 
     now_ts = int(timezone.now().timestamp())
-    if expires_ts is not None and now_ts > expires_ts:
+    if expires_ts is None or now_ts >= expires_ts:
         cache.delete(code_key)
         return {
             "ok": False,
@@ -985,18 +1029,38 @@ def verify_password_reset_code(email: str, code: str) -> dict:
             "message": "Invalid verification code.",
         }
 
+    account = BookkeeperAccount.objects.filter(email__iexact=normalized_email).first()
+    if account is None:
+        return {"ok": False, "message": "Account not found."}
+
+    # Email-wide verification alone must never authorize a password change. The
+    # view keeps this unpredictable proof in the verifying browser's server-side session.
+    reset_authorization = secrets.token_urlsafe(32)
     verified_key = _password_reset_cache_key(normalized_email, PASSWORD_RESET_CACHE_VERIFIED_SUFFIX)
-    cache.set(verified_key, True, timeout=300)
+    cache.set(
+        verified_key,
+        {
+            "account_id": account.id,
+            "authorization_digest": sha256(reset_authorization.encode()).hexdigest(),
+            "password_hash": account.password_hash,
+            "session_version": account.session_version,
+            "expires_at": now_ts + PASSWORD_RESET_AUTHORIZATION_TTL_SECONDS,
+        },
+        timeout=PASSWORD_RESET_AUTHORIZATION_TTL_SECONDS,
+    )
     cache.delete(code_key)
     cache.delete(_password_reset_cache_key(normalized_email, PASSWORD_RESET_CACHE_SENT_SUFFIX))
 
     return {
         "ok": True,
         "message": "Code verified successfully.",
+        "reset_authorization": reset_authorization,
     }
 
 
-def confirm_password_reset(email: str, new_password: str, confirm_password: str) -> dict:
+def confirm_password_reset(
+    email: str, new_password: str, confirm_password: str, *, reset_authorization: str = ""
+) -> dict:
     normalized_email = str(email or "").strip().lower()
     if not normalized_email:
         return {
@@ -1005,20 +1069,49 @@ def confirm_password_reset(email: str, new_password: str, confirm_password: str)
         }
 
     verified_key = _password_reset_cache_key(normalized_email, PASSWORD_RESET_CACHE_VERIFIED_SUFFIX)
-    is_verified = cache.get(verified_key)
-    if not is_verified:
-        return {
-            "ok": False,
-            "message": "Reset session expired or code not verified. Please verify again.",
-        }
+    authorization = cache.get(verified_key)
+    authorization_failure = {
+        "ok": False,
+        "message": "Reset session expired or code not verified. Please verify again.",
+    }
+    # Fail closed for missing proofs and legacy email-only verified flags.
+    if (
+        not isinstance(authorization, dict)
+        or not isinstance(reset_authorization, str)
+        or not reset_authorization
+    ):
+        return authorization_failure
 
-    if not new_password:
+    authorization_digest = authorization.get("authorization_digest")
+    verified_password_hash = authorization.get("password_hash")
+    verified_session_version = authorization.get("session_version")
+    account_id = authorization.get("account_id")
+    try:
+        expires_ts = int(authorization.get("expires_at"))
+    except (TypeError, ValueError):
+        return authorization_failure
+    if (
+        int(timezone.now().timestamp()) >= expires_ts
+        or not isinstance(account_id, int)
+        or isinstance(verified_session_version, bool)
+        or not isinstance(verified_session_version, int)
+        or verified_session_version < 0
+        or not isinstance(verified_password_hash, str)
+        or not verified_password_hash
+        or not isinstance(authorization_digest, str)
+        or len(authorization_digest) != 64
+        or any(character not in "0123456789abcdef" for character in authorization_digest)
+        or not secrets.compare_digest(authorization_digest, sha256(reset_authorization.encode()).hexdigest())
+    ):
+        return authorization_failure
+
+    if not isinstance(new_password, str) or not new_password:
         return {
             "ok": False,
             "message": "New password is required.",
         }
 
-    if new_password != confirm_password:
+    if not isinstance(confirm_password, str) or new_password != confirm_password:
         return {
             "ok": False,
             "message": "Passwords do not match.",
@@ -1032,15 +1125,17 @@ def confirm_password_reset(email: str, new_password: str, confirm_password: str)
             "errors": requirement_errors,
         }
 
-    account = BookkeeperAccount.objects.filter(email__iexact=normalized_email).first()
-    if account is None:
-        return {
-            "ok": False,
-            "message": "Account not found.",
-        }
-
-    account.password_hash = make_password(new_password)
-    account.save(update_fields=["password_hash"])
+    # A single conditional UPDATE makes the grant single-use even if concurrent
+    # requests read the same cache value. It also cannot overwrite a newer password
+    # or reset a different account that later acquires the same email address.
+    updated = BookkeeperAccount.objects.filter(
+        id=account_id,
+        email__iexact=normalized_email,
+        password_hash=verified_password_hash,
+        session_version=verified_session_version,
+    ).update(password_hash=make_password(new_password), session_version=F("session_version") + 1)
+    if updated != 1:
+        return authorization_failure
     cache.delete(verified_key)
 
     return {

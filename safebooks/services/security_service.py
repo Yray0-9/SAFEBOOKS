@@ -8,6 +8,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
 
 from safebooks.validators.password_validator import missing_password_requirements
+from safebooks.services.session_security_service import save_account_security_change
 
 
 TWO_FACTOR_ISSUER = "SafeBooks"
@@ -104,7 +105,7 @@ def change_bookkeeper_password(bookkeeper, payload: dict) -> dict:
         }
 
     bookkeeper.password_hash = make_password(new_password)
-    bookkeeper.save(update_fields=["password_hash"])
+    save_account_security_change(bookkeeper, ["password_hash"])
 
     return {
         "ok": True,
@@ -309,7 +310,7 @@ def enable_bookkeeper_two_factor(bookkeeper, setup_secret: str, payload: dict) -
     bookkeeper.two_factor_enabled = True
     bookkeeper.two_factor_secret = setup_secret
     bookkeeper.two_factor_confirmed_at = timezone.now()
-    bookkeeper.save(update_fields=["two_factor_enabled", "two_factor_secret", "two_factor_confirmed_at"])
+    save_account_security_change(bookkeeper, ["two_factor_enabled", "two_factor_secret", "two_factor_confirmed_at"])
 
     status_dict = get_bookkeeper_two_factor_status(bookkeeper)
     return {
@@ -346,7 +347,7 @@ def disable_bookkeeper_two_factor(bookkeeper, payload: dict) -> dict:
     bookkeeper.two_factor_enabled = False
     bookkeeper.two_factor_secret = ""
     bookkeeper.two_factor_confirmed_at = None
-    bookkeeper.save(update_fields=["two_factor_enabled", "two_factor_secret", "two_factor_confirmed_at"])
+    save_account_security_change(bookkeeper, ["two_factor_enabled", "two_factor_secret", "two_factor_confirmed_at"])
 
     status_dict = get_bookkeeper_two_factor_status(bookkeeper)
     return {

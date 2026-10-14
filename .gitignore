@@ -7,6 +7,9 @@ __pycache__/
 db.sqlite3
 /media
 
+# Archived local database backups contain private account and financial data.
+/cleanup_archive/**/backups/*.bak
+
 # Virtual environment
 .venv/
 env/
@@ -16,3 +19,8 @@ env/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+/staticfiles/
+/DEPLOYMENT.md
+/USABILITY_DEPLOYMENT.md
