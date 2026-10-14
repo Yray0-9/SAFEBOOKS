@@ -1,10 +1,13 @@
 import json
+import logging
 from functools import wraps
+from hashlib import sha256
 import secrets
 from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import DatabaseError, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import Resolver404, resolve, reverse
@@ -18,6 +21,7 @@ from safebooks.services.auth_service import (
     authenticate_google_bookkeeper,
     build_google_oauth_authorization_url,
     complete_google_signup,
+    complete_bookkeeper_login,
     exchange_google_oauth_code,
     is_google_oauth_configured,
     login_user_or_admin,
@@ -28,8 +32,10 @@ from safebooks.services.auth_service import (
 from safebooks.services.client_service import (
     create_client_for_bookkeeper,
     delete_client_for_bookkeeper,
+    get_client_for_bookkeeper,
     list_clients_for_bookkeeper,
     reopen_client_for_bookkeeper,
+    resolve_client_remarks,
     update_client_for_bookkeeper,
 )
 from safebooks.services.financial_record_service import (
@@ -39,6 +45,7 @@ from safebooks.services.financial_record_service import (
     list_financial_clients_for_bookkeeper,
     list_records_for_client_period,
     list_transactions_for_client_range,
+    list_transaction_years_for_client,
     update_record_for_client_period,
 )
 from safebooks.services.dashboard_service import get_dashboard_summary_for_bookkeeper
@@ -102,19 +109,27 @@ from safebooks.services.feedback_service import (
     is_feedback_feature_available,
     submit_bookkeeper_feedback,
 )
+from safebooks.services.session_security_service import account_session_auth_hash, session_auth_hash_matches
+from safebooks.services.email_delivery_service import email_delivery_hint
+
+logger = logging.getLogger(__name__)
 
 
 SESSION_BOOKKEEPER_ID_KEY = "safebooks_bookkeeper_id"
+SESSION_BOOKKEEPER_AUTH_HASH_KEY = "safebooks_bookkeeper_auth_hash"
 SESSION_BOOKKEEPER_TWO_FACTOR_SETUP_KEY = "safebooks_bookkeeper_two_factor_setup"
 SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY = "safebooks_bookkeeper_two_factor_challenge"
 SESSION_ADMIN_ID_KEY = "safebooks_admin_id"
+SESSION_ADMIN_AUTH_HASH_KEY = "safebooks_admin_auth_hash"
 SESSION_ADMIN_AUTHENTICATED_AT_KEY = "safebooks_admin_authenticated_at"
 SESSION_ADMIN_LAST_ACTIVITY_AT_KEY = "safebooks_admin_last_activity_at"
 SESSION_ADMIN_TWO_FACTOR_SETUP_KEY = "safebooks_admin_two_factor_setup"
 SESSION_ADMIN_TWO_FACTOR_CHALLENGE_KEY = "safebooks_admin_two_factor_challenge"
 SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY = "safebooks_client_details_verified_until"
+SESSION_CLIENT_PROFILE_ACCESS_KEY = "safebooks_client_profile_access"
 SESSION_GOOGLE_OAUTH_STATE_KEY = "safebooks_google_oauth_state"
 SESSION_GOOGLE_SIGNUP_PROFILE_KEY = "safebooks_google_signup_profile"
+SESSION_PASSWORD_RESET_AUTHORIZATION_KEY = "safebooks_password_reset_authorization"
 CLIENT_DETAILS_CONFIRMATION_WINDOW_SECONDS = 15 * 60
 
 
@@ -128,10 +143,42 @@ def _session_timestamp(value) -> int:
 def _clear_admin_session(request) -> None:
     for key in (
         SESSION_ADMIN_ID_KEY,
+        SESSION_ADMIN_AUTH_HASH_KEY,
         SESSION_ADMIN_AUTHENTICATED_AT_KEY,
         SESSION_ADMIN_LAST_ACTIVITY_AT_KEY,
         SESSION_ADMIN_TWO_FACTOR_SETUP_KEY,
         SESSION_ADMIN_TWO_FACTOR_CHALLENGE_KEY,
+    ):
+        request.session.pop(key, None)
+    request.session.modified = True
+
+
+def _clear_bookkeeper_session(request) -> None:
+    for key in (
+        SESSION_BOOKKEEPER_ID_KEY, SESSION_BOOKKEEPER_AUTH_HASH_KEY,
+        SESSION_BOOKKEEPER_TWO_FACTOR_SETUP_KEY, SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY,
+        SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, SESSION_CLIENT_PROFILE_ACCESS_KEY,
+    ):
+        request.session.pop(key, None)
+
+
+def _clear_authentication_state(request) -> None:
+    _clear_admin_session(request)
+    _clear_bookkeeper_session(request)
+    request.session.pop(SESSION_PASSWORD_RESET_AUTHORIZATION_KEY, None)
+
+
+def _renew_current_authenticated_session(request, account, *, admin=False) -> None:
+    # The browser that just proved the security change remains usable; other
+    # sessions retain their old proof and fail the next authorization check.
+    request.session.cycle_key()
+    auth_key = SESSION_ADMIN_AUTH_HASH_KEY if admin else SESSION_BOOKKEEPER_AUTH_HASH_KEY
+    request.session[auth_key] = account_session_auth_hash(account)
+    for key in (
+        SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, SESSION_CLIENT_PROFILE_ACCESS_KEY,
+        SESSION_ADMIN_TWO_FACTOR_SETUP_KEY, SESSION_ADMIN_TWO_FACTOR_CHALLENGE_KEY,
+        SESSION_BOOKKEEPER_TWO_FACTOR_SETUP_KEY, SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY,
+        SESSION_PASSWORD_RESET_AUTHORIZATION_KEY,
     ):
         request.session.pop(key, None)
     request.session.modified = True
@@ -169,16 +216,23 @@ def _admin_session_is_expired(request, now_timestamp: int) -> bool:
     )
 
 
-def _set_admin_session(request, account_id: int) -> None:
+def _set_admin_session(request, account_id: AdminAccount | int, *, second_factor_verified=False) -> None:
+    account = account_id if isinstance(account_id, AdminAccount) else AdminAccount.objects.get(id=account_id)
+    account_id = account.id
+    if account.two_factor_enabled and not second_factor_verified:
+        raise ValueError("Admin second-factor verification is required.")
     now_timestamp = int(timezone.now().timestamp())
     request.session.cycle_key()
+    _clear_authentication_state(request)
     request.session[SESSION_ADMIN_ID_KEY] = account_id
+    request.session[SESSION_ADMIN_AUTH_HASH_KEY] = account_session_auth_hash(account)
     request.session[SESSION_ADMIN_AUTHENTICATED_AT_KEY] = now_timestamp
     request.session[SESSION_ADMIN_LAST_ACTIVITY_AT_KEY] = now_timestamp
     request.session.pop(SESSION_ADMIN_TWO_FACTOR_SETUP_KEY, None)
     request.session.pop(SESSION_ADMIN_TWO_FACTOR_CHALLENGE_KEY, None)
     request.session.pop(SESSION_BOOKKEEPER_ID_KEY, None)
     request.session.pop(SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, None)
+    request.session.pop(SESSION_CLIENT_PROFILE_ACCESS_KEY, None)
     request.session.set_expiry(
         max(
             1,
@@ -208,16 +262,20 @@ def _admin_two_factor_login_policy() -> tuple[int, int, int]:
     return timeout_seconds, max_attempts, lockout_seconds
 
 
-def _set_admin_two_factor_challenge(request, account_id: int) -> None:
+def _set_admin_two_factor_challenge(request, account_id: AdminAccount | int) -> None:
+    account = account_id if isinstance(account_id, AdminAccount) else AdminAccount.objects.get(id=account_id)
+    account_id = account.id
     timeout_seconds, _max_attempts, _lockout_seconds = _admin_two_factor_login_policy()
     request.session.cycle_key()
-    _clear_admin_session(request)
+    _clear_authentication_state(request)
     request.session.pop(SESSION_BOOKKEEPER_ID_KEY, None)
     request.session.pop(SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, None)
+    request.session.pop(SESSION_CLIENT_PROFILE_ACCESS_KEY, None)
     request.session[SESSION_ADMIN_TWO_FACTOR_CHALLENGE_KEY] = {
         "admin_id": account_id,
         "issued_at": int(timezone.now().timestamp()),
         "attempts": 0,
+        "auth_hash": account_session_auth_hash(account),
     }
     request.session.set_expiry(timeout_seconds)
     request.session.modified = True
@@ -226,7 +284,7 @@ def _set_admin_two_factor_challenge(request, account_id: int) -> None:
 def _complete_admin_login(request, admin_account: AdminAccount, *, method: str) -> dict:
     admin_account.last_login = timezone.now()
     admin_account.save(update_fields=["last_login"])
-    _set_admin_session(request, admin_account.id)
+    _set_admin_session(request, admin_account, second_factor_verified=method in {"authenticator", "recovery_code"})
     record_admin_auth_event(
         admin_account,
         AdminAuditLog.ACTION_ADMIN_LOGIN,
@@ -254,8 +312,10 @@ def _decode_request_data(request):
         return None
 
     try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except (json.JSONDecodeError, UnicodeDecodeError):
+        def reject_nonfinite_constant(_value):
+            raise ValueError("Non-finite JSON numbers are not supported.")
+        payload = json.loads(request.body.decode("utf-8") or "{}", parse_constant=reject_nonfinite_constant)
+    except (ValueError, UnicodeDecodeError, RecursionError):
         return None
 
     if not isinstance(payload, dict):
@@ -268,15 +328,6 @@ def _no_store_json(payload: dict, *, status: int = 200) -> JsonResponse:
     response = JsonResponse(payload, status=status)
     response["Cache-Control"] = "no-store"
     return response
-
-
-def _audit_client_name(bookkeeper, client_id: int) -> str:
-    return str(
-        Client.objects.filter(id=client_id, bookkeeper=bookkeeper)
-        .values_list("client_name", flat=True)
-        .first()
-        or "Client"
-    )
 
 
 def _is_api_request(request):
@@ -292,14 +343,21 @@ def _is_api_request(request):
 
 
 def _get_session_bookkeeper(request):
-    account_id = request.session.get(SESSION_BOOKKEEPER_ID_KEY)
+    account_id = _session_timestamp(request.session.get(SESSION_BOOKKEEPER_ID_KEY))
     if not account_id:
         return None
 
     account = BookkeeperAccount.objects.filter(id=account_id).first()
-    if account is None:
-        request.session.pop(SESSION_BOOKKEEPER_ID_KEY, None)
-    elif not request.session.get_expire_at_browser_close():
+    if (
+        account is None
+        or not session_auth_hash_matches(account, request.session.get(SESSION_BOOKKEEPER_AUTH_HASH_KEY))
+        or (account.two_factor_enabled and not account.two_factor_secret)
+    ):
+        # Never bootstrap a missing proof from an account ID: it may be an old
+        # session that did not complete 2FA or predates a password reset.
+        request.session.flush()
+        return None
+    if not request.session.get_expire_at_browser_close():
         # Upgrade sessions created before the browser-close policy so the
         # existing persistent cookie is replaced on the next response.
         request.session.set_expiry(0)
@@ -309,7 +367,7 @@ def _get_session_bookkeeper(request):
 
 
 def _get_session_admin(request):
-    account_id = request.session.get(SESSION_ADMIN_ID_KEY)
+    account_id = _session_timestamp(request.session.get(SESSION_ADMIN_ID_KEY))
     if not account_id:
         return None
 
@@ -319,8 +377,12 @@ def _get_session_admin(request):
         return None
 
     account = AdminAccount.objects.filter(id=account_id, is_active=True).first()
-    if account is None:
-        _clear_admin_session(request)
+    if (
+        account is None
+        or not session_auth_hash_matches(account, request.session.get(SESSION_ADMIN_AUTH_HASH_KEY))
+        or (account.two_factor_enabled and not account.two_factor_secret)
+    ):
+        request.session.flush()
         return None
 
     # Avoid a session write for every rapid API request while still keeping
@@ -371,21 +433,62 @@ def _get_client_details_verified_until(request) -> int:
         return 0
 
 
-def _is_client_details_access_verified(request) -> bool:
-    return _get_client_details_verified_until(request) > int(timezone.now().timestamp())
+def _client_profile_grant_matches(request, client_id=None) -> bool:
+    grant = request.session.get(SESSION_CLIENT_PROFILE_ACCESS_KEY)
+    if not isinstance(grant, dict):
+        return False
+    account = request.bookkeeper_account
+    return (
+        grant.get("bookkeeper_id") == account.id
+        and _session_timestamp(grant.get("expires_at")) > int(timezone.now().timestamp())
+        and grant.get("password_digest") == sha256(account.password_hash.encode()).hexdigest()
+        and (client_id is None or grant.get("client_id") in (None, client_id))
+    )
 
 
-def _set_client_details_access_verified(request) -> int:
+def _is_client_details_access_verified(request, client_id=None) -> bool:
+    return (
+        _get_client_details_verified_until(request) > int(timezone.now().timestamp())
+        and _client_profile_grant_matches(request, client_id)
+    )
+
+
+def _set_client_details_access_verified(request, client_id=None) -> int:
     verified_until = int(timezone.now().timestamp()) + CLIENT_DETAILS_CONFIRMATION_WINDOW_SECONDS
     request.session[SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY] = verified_until
+    request.session[SESSION_CLIENT_PROFILE_ACCESS_KEY] = {
+        "bookkeeper_id": request.bookkeeper_account.id,
+        "client_id": client_id,
+        "password_digest": sha256(request.bookkeeper_account.password_hash.encode()).hexdigest(),
+        "expires_at": verified_until,
+    }
     request.session.modified = True
     return verified_until
 
 
-def _clear_client_details_access_verified(request) -> None:
+def _clear_client_details_access_verified(request, *, clear_profile=True) -> None:
     if SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY in request.session:
         request.session.pop(SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, None)
         request.session.modified = True
+    if clear_profile:
+        request.session.pop(SESSION_CLIENT_PROFILE_ACCESS_KEY, None)
+
+
+def _authorize_client_profile_request(request, client_id: int) -> bool:
+    if not _client_details_lock_enabled(request.bookkeeper_account):
+        return True
+    if _is_client_details_access_verified(request, client_id):
+        grant = dict(request.session[SESSION_CLIENT_PROFILE_ACCESS_KEY])
+        grant["client_id"] = client_id
+        request.session[SESSION_CLIENT_PROFILE_ACCESS_KEY] = grant
+        _clear_client_details_access_verified(request, clear_profile=False)
+        return True
+    grant = request.session.get(SESSION_CLIENT_PROFILE_ACCESS_KEY)
+    return (
+        _client_profile_grant_matches(request, client_id)
+        and isinstance(grant, dict)
+        and grant.get("client_id") == client_id
+    )
 
 
 def _get_client_details_access_target(request):
@@ -470,21 +573,35 @@ def _redirect_auth_feedback(route_name: str, message: str, level: str = "error")
 
 
 def _build_auth_page_context(request, extra_context: dict | None = None) -> dict:
+    challenge = request.session.get(SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY)
+    pending_two_factor = False
+    if isinstance(challenge, dict):
+        issued_at = _session_timestamp(challenge.get("issued_at"))
+        timeout, _attempts, _lockout = _bookkeeper_two_factor_login_policy()
+        pending_two_factor = 0 < issued_at <= int(timezone.now().timestamp()) < issued_at + timeout
     context = {
         "google_oauth_configured": is_google_oauth_configured(),
         "auth_feedback_message": str(request.GET.get("auth_message") or "").strip(),
         "auth_feedback_level": str(request.GET.get("auth_level") or "info").strip(),
+        "pending_bookkeeper_two_factor": pending_two_factor,
     }
     if extra_context:
         context.update(extra_context)
     return context
 
 
-def _set_bookkeeper_session(request, account_id: int) -> None:
+def _set_bookkeeper_session(request, account_id: BookkeeperAccount | int, *, second_factor_verified=False) -> None:
+    account = account_id if isinstance(account_id, BookkeeperAccount) else BookkeeperAccount.objects.get(id=account_id)
+    account_id = account.id
+    if account.two_factor_enabled and not second_factor_verified:
+        raise ValueError("Bookkeeper second-factor verification is required.")
     request.session.cycle_key()
+    _clear_authentication_state(request)
     request.session[SESSION_BOOKKEEPER_ID_KEY] = account_id
+    request.session[SESSION_BOOKKEEPER_AUTH_HASH_KEY] = account_session_auth_hash(account)
     _clear_admin_session(request)
     request.session.pop(SESSION_CLIENT_DETAILS_VERIFIED_UNTIL_KEY, None)
+    request.session.pop(SESSION_CLIENT_PROFILE_ACCESS_KEY, None)
     # Keep authenticated bookkeeper access limited to the current browser
     # session instead of issuing Django's default persistent session cookie.
     request.session.set_expiry(0)
@@ -492,21 +609,82 @@ def _set_bookkeeper_session(request, account_id: int) -> None:
 
 
 def _redirect_after_bookkeeper_auth(request, result: dict, next_url: str = ""):
-    user_payload = result.get("user") or {}
-    account_id = user_payload.get("id")
-    if account_id:
-        _set_bookkeeper_session(request, account_id)
+    result = _finish_bookkeeper_primary_auth(request, result, {"next_url": next_url})
+    if not result.get("ok"):
+        return _redirect_auth_feedback("login", result.get("message", "Unable to complete sign-in."))
+    if result.get("requires_two_factor"):
+        return redirect("login")
+    return redirect(result["redirect_url"])
 
-    status = user_payload.get("status") or BookkeeperAccount.STATUS_APPROVED
-    email_verified = bool(user_payload.get("email_verified", True))
 
-    if not email_verified:
-        return redirect("verify_email")
-    if status == BookkeeperAccount.STATUS_PENDING:
-        return redirect("pending_approval")
+def _bookkeeper_two_factor_failure_cache_key(account_id: int) -> str:
+    return f"safebooks:bookkeeper-2fa-login-failures:{account_id}"
 
-    payload = {"next_url": next_url}
-    return redirect(_resolve_post_login_redirect(request, payload))
+
+def _bookkeeper_two_factor_login_policy() -> tuple[int, int, int]:
+    timeout = max(30, int(getattr(settings, "SAFEBOOKS_BOOKKEEPER_TWO_FACTOR_LOGIN_TIMEOUT_SECONDS", 300)))
+    attempts = max(1, int(getattr(settings, "SAFEBOOKS_BOOKKEEPER_TWO_FACTOR_LOGIN_MAX_ATTEMPTS", 5)))
+    lockout = max(timeout, int(getattr(settings, "SAFEBOOKS_BOOKKEEPER_TWO_FACTOR_LOGIN_LOCKOUT_SECONDS", 300)))
+    return timeout, attempts, lockout
+
+
+def _increment_two_factor_failures(cache_key: str, timeout: int) -> int:
+    if cache.add(cache_key, 1, timeout):
+        return 1
+    try:
+        return cache.incr(cache_key)
+    except ValueError:
+        # The cache entry may expire between add and incr.
+        if cache.add(cache_key, 1, timeout):
+            return 1
+        return cache.incr(cache_key)
+
+
+def _finish_bookkeeper_primary_auth(request, result: dict, payload: dict) -> dict:
+    authentication_hash = result.pop("_auth_hash", None)
+    account_id = (result.get("user") or {}).get("id")
+    account = BookkeeperAccount.objects.filter(id=account_id).first()
+    if account is None or account.status in {BookkeeperAccount.STATUS_REJECTED, BookkeeperAccount.STATUS_SUSPENDED}:
+        return {"ok": False, "message": "Unable to complete sign-in. Account is not active."}
+    if not session_auth_hash_matches(account, authentication_hash):
+        return {"ok": False, "message": "Security settings changed during sign-in. Sign in again."}
+    if account.two_factor_enabled:
+        if not account.two_factor_secret:
+            _clear_authentication_state(request)
+            return {"ok": False, "message": "Authenticator settings are incomplete. Contact support before signing in."}
+        timeout, max_attempts, _lockout = _bookkeeper_two_factor_login_policy()
+        failures = int(cache.get(_bookkeeper_two_factor_failure_cache_key(account.id), 0) or 0)
+        if failures >= max_attempts:
+            _clear_authentication_state(request)
+            return {"ok": False, "message": "Too many verification attempts. Wait a few minutes before trying again."}
+        request.session.cycle_key()
+        _clear_authentication_state(request)
+        request.session[SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY] = {
+            "bookkeeper_id": account.id,
+            "issued_at": int(timezone.now().timestamp()),
+            "attempts": 0,
+            "next_url": _resolve_post_login_redirect(request, payload),
+            "auth_hash": account_session_auth_hash(account),
+        }
+        request.session.set_expiry(timeout)
+        return {
+            "ok": True, "message": "Sign-in accepted. Enter your 6-digit verification code.",
+            "role": "bookkeeper", "requires_two_factor": True,
+            "challenge_expires_in_seconds": timeout,
+        }
+    _set_bookkeeper_session(request, account)
+    complete_bookkeeper_login(account)
+    if not account.email_verified:
+        result["redirect_url"] = reverse("verify_email")
+        verification = send_email_verification_code(account, force=False)
+        result["verification_email_sent"] = verification.get("ok", False)
+        if "retry_after_seconds" in verification:
+            result["verification_retry_after_seconds"] = verification["retry_after_seconds"]
+    elif account.status == BookkeeperAccount.STATUS_PENDING:
+        result["redirect_url"] = reverse("pending_approval")
+    else:
+        result["redirect_url"] = _resolve_post_login_redirect(request, payload)
+    return result
 
 
 def _build_admin_context(account):
@@ -849,22 +1027,28 @@ def client_details_page_view(request, client_id):
     from django.shortcuts import get_object_or_404
     from safebooks.models import Client
     client = get_object_or_404(Client, id=client_id, bookkeeper=request.bookkeeper_account)
-    if _client_details_lock_enabled(request.bookkeeper_account) and not _is_client_details_access_verified(request):
+    if _client_details_lock_enabled(request.bookkeeper_account) and not _is_client_details_access_verified(request, client_id):
         query = urlencode({
             "client_access_required": "1",
             "next": request.get_full_path(),
         })
         return redirect(f"{reverse('clients')}?{query}")
 
-    _clear_client_details_access_verified(request)
+    if _client_details_lock_enabled(request.bookkeeper_account):
+        _authorize_client_profile_request(request, client_id)
+    else:
+        _clear_client_details_access_verified(request)
 
     context = _build_user_context(request.bookkeeper_account)
     context["active_nav"] = "clients"
+    client.remarks = resolve_client_remarks(client)
     context["client"] = client
     context["client_record_email_notifications_enabled"] = bool(
         getattr(request.bookkeeper_account, "client_record_email_notifications_enabled", True)
     )
-    return render(request, "base/client_details.html", context)
+    response = render(request, "base/client_details.html", context)
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @require_bookkeeper_auth
@@ -923,6 +1107,8 @@ def settings_page_view(request):
     )
     context["client_details_password_required"] = _client_details_lock_enabled(request.bookkeeper_account)
     context["login_alerts_destination"] = _mask_email_address(request.bookkeeper_account.email)
+    context["email_delivery_hint"] = email_delivery_hint()
+    context["client_record_email_service_enabled"] = bool(settings.SAFEBOOKS_CLIENT_RECORD_EMAILS_ENABLED)
     context["deactivation_request_pending"] = bool(
         get_deactivation_request_status(request.bookkeeper_account).get("pending_request")
     )
@@ -1012,6 +1198,10 @@ def _resolve_client_error_status(result):
 
 
 def _resolve_financial_record_error_status(result):
+    if result.get("code") in {"stale_record", "revision_required", "write_conflict"}:
+        return 409
+    if result.get("code") == "persistence_failed":
+        return 503
     message = result.get("message", "")
     if message in {"Client not found.", "Financial record not found."}:
         return 404
@@ -1099,6 +1289,7 @@ def security_change_password_api_view(request):
 
     result = change_bookkeeper_password(request.bookkeeper_account, payload)
     if result.get("ok"):
+        _renew_current_authenticated_session(request, request.bookkeeper_account)
         record_bookkeeper_audit(
             request.bookkeeper_account,
             BookkeeperAuditLog.ACTION_PASSWORD_CHANGED,
@@ -1121,20 +1312,27 @@ def security_login_alerts_api_view(request):
             status=400,
         )
 
-    result = update_login_alerts_preference(request.bookkeeper_account, payload)
-    if result.get("ok"):
-        enabled = bool(result.get("login_alerts_enabled"))
-        record_bookkeeper_audit(
-            request.bookkeeper_account,
-            BookkeeperAuditLog.ACTION_LOGIN_ALERTS_CHANGED,
-            f"Turned login alerts {'on' if enabled else 'off'}.",
-            target_model="BookkeeperAccount",
-            target_id=request.bookkeeper_account.id,
-            metadata={"enabled": enabled},
-        )
-        return JsonResponse(result)
+    return _update_audited_preference(request, payload, update_login_alerts_preference,
+        "login_alerts_enabled", BookkeeperAuditLog.ACTION_LOGIN_ALERTS_CHANGED, "login alerts")
 
-    return JsonResponse(result, status=400)
+
+def _update_audited_preference(request, payload, update, field, action, label, *, after_success=None):
+    account = request.bookkeeper_account
+    previous = getattr(account, field)
+    try:
+        with transaction.atomic():
+            result = update(account, payload)
+            if result.get("ok"):
+                enabled = bool(result.get(field))
+                record_bookkeeper_audit(account, action, f"Turned {label} {'on' if enabled else 'off'}.",
+                    target_model="BookkeeperAccount", target_id=account.id, metadata={"enabled": enabled})
+    except DatabaseError as error:
+        setattr(account, field, previous)
+        logger.warning("Preference update could not be confirmed (%s).", type(error).__name__)
+        return _no_store_json({"ok": False, "message": "Update could not be confirmed. Reload Settings before retrying."}, status=503)
+    if result.get("ok") and after_success is not None:
+        after_success(result)
+    return JsonResponse(result, status=200 if result.get("ok") else 400)
 
 
 @require_POST
@@ -1147,20 +1345,8 @@ def settings_client_record_email_notifications_api_view(request):
             status=400,
         )
 
-    result = update_client_record_email_notifications_preference(request.bookkeeper_account, payload)
-    if result.get("ok"):
-        enabled = bool(result.get("client_record_email_notifications_enabled"))
-        record_bookkeeper_audit(
-            request.bookkeeper_account,
-            BookkeeperAuditLog.ACTION_CLIENT_EMAILS_CHANGED,
-            f"Turned client record emails {'on' if enabled else 'off'}.",
-            target_model="BookkeeperAccount",
-            target_id=request.bookkeeper_account.id,
-            metadata={"enabled": enabled},
-        )
-        return JsonResponse(result)
-
-    return JsonResponse(result, status=400)
+    return _update_audited_preference(request, payload, update_client_record_email_notifications_preference,
+        "client_record_email_notifications_enabled", BookkeeperAuditLog.ACTION_CLIENT_EMAILS_CHANGED, "client record emails")
 
 
 @require_POST
@@ -1173,14 +1359,22 @@ def security_client_details_access_confirm_api_view(request):
             status=400,
         )
 
+    client_id = payload.get("client_id")
+    if client_id is not None:
+        if isinstance(client_id, bool) or not str(client_id).isdigit():
+            return _no_store_json({"ok": False, "message": "Invalid client id."}, status=400)
+        client_id = int(client_id)
+        if not Client.objects.filter(id=client_id, bookkeeper=request.bookkeeper_account).exists():
+            return _no_store_json({"ok": False, "message": "Client not found."}, status=404)
+
     result = confirm_client_details_access(request.bookkeeper_account, payload)
     if result.get("ok"):
-        verified_until = _set_client_details_access_verified(request)
+        verified_until = _set_client_details_access_verified(request, client_id)
         result["verified_until"] = verified_until
         result["verified_for_seconds"] = CLIENT_DETAILS_CONFIRMATION_WINDOW_SECONDS
-        return JsonResponse(result)
+        return _no_store_json(result)
 
-    return JsonResponse(result, status=400)
+    return _no_store_json(result, status=400)
 
 
 @require_POST
@@ -1193,22 +1387,12 @@ def security_client_details_access_preference_api_view(request):
             status=400,
         )
 
-    result = update_client_details_access_preference(request.bookkeeper_account, payload)
-    if result.get("ok"):
-        enabled = bool(result.get("client_details_password_required"))
-        if not result.get("client_details_password_required"):
+    def clear_disabled_grant(result):
+        if not result["client_details_password_required"]:
             _clear_client_details_access_verified(request)
-        record_bookkeeper_audit(
-            request.bookkeeper_account,
-            BookkeeperAuditLog.ACTION_CLIENT_DETAILS_LOCK_CHANGED,
-            f"Turned the client details lock {'on' if enabled else 'off'}.",
-            target_model="BookkeeperAccount",
-            target_id=request.bookkeeper_account.id,
-            metadata={"enabled": enabled},
-        )
-        return JsonResponse(result)
-
-    return JsonResponse(result, status=400)
+    return _update_audited_preference(request, payload, update_client_details_access_preference,
+        "client_details_password_required", BookkeeperAuditLog.ACTION_CLIENT_DETAILS_LOCK_CHANGED,
+        "client details lock", after_success=clear_disabled_grant)
 
 
 @require_POST
@@ -1266,6 +1450,7 @@ def bookkeeper_two_factor_confirm_api_view(request):
         payload,
     )
     if result.get("ok"):
+        _renew_current_authenticated_session(request, request.bookkeeper_account)
         request.session.pop(SESSION_BOOKKEEPER_TWO_FACTOR_SETUP_KEY, None)
         request.session.modified = True
         record_bookkeeper_audit(
@@ -1293,6 +1478,7 @@ def bookkeeper_two_factor_disable_api_view(request):
 
     result = disable_bookkeeper_two_factor(request.bookkeeper_account, payload)
     if result.get("ok"):
+        _renew_current_authenticated_session(request, request.bookkeeper_account)
         request.session.pop(SESSION_BOOKKEEPER_TWO_FACTOR_SETUP_KEY, None)
         request.session.modified = True
         record_bookkeeper_audit(
@@ -1363,7 +1549,7 @@ def profile_api_view(request):
 def clients_api_view(request):
     if request.method == "GET":
         result = list_clients_for_bookkeeper(request.bookkeeper_account)
-        return JsonResponse(result)
+        return _no_store_json(result)
 
     payload = _decode_request_data(request)
     if payload is None:
@@ -1384,18 +1570,33 @@ def clients_api_view(request):
             target_id=client_payload.get("id"),
             metadata={"client_name": client_name},
         )
-        return JsonResponse(result, status=201)
+        return _no_store_json(result, status=201)
 
     return JsonResponse(result, status=_resolve_client_error_status(result))
 
 
-@require_http_methods(["PUT", "PATCH", "DELETE"])
+@require_http_methods(["GET", "PUT", "PATCH", "DELETE"])
 @require_bookkeeper_auth
 def client_detail_api_view(request, client_id):
+    if not Client.objects.filter(id=client_id, bookkeeper=request.bookkeeper_account).exists():
+        return _no_store_json({"ok": False, "message": "Client not found.", "errors": ["Client not found."]}, status=404)
+    if request.method != "DELETE" and not _authorize_client_profile_request(request, client_id):
+        return _no_store_json({
+            "ok": False,
+            "message": "Confirm your password in Clients before viewing or editing this client's details.",
+            "client_access_required": True,
+        }, status=403)
+    if request.method == "GET":
+        result = get_client_for_bookkeeper(request.bookkeeper_account, client_id)
+        return _no_store_json(result, status=200 if result.get("ok") else _resolve_client_error_status(result))
+
     if request.method == "DELETE":
-        payload = _decode_request_data(request) or {}
-        reason = str(payload.get("reason") or payload.get("closure_reason") or request.GET.get("reason") or "Closed by bookkeeper").strip()
-        notes = str(payload.get("notes") or payload.get("closure_notes") or "").strip()
+        payload = _decode_request_data(request)
+        if request.body and payload is None:
+            return JsonResponse({"ok": False, "message": "Invalid request payload."}, status=400)
+        payload = payload or {}
+        reason = payload.get("reason") or payload.get("closure_reason") or request.GET.get("reason") or "Closed by bookkeeper"
+        notes = payload.get("notes") or payload.get("closure_notes") or ""
         result = delete_client_for_bookkeeper(request.bookkeeper_account, client_id, reason=reason, notes=notes)
         if result.get("ok"):
             client_payload = result.get("client") or {}
@@ -1408,7 +1609,7 @@ def client_detail_api_view(request, client_id):
                 target_id=client_id,
                 metadata={"client_name": client_name, "closure_reason": reason, "closure_notes": notes},
             )
-            return JsonResponse(result)
+            return _no_store_json(result)
         return JsonResponse(result, status=_resolve_client_error_status(result))
 
     payload = _decode_request_data(request)
@@ -1418,7 +1619,7 @@ def client_detail_api_view(request, client_id):
             status=400,
         )
 
-    result = update_client_for_bookkeeper(request.bookkeeper_account, client_id, payload)
+    result = update_client_for_bookkeeper(request.bookkeeper_account, client_id, payload, include_sensitive=True)
     if result.get("ok"):
         client_payload = result.get("client") or {}
         client_name = str(client_payload.get("client_name") or "Client")
@@ -1430,7 +1631,7 @@ def client_detail_api_view(request, client_id):
             target_id=client_id,
             metadata={"client_name": client_name},
         )
-        return JsonResponse(result)
+        return _no_store_json(result)
 
     return JsonResponse(result, status=_resolve_client_error_status(result))
 
@@ -1476,7 +1677,7 @@ def analytics_summary_api_view(request):
     client_id = None
 
     if client_id_param:
-        if not client_id_param.isdigit():
+        if not client_id_param.isascii() or not client_id_param.isdigit() or len(client_id_param) > 18:
             return JsonResponse(
                 {"ok": False, "message": "Invalid client id."},
                 status=400,
@@ -1484,17 +1685,26 @@ def analytics_summary_api_view(request):
         client_id = int(client_id_param)
 
     year_param = (request.GET.get("year") or "").strip()
+    if year_param and year_param != "all" and (not year_param.isascii() or not year_param.isdigit() or len(year_param) > 4):
+        return JsonResponse({"ok": False, "message": "Invalid analytics year."}, status=400)
     year_filter = year_param if year_param.isdigit() else None
     
     horizon_param = (request.GET.get("horizon") or "").strip()
-    horizon = int(horizon_param) if horizon_param.isdigit() else 3
+    horizon = horizon_param or 3
 
-    result = get_analytics_summary_for_bookkeeper(
-        request.bookkeeper_account,
-        client_id=client_id,
-        year_filter=year_filter,
-        horizon=horizon,
-    )
+    try:
+        result = get_analytics_summary_for_bookkeeper(
+            request.bookkeeper_account,
+            client_id=client_id,
+            year_filter=year_filter,
+            horizon=horizon,
+        )
+    except DatabaseError as error:
+        logger.warning("Analytics read could not be completed (%s).", type(error).__name__)
+        return _no_store_json({
+            "ok": False, "code": "analytics_unavailable",
+            "message": "Analytics could not be loaded right now. Please retry or select a narrower client/year range.",
+        }, status=503)
     if result.get("ok"):
         return JsonResponse(result)
 
@@ -1689,6 +1899,8 @@ def admin_security_change_password_api_view(request):
         )
 
     result = change_admin_password(request.admin_account, payload)
+    if result.get("ok"):
+        _renew_current_authenticated_session(request, request.admin_account, admin=True)
     return JsonResponse(result)
 
 
@@ -1757,6 +1969,7 @@ def admin_two_factor_confirm_api_view(request):
         payload,
     )
     if result.get("ok"):
+        _renew_current_authenticated_session(request, request.admin_account, admin=True)
         request.session.pop(SESSION_ADMIN_TWO_FACTOR_SETUP_KEY, None)
         request.session.modified = True
     response = JsonResponse(result)
@@ -1777,6 +1990,7 @@ def admin_two_factor_disable_api_view(request):
 
     result = disable_admin_two_factor(request.admin_account, payload)
     if result.get("ok"):
+        _renew_current_authenticated_session(request, request.admin_account, admin=True)
         request.session.pop(SESSION_ADMIN_TWO_FACTOR_SETUP_KEY, None)
         request.session.modified = True
     return JsonResponse(result)
@@ -1793,6 +2007,8 @@ def admin_two_factor_recovery_codes_api_view(request):
         )
 
     result = regenerate_admin_two_factor_recovery_codes(request.admin_account, payload)
+    if result.get("ok"):
+        _renew_current_authenticated_session(request, request.admin_account, admin=True)
     response = JsonResponse(result)
     if result.get("ok"):
         response["Cache-Control"] = "no-store"
@@ -1832,20 +2048,21 @@ def reports_print_layout_api_view(request):
             {"ok": False, "message": "Client id is required."},
             status=400,
         )
-    if not client_id_param.isdigit():
+    if not client_id_param.isascii() or not client_id_param.isdigit() or len(client_id_param) > 18:
         return JsonResponse(
             {"ok": False, "message": "Invalid client id."},
             status=400,
         )
 
-    result = list_transactions_for_client_range(
-        request.bookkeeper_account,
-        int(client_id_param),
-        request.GET.get("date_from"),
-        request.GET.get("date_to"),
-    )
+    if request.GET.get("years_only") == "1":
+        result = list_transaction_years_for_client(request.bookkeeper_account, int(client_id_param))
+    else:
+        result = list_transactions_for_client_range(
+            request.bookkeeper_account, int(client_id_param),
+            request.GET.get("date_from"), request.GET.get("date_to"),
+        )
     if result.get("ok"):
-        return JsonResponse(result)
+        return _no_store_json(result)
 
     return JsonResponse(result, status=_resolve_financial_record_error_status(result))
 
@@ -1861,7 +2078,7 @@ def financial_records_api_view(request, client_id):
             request.GET.get("year"),
         )
         if result.get("ok"):
-            return JsonResponse(result)
+            return _no_store_json(result)
         return JsonResponse(result, status=_resolve_financial_record_error_status(result))
 
     payload = _decode_request_data(request)
@@ -1873,18 +2090,6 @@ def financial_records_api_view(request, client_id):
 
     result = create_record_for_client_period(request.bookkeeper_account, client_id, payload)
     if result.get("ok"):
-        record_payload = result.get("record") or {}
-        client_name = _audit_client_name(request.bookkeeper_account, client_id)
-        record_date = str(record_payload.get("date") or "")
-        frequency = str(record_payload.get("frequency") or "")
-        record_bookkeeper_audit(
-            request.bookkeeper_account,
-            BookkeeperAuditLog.ACTION_RECORD_CREATED,
-            f"Added a {frequency or 'financial'} record for {client_name} dated {record_date or 'the selected period'}.",
-            target_model="FinancialRecord",
-            target_id=record_payload.get("id"),
-            metadata={"client_name": client_name, "client_id": client_id, "record_date": record_date, "frequency": frequency},
-        )
         return JsonResponse(result, status=201)
 
     return JsonResponse(result, status=_resolve_financial_record_error_status(result))
@@ -1913,19 +2118,11 @@ def financial_records_last_entry_api_view(request, client_id):
 @require_bookkeeper_auth
 def financial_record_detail_api_view(request, client_id, record_id):
     if request.method == "DELETE":
-        result = delete_record_for_client(request.bookkeeper_account, client_id, record_id)
+        payload = _decode_request_data(request)
+        if request.body and payload is None:
+            return JsonResponse({"ok": False, "message": "Invalid request payload."}, status=400)
+        result = delete_record_for_client(request.bookkeeper_account, client_id, record_id, payload)
         if result.get("ok"):
-            record_payload = result.get("record") or {}
-            client_name = _audit_client_name(request.bookkeeper_account, client_id)
-            record_date = str(record_payload.get("date") or "")
-            record_bookkeeper_audit(
-                request.bookkeeper_account,
-                BookkeeperAuditLog.ACTION_RECORD_DELETED,
-                f"Deleted a financial record for {client_name} dated {record_date or 'the selected period'}.",
-                target_model="FinancialRecord",
-                target_id=record_id,
-                metadata={"client_name": client_name, "client_id": client_id, "record_date": record_date},
-            )
             return JsonResponse(result)
         return JsonResponse(result, status=_resolve_financial_record_error_status(result))
 
@@ -1943,18 +2140,6 @@ def financial_record_detail_api_view(request, client_id, record_id):
         payload,
     )
     if result.get("ok"):
-        record_payload = result.get("record") or {}
-        client_name = _audit_client_name(request.bookkeeper_account, client_id)
-        record_date = str(record_payload.get("date") or "")
-        frequency = str(record_payload.get("frequency") or "")
-        record_bookkeeper_audit(
-            request.bookkeeper_account,
-            BookkeeperAuditLog.ACTION_RECORD_UPDATED,
-            f"Updated the {frequency or 'financial'} record for {client_name} dated {record_date or 'the selected period'}.",
-            target_model="FinancialRecord",
-            target_id=record_id,
-            metadata={"client_name": client_name, "client_id": client_id, "record_date": record_date, "frequency": frequency},
-        )
         return JsonResponse(result)
 
     return JsonResponse(result, status=_resolve_financial_record_error_status(result))
@@ -2063,7 +2248,16 @@ def login_view(request):
                     "message": "Unable to complete admin login.",
                 })
 
-            if admin_account.two_factor_enabled and admin_account.two_factor_secret:
+            if not session_auth_hash_matches(admin_account, result.pop("_auth_hash", None)):
+                return _no_store_json({"ok": False, "message": "Security settings changed during sign-in. Sign in again."})
+
+            if admin_account.two_factor_enabled:
+                if not admin_account.two_factor_secret:
+                    _clear_authentication_state(request)
+                    return _no_store_json({
+                        "ok": False,
+                        "message": "Authenticator settings are incomplete. Contact support before signing in.",
+                    })
                 timeout_seconds, max_attempts, _lockout_seconds = (
                     _admin_two_factor_login_policy()
                 )
@@ -2072,6 +2266,7 @@ def login_view(request):
                     or 0
                 )
                 if failure_count >= max_attempts:
+                    _clear_authentication_state(request)
                     return _no_store_json({
                         "ok": False,
                         "message": (
@@ -2080,7 +2275,7 @@ def login_view(request):
                         ),
                     })
 
-                _set_admin_two_factor_challenge(request, admin_account.id)
+                _set_admin_two_factor_challenge(request, admin_account)
                 return _no_store_json({
                     "ok": True,
                     "message": "Password accepted. Enter your admin verification code.",
@@ -2095,45 +2290,8 @@ def login_view(request):
                 method="password",
             )
         else:
-            bookkeeper = BookkeeperAccount.objects.filter(id=account_id).first() if account_id else None
-            if bookkeeper and bookkeeper.two_factor_enabled and bookkeeper.two_factor_secret:
-                timeout_seconds = 5 * 60
-                request.session[SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY] = {
-                    "bookkeeper_id": bookkeeper.id,
-                    "issued_at": int(timezone.now().timestamp()),
-                    "attempts": 0,
-                    "next_url": _resolve_post_login_redirect(request, payload),
-                }
-                request.session.modified = True
-                return _no_store_json({
-                    "ok": True,
-                    "message": "Password accepted. Enter your 6-digit verification code.",
-                    "role": "bookkeeper",
-                    "requires_two_factor": True,
-                    "challenge_expires_in_seconds": timeout_seconds,
-                })
-
-            status = user_payload.get("status") or BookkeeperAccount.STATUS_APPROVED
-            email_verified = user_payload.get("email_verified", True)
-            if account_id:
-                _set_bookkeeper_session(request, account_id)
-
-            if not email_verified:
-                result["redirect_url"] = reverse("verify_email")
-                if account_id:
-                    account = BookkeeperAccount.objects.filter(id=account_id).first()
-                    if account:
-                        verification_result = send_email_verification_code(account, force=False)
-                        result["verification_email_sent"] = verification_result.get("ok", False)
-                        if "retry_after_seconds" in verification_result:
-                            result["verification_retry_after_seconds"] = verification_result["retry_after_seconds"]
-                return JsonResponse(result)
-
-            if status == BookkeeperAccount.STATUS_PENDING:
-                result["redirect_url"] = reverse("pending_approval")
-            else:
-                result["redirect_url"] = _resolve_post_login_redirect(request, payload)
-        return JsonResponse(result)
+            result = _finish_bookkeeper_primary_auth(request, result, payload)
+        return _no_store_json(result)
 
     error_message = result.get("message", "Unable to login.")
     if error_message in {
@@ -2167,8 +2325,7 @@ def bookkeeper_two_factor_login_verify_view(request):
     account_id = _session_timestamp(challenge.get("bookkeeper_id"))
     issued_at = _session_timestamp(challenge.get("issued_at"))
     attempts = max(0, _session_timestamp(challenge.get("attempts")))
-    timeout_seconds = 5 * 60
-    max_attempts = 5
+    timeout_seconds, max_attempts, lockout_seconds = _bookkeeper_two_factor_login_policy()
     now_timestamp = int(timezone.now().timestamp())
 
     if (
@@ -2185,7 +2342,9 @@ def bookkeeper_two_factor_login_verify_view(request):
             "restart_login": True,
         })
 
-    if attempts >= max_attempts:
+    cache_key = _bookkeeper_two_factor_failure_cache_key(account_id)
+    cached_failures = int(cache.get(cache_key, 0) or 0)
+    if attempts >= max_attempts or cached_failures >= max_attempts:
         request.session.pop(SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY, None)
         request.session.modified = True
         return _no_store_json({
@@ -2197,8 +2356,10 @@ def bookkeeper_two_factor_login_verify_view(request):
     bookkeeper = BookkeeperAccount.objects.filter(id=account_id).first()
     if (
         bookkeeper is None
+        or bookkeeper.status in {BookkeeperAccount.STATUS_REJECTED, BookkeeperAccount.STATUS_SUSPENDED}
         or not bookkeeper.two_factor_enabled
         or not bookkeeper.two_factor_secret
+        or not session_auth_hash_matches(bookkeeper, challenge.get("auth_hash"))
     ):
         request.session.pop(SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY, None)
         request.session.modified = True
@@ -2212,7 +2373,8 @@ def bookkeeper_two_factor_login_verify_view(request):
     verification = verify_bookkeeper_two_factor_login(bookkeeper, code)
     if not verification.get("ok"):
         attempts += 1
-        remaining_attempts = max(0, max_attempts - attempts)
+        cached_failures = _increment_two_factor_failures(cache_key, lockout_seconds)
+        remaining_attempts = max(0, max_attempts - max(attempts, cached_failures))
         if remaining_attempts == 0:
             request.session.pop(SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY, None)
         else:
@@ -2231,11 +2393,11 @@ def bookkeeper_two_factor_login_verify_view(request):
         })
 
     request.session.pop(SESSION_BOOKKEEPER_TWO_FACTOR_CHALLENGE_KEY, None)
-    _set_bookkeeper_session(request, bookkeeper.id)
-    bookkeeper.last_login = timezone.now()
-    bookkeeper.save(update_fields=["last_login"])
+    cache.delete(cache_key)
+    _set_bookkeeper_session(request, bookkeeper, second_factor_verified=True)
+    complete_bookkeeper_login(bookkeeper)
 
-    next_url = str(challenge.get("next_url") or "").strip() or reverse("dashboard")
+    next_url = _resolve_post_login_redirect(request, {"next_url": challenge.get("next_url")})
     status = bookkeeper.status or BookkeeperAccount.STATUS_APPROVED
     if not bookkeeper.email_verified:
         redirect_url = reverse("verify_email")
@@ -2319,6 +2481,7 @@ def admin_two_factor_login_verify_view(request):
         admin_account is None
         or not admin_account.two_factor_enabled
         or not admin_account.two_factor_secret
+        or not session_auth_hash_matches(admin_account, challenge.get("auth_hash"))
     ):
         request.session.pop(SESSION_ADMIN_TWO_FACTOR_CHALLENGE_KEY, None)
         request.session.modified = True
@@ -2334,8 +2497,7 @@ def admin_two_factor_login_verify_view(request):
     )
     if not verification.get("ok"):
         attempts += 1
-        cached_failures += 1
-        cache.set(cache_key, cached_failures, lockout_seconds)
+        cached_failures = _increment_two_factor_failures(cache_key, lockout_seconds)
         remaining_attempts = max(0, max_attempts - max(attempts, cached_failures))
 
         if remaining_attempts == 0:
@@ -2410,9 +2572,15 @@ def logout_view(request):
     admin_account = _get_session_admin(request)
     try:
         if admin_account is not None:
-            record_admin_auth_event(admin_account, AdminAuditLog.ACTION_ADMIN_LOGOUT)
-    finally:
+            with transaction.atomic():
+                record_admin_auth_event(admin_account, AdminAuditLog.ACTION_ADMIN_LOGOUT)
+    except Exception as error:
+        logger.warning("Logout audit could not be saved (%s).", type(error).__name__)
+    try:
         request.session.flush()
+    except DatabaseError as error:
+        logger.error("Session logout could not be confirmed (%s).", type(error).__name__)
+        return _no_store_json({"ok": False, "message": "Logout could not be confirmed. Please retry."}, status=503)
     return JsonResponse(
         {
             "ok": True,
@@ -2426,44 +2594,54 @@ def logout_view(request):
 def forgot_password_send_code_api_view(request):
     payload = _decode_request_data(request)
     if payload is None:
-        return JsonResponse(
+        return _no_store_json(
             {"ok": False, "message": "Invalid request payload."},
             status=400,
         )
 
     email = payload.get("email")
+    request.session.pop(SESSION_PASSWORD_RESET_AUTHORIZATION_KEY, None)
     from safebooks.services.auth_service import send_password_reset_code
     result = send_password_reset_code(email)
     if result.get("ok"):
-        return JsonResponse(result)
+        return _no_store_json(result)
 
-    return JsonResponse(result, status=400)
+    return _no_store_json(result, status=400)
 
 
 @require_POST
 def forgot_password_verify_code_api_view(request):
     payload = _decode_request_data(request)
     if payload is None:
-        return JsonResponse(
+        return _no_store_json(
             {"ok": False, "message": "Invalid request payload."},
             status=400,
         )
 
     email = payload.get("email")
     code = payload.get("code")
+    request.session.pop(SESSION_PASSWORD_RESET_AUTHORIZATION_KEY, None)
     from safebooks.services.auth_service import verify_password_reset_code
     result = verify_password_reset_code(email, code)
+    # This proof is internal authorization, never a JSON field supplied by or
+    # returned to the browser. Rotate the session when verification succeeds.
+    reset_authorization = result.pop("reset_authorization", None)
     if result.get("ok"):
-        return JsonResponse(result)
+        request.session.cycle_key()
+        request.session[SESSION_PASSWORD_RESET_AUTHORIZATION_KEY] = {
+            "email": str(email or "").strip().lower(),
+            "token": reset_authorization,
+        }
+        return _no_store_json(result)
 
-    return JsonResponse(result, status=400)
+    return _no_store_json(result, status=400)
 
 
 @require_POST
 def forgot_password_reset_api_view(request):
     payload = _decode_request_data(request)
     if payload is None:
-        return JsonResponse(
+        return _no_store_json(
             {"ok": False, "message": "Invalid request payload."},
             status=400,
         )
@@ -2471,9 +2649,16 @@ def forgot_password_reset_api_view(request):
     email = payload.get("email")
     new_password = payload.get("new_password")
     confirm_password = payload.get("confirm_password")
+    authorization = request.session.get(SESSION_PASSWORD_RESET_AUTHORIZATION_KEY)
+    reset_authorization = ""
+    if isinstance(authorization, dict) and authorization.get("email") == str(email or "").strip().lower():
+        reset_authorization = authorization.get("token")
     from safebooks.services.auth_service import confirm_password_reset
-    result = confirm_password_reset(email, new_password, confirm_password)
+    result = confirm_password_reset(
+        email, new_password, confirm_password, reset_authorization=reset_authorization
+    )
     if result.get("ok"):
-        return JsonResponse(result)
+        request.session.pop(SESSION_PASSWORD_RESET_AUTHORIZATION_KEY, None)
+        return _no_store_json(result)
 
-    return JsonResponse(result, status=400)
+    return _no_store_json(result, status=400)

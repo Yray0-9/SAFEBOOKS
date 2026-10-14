@@ -164,7 +164,7 @@
 
     const logoutCurrentUser = async () => {
         if (!shared || typeof shared.logoutCurrentUser !== "function") {
-            return String(urls.loginPage || "/login/");
+            throw new Error("Logout is unavailable. Reload this page and try again.");
         }
 
         return shared.logoutCurrentUser({
@@ -419,14 +419,14 @@
                     return;
                 }
 
-                resetSectionDirty(section);
-                showToast("Settings saved.", "success");
+                showToast("This setting is not connected to a save operation.", "warning");
             });
         });
     };
 
     let pendingTheme = "light";
     let storedTheme = "light";
+    let themeStorageAvailable = true;
 
     const getStoredThemeState = () => {
         if (shared && typeof shared.getThemePreference === "function") {
@@ -434,12 +434,14 @@
             return {
                 theme: preference.theme || "light",
                 followSystem: Boolean(preference.followSystem),
+                storageAvailable: preference.storageAvailable !== false,
             };
         }
 
         return {
             theme: "light",
             followSystem: false,
+            storageAvailable: false,
         };
     };
 
@@ -474,23 +476,27 @@
             return;
         }
 
-        if (pendingTheme === storedTheme) {
+        if (pendingTheme === storedTheme && themeStorageAvailable) {
             resetSectionDirty(appearanceSection);
+            const status = appearanceSection.querySelector("[data-settings-status]");
+            if (status) status.textContent = "Saved in this browser";
         } else {
             markSectionDirty(appearanceSection);
+            if (!themeStorageAvailable) {
+                const status = appearanceSection.querySelector("[data-settings-status]");
+                if (status) status.textContent = "Browser storage unavailable";
+            }
         }
     };
 
     const syncThemeState = () => {
         const storedState = getStoredThemeState();
+        themeStorageAvailable = storedState.storageAvailable;
         storedTheme = storedState.theme || "light";
 
         if (storedState.followSystem) {
             const resolvedTheme = resolveThemeFromBody();
             storedTheme = resolvedTheme;
-            if (shared && typeof shared.setThemePreference === "function") {
-                shared.setThemePreference(resolvedTheme, false);
-            }
         }
 
         pendingTheme = storedTheme;
@@ -499,10 +505,17 @@
     };
 
     const handleThemeSave = () => {
-        if (shared && typeof shared.setThemePreference === "function") {
-            shared.setThemePreference(pendingTheme, false);
+        const result = shared && typeof shared.setThemePreference === "function"
+            ? shared.setThemePreference(pendingTheme, false)
+            : null;
+        if (!result || !result.persisted) {
+            const status = appearanceSection && appearanceSection.querySelector("[data-settings-status]");
+            if (status) status.textContent = "Not saved";
+            setSaveButtonState(applyThemeButton, true);
+            showToast("Theme not saved. Browser storage may be blocked; retry or enable storage for this site.", "warning");
+            return;
         }
-        showToast("Theme updated.", "success");
+        showToast("Theme saved in this browser.", "success");
         syncThemeState();
     };
 
@@ -584,7 +597,7 @@
             }
 
             const result = await parseJsonSafe(response);
-            if (!response.ok || !result || !result.ok) {
+            if (!response.ok || !result || result.ok !== true || typeof result.login_alerts_enabled !== "boolean") {
                 const message = result && result.message
                     ? String(result.message)
                     : "Unable to update login alerts.";
@@ -596,8 +609,8 @@
             showToast("Login alerts updated.", "success");
         } catch (error) {
             updateLoginAlertsUiState(previousValue);
-            setInlineStatus(loginAlertsFeedback, "Update failed", "danger");
-            showToast(error && error.message ? String(error.message) : "Unable to update login alerts.", "danger");
+            setInlineStatus(loginAlertsFeedback, "Not confirmed — reload to check", "danger");
+            showToast("Login alerts update was not confirmed. Reload Settings to check the saved preference before retrying.", "danger");
         } finally {
             setLoginAlertsLoading(false);
         }
@@ -654,7 +667,7 @@
             }
 
             const result = await parseJsonSafe(response);
-            if (!response.ok || !result || !result.ok) {
+            if (!response.ok || !result || result.ok !== true || typeof result.client_record_email_notifications_enabled !== "boolean") {
                 const message = result && result.message
                     ? String(result.message)
                     : "Unable to update client email notifications.";
@@ -666,8 +679,8 @@
             showToast("Client email notification setting updated.", "success");
         } catch (error) {
             updateClientRecordEmailsUiState(previousValue);
-            setInlineStatus(clientRecordEmailsFeedback, "Update failed", "danger");
-            showToast(error && error.message ? String(error.message) : "Unable to update client email notifications.", "danger");
+            setInlineStatus(clientRecordEmailsFeedback, "Not confirmed — reload to check", "danger");
+            showToast("Client email preference update was not confirmed. Reload Settings before retrying.", "danger");
         } finally {
             setClientRecordEmailsLoading(false);
         }
@@ -779,11 +792,13 @@
             }
 
             const result = await parseJsonSafe(response);
-            if (!response.ok || !result || !result.ok) {
+            if (!response.ok || !result || result.ok !== true || typeof result.client_details_password_required !== "boolean") {
                 const message = result && result.message
                     ? String(result.message)
                     : "Unable to update client details lock.";
-                throw new Error(message);
+                const failure = new Error(message);
+                failure.confirmedRejected = response.status === 400 && result && result.ok === false;
+                throw failure;
             }
 
             updateClientDetailsLockUiState(Boolean(result.client_details_password_required));
@@ -795,9 +810,11 @@
             showToast("Client details lock updated.", "success");
         } catch (error) {
             updateClientDetailsLockUiState(previousValue);
-            const errorMessage = error && error.message ? String(error.message) : "Unable to update client details lock.";
+            const errorMessage = error && error.confirmedRejected
+                ? String(error.message)
+                : "Client details lock update was not confirmed. Reload Settings to check the saved preference before retrying.";
             setInlineStatus(clientDetailsLockFeedback, errorMessage, "danger");
-            if (clientDetailsLockPasswordInput) {
+            if (clientDetailsLockPasswordInput && error && error.confirmedRejected) {
                 clientDetailsLockPasswordInput.classList.add("is-invalid");
                 clientDetailsLockPasswordInput.focus();
             }
@@ -1595,6 +1612,8 @@
                     const redirectUrl = await logoutCurrentUser();
                     showToast("Logging out...", "success");
                     window.location.assign(redirectUrl);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                 } finally {
                     dashboardLogoutAction.disabled = false;
                 }

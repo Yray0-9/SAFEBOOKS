@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import base64
 import json
 import pyotp
@@ -38,6 +40,7 @@ class BookkeeperTwoFactorApiTests(TestCase):
     def _login_bookkeeper_session(self, bookkeeper: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
+        bind_authenticated_session(session)
         session.save()
 
     def test_default_two_factor_is_disabled(self):

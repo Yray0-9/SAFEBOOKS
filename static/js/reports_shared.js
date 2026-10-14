@@ -163,9 +163,6 @@
         const permitNumber = toDisplayText(client.permitNumber || client.permit_number);
         const birthday = toDisplayText(client.birthday);
         const email = toDisplayText(client.email);
-        const emailPassword = toDisplayText(client.emailPassword || client.email_password);
-        const orusAccount = toDisplayText(client.orusAccount || client.orus_account);
-        const orusPassword = toDisplayText(client.orusPassword || client.orus_password);
 
         const rawCustomFields = Array.isArray(client.custom_fields)
             ? client.custom_fields
@@ -174,6 +171,10 @@
                 : [];
         const customFields = rawCustomFields
             .filter((field) => field && typeof field === "object")
+            // Passwords must never enter preview or print markup, even if the
+            // authorized details page supplies a full client profile.
+            .filter((field) => String(field.type || "").trim().toLowerCase() !== "password")
+            .filter((field) => !/password|passcode|secret|recovery\s*code/i.test(String(field.label || "")))
             .map((field) => {
                 return {
                     label: toDisplayText(field.label, ""),
@@ -338,18 +339,6 @@
                     <tr>
                         <th>Email</th>
                         <td colspan="3">${escapeHtml(email)}</td>
-                    </tr>
-                    <tr>
-                        <th>Email Password</th>
-                        <td colspan="3">${escapeHtml(emailPassword)}</td>
-                    </tr>
-                    <tr>
-                        <th>ORUS Account</th>
-                        <td colspan="3">${escapeHtml(orusAccount)}</td>
-                    </tr>
-                    <tr>
-                        <th>ORUS Password</th>
-                        <td colspan="3">${escapeHtml(orusPassword)}</td>
                     </tr>
                     ${customRowsMarkup}
                 </tbody>

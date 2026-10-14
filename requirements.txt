@@ -1,9 +1,20 @@
 ﻿asgiref==3.11.1
-Django==6.0.4
+Django==6.0.9
 python-dotenv==1.2.2
 psycopg[binary]==3.3.3
 pyotp==2.9.0
 qrcode==8.2
-sqlparse==0.5.5
+sqlparse==0.6.0
 statsmodels==0.14.6
 tzdata==2026.1
+redis==8.1.0
+whitenoise==6.12.0
+gunicorn==26.2.0; platform_system != "Windows"
+# Pin the existing forecasting dependency stack for reproducible deployments.
+numpy==2.5.1
+pandas==3.0.3
+patsy==1.0.2
+scipy==1.18.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+packaging==26.2

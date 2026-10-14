@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import base64
 import json
 
@@ -38,6 +40,7 @@ class AdminSecurityApiTests(TestCase):
     def _login_admin_session(self, admin: AdminAccount) -> None:
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = admin.id
+        bind_authenticated_session(session)
         session.save()
 
     def _enable_two_factor(self, admin: AdminAccount) -> tuple[str, list[str]]:
@@ -195,6 +198,7 @@ class AdminSecurityApiTests(TestCase):
         )
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
+        bind_authenticated_session(session)
         session.save()
 
         endpoints = (
@@ -498,6 +502,7 @@ class AdminSecurityApiTests(TestCase):
         now_timestamp = int(timezone.now().timestamp())
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = admin.id
+        bind_authenticated_session(session)
         session[SESSION_ADMIN_AUTHENTICATED_AT_KEY] = now_timestamp - 30
         session[SESSION_ADMIN_LAST_ACTIVITY_AT_KEY] = now_timestamp - 61
         session.save()

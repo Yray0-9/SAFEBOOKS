@@ -257,7 +257,7 @@
                 </div>
             </article>
 
-            <article class="client-card dashboard-fade-up client-workflow-card client-delay-10" id="clientWorkflowCard">
+            <article class="client-card dashboard-fade-up client-workflow-card client-delay-10" id="clientWorkflowCard" aria-busy="true">
                 <div class="client-workflow-head">
                     <div>
                         <h2 class="client-details-name">Record Schedule Status</h2>
@@ -519,6 +519,7 @@
             </div>
 
             <!-- Empty State Card -->
+            <p class="text-danger" id="analyticsLoadError" role="alert" hidden></p>
             <article class="client-card analytics-empty-state" id="analyticsEmptyState" hidden>
                 <div class="dashboard-data-empty text-center py-5">
                     <i class="bi bi-file-earmark-bar-graph text-muted mb-3 client-details-empty-icon"></i>
@@ -787,7 +788,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=1.0.7"></script>
 <script id="clientCustomFieldsData" type="application/json">
     [
         {% for field in client.custom_fields %}
@@ -1297,7 +1298,31 @@
             reminderList.innerHTML = missingItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
         };
 
+        const setClientWorkflowUnavailable = (isLoading = false) => {
+            latestClientWorkflowStatus = null;
+            const card = document.getElementById("clientWorkflowCard");
+            if (card) card.setAttribute("aria-busy", String(isLoading));
+            if (clientPeriodReadinessTag) {
+                clientPeriodReadinessTag.classList.remove("ready", "pending", "upcoming");
+                clientPeriodReadinessTag.classList.add("pending");
+                clientPeriodReadinessTag.textContent = isLoading ? "Checking" : "Not loaded";
+            }
+            if (clientPeriodReadinessText) clientPeriodReadinessText.textContent = isLoading ? "Checking records..." : "Record schedule could not be checked.";
+            if (clientPeriodReadinessHint) clientPeriodReadinessHint.textContent = isLoading
+                ? "SafeBooks will show the schedule after records load."
+                : "No missing-record decision was made. Retry or narrow the analytics year range.";
+            if (clientWorkflowScheduleList) {
+                clientWorkflowScheduleList.innerHTML = `<div class="client-workflow-item pending"><span class="client-workflow-icon"><i class="bi bi-calendar-check"></i></span><div><strong>${isLoading ? "Checking records" : "Schedule unavailable"}</strong><span>${isLoading ? "Waiting for records to load." : "Saved records have not been evaluated."}</span></div></div>`;
+            }
+        };
+
         const applyClientWorkflowStatus = (workflow) => {
+            if (!workflow || typeof workflow !== "object" || Array.isArray(workflow) || !Object.keys(workflow).length) {
+                setClientWorkflowUnavailable();
+                return;
+            }
+            const card = document.getElementById("clientWorkflowCard");
+            if (card) card.setAttribute("aria-busy", "false");
             const safeWorkflow = workflow && typeof workflow === "object" ? workflow : {};
             latestClientWorkflowStatus = safeWorkflow;
 
@@ -1483,6 +1508,7 @@
                 analyticsDataPanels.classList.toggle("is-loading", isLoadingAnalytics);
             }
             if (isLoadingAnalytics) {
+                setClientWorkflowUnavailable(true);
                 if (analyticsDataPanels) analyticsDataPanels.hidden = true;
                 if (analyticsEmptyState) analyticsEmptyState.hidden = true;
             }
@@ -2038,7 +2064,7 @@
             renderTrend([]);
             applyPredictiveForecast({ has_forecast: false });
             renderForecastProjectionChart([]);
-            applyClientWorkflowStatus({});
+            setClientWorkflowUnavailable();
         };
 
         const applyAnalyticsPayload = (payload) => {
@@ -2102,6 +2128,8 @@
             }
             analyticsAbortController = new AbortController();
             setAnalyticsLoadingState(true);
+            const loadError = document.getElementById("analyticsLoadError");
+            if (loadError) loadError.hidden = true;
 
             try {
                 const response = await fetch(buildAnalyticsSummaryApiUrl(), {
@@ -2125,7 +2153,10 @@
                     if (!response.ok || !result || !result.ok) {
                         setAnalyticsLoadingState(false);
                         applyAnalyticsFallbackState();
-                        showToast("Unable to load analytics right now. Please try again.", "danger");
+                        const message = result && result.message ? result.message : "Unable to load analytics right now. Please try again.";
+                        if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+                        if (loadError) { loadError.textContent = message; loadError.hidden = false; }
+                        showToast(message, "danger");
                         return;
                     }
 
@@ -2138,6 +2169,8 @@
 
                 setAnalyticsLoadingState(false);
                 applyAnalyticsFallbackState();
+                if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+                if (loadError) { loadError.textContent = "Network issue detected while loading analytics. Please retry."; loadError.hidden = false; }
                 showToast("Network issue detected while loading analytics.", "warning");
             }
         };
@@ -2320,6 +2353,8 @@
         
         let modalLatestReport = null;
         let modalReportSourcePayload = null;
+        let modalReportRequestToken = 0;
+        let modalReportAbortController = null;
 
         const modalReportMonthNames = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -2373,7 +2408,9 @@
             const currentYear = String(new Date().getFullYear());
             const transactionRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
             const recordedYears = Array.from(new Set(
-                transactionRows.map(getModalReportRowYear).filter(Boolean)
+                payload && Array.isArray(payload.available_years)
+                    ? payload.available_years.map(String)
+                    : transactionRows.map(getModalReportRowYear).filter(Boolean)
             )).sort((left, right) => Number(right) - Number(left));
 
             modalReportYearFilter.replaceChildren();
@@ -2505,9 +2542,7 @@
             const permitNumber = currentClientProfile.permit_number;
             const birthday = currentClientProfile.birthday;
             const email = currentClientProfile.email;
-            const emailPassword = currentClientProfile.email_password;
             const orusAccount = currentClientProfile.orus_account;
-            const orusPassword = currentClientProfile.orus_password;
 
             const customFields = [];
             const customFieldsEl = document.getElementById("clientCustomFieldsData");
@@ -2550,9 +2585,7 @@
                     permitNumber,
                     birthday,
                     email,
-                    emailPassword,
                     orusAccount,
-                    orusPassword,
                     customFields,
                 },
                 table: {
@@ -2752,12 +2785,35 @@
             }
         };
 
-        const loadModalReport = async () => {
+        const fetchModalReportPayload = async (params, signal) => {
+            const response = await fetch(`${REPORTS_PRINT_LAYOUT_API_URL}?${params.toString()}`, {
+                method: "GET", headers: { "Accept": "application/json" },
+                credentials: "same-origin", signal,
+            });
+            if (response.status === 401) {
+                const nextPath = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.assign(`{% url 'login' %}?next=${nextPath}`);
+                throw new Error("Authentication required.");
+            }
+            const result = await shared.parseJsonSafe(response);
+            if (!response.ok || !result || !result.ok) {
+                throw new Error(result && result.message ? result.message : "Unable to generate report data.");
+            }
+            return result;
+        };
+
+        const loadModalReport = async (refreshYears = true) => {
+            const requestToken = ++modalReportRequestToken;
+            if (modalReportAbortController) modalReportAbortController.abort();
+            modalReportAbortController = new AbortController();
+            const signal = modalReportAbortController.signal;
+            modalLatestReport = null;
+            modalReportSourcePayload = null;
             if (modalReportLoading) modalReportLoading.hidden = false;
             if (modalReportError) modalReportError.hidden = true;
             if (modalReportWrapper) modalReportWrapper.hidden = true;
             if (modalPrintReportBtn) modalPrintReportBtn.disabled = true;
-            if (modalReportYearFilter) {
+            if (refreshYears && modalReportYearFilter) {
                 modalReportYearFilter.disabled = true;
                 modalReportYearFilter.replaceChildren();
                 const loadingOption = document.createElement("option");
@@ -2766,46 +2822,35 @@
                 modalReportYearFilter.appendChild(loadingOption);
             }
             if (modalReportYearHint) {
-                modalReportYearHint.textContent = "Loading the available bookkeeping years...";
+                modalReportYearHint.textContent = refreshYears ? "Loading the available bookkeeping years..." : "Loading the selected bookkeeping year...";
             }
 
             try {
                 const params = new URLSearchParams();
                 params.set("client_id", String(CLIENT_ID));
-                params.set("date_from", "2000-01-01");
-                params.set("date_to", "2100-12-31");
-
-                const url = `${REPORTS_PRINT_LAYOUT_API_URL}?${params.toString()}`;
-                const response = await fetch(url, {
-                    method: "GET",
-                    headers: { "Accept": "application/json" },
-                    credentials: "same-origin",
-                });
-
-                if (response.status === 401) {
-                    const nextPath = encodeURIComponent(window.location.pathname + window.location.search);
-                    window.location.assign(`{% url 'login' %}?next=${nextPath}`);
-                    return;
+                if (refreshYears) {
+                    params.set("years_only", "1");
+                    const years = await fetchModalReportPayload(params, signal);
+                    if (requestToken !== modalReportRequestToken) return;
+                    populateModalReportYearOptions(years);
+                    params.delete("years_only");
                 }
-
-                if (shared && typeof shared.parseJsonSafe === "function") {
-                    const result = await shared.parseJsonSafe(response);
-                    if (!response.ok || !result || !result.ok) {
-                        throw new Error(result && result.message ? result.message : "Unable to generate report data.");
-                    }
-
-                    modalReportSourcePayload = result;
-                    populateModalReportYearOptions(result);
-                    renderModalReportForSelectedYear();
-                    
-                    if (modalReportLoading) modalReportLoading.hidden = true;
-                    if (modalReportWrapper) modalReportWrapper.hidden = false;
-                    if (modalPrintReportBtn) modalPrintReportBtn.disabled = false;
-                }
+                const selectedYear = getSelectedModalReportYear();
+                params.set("date_from", selectedYear === "all" ? "2000-01-01" : `${selectedYear}-01-01`);
+                params.set("date_to", selectedYear === "all" ? "2100-12-31" : `${selectedYear}-12-31`);
+                const result = await fetchModalReportPayload(params, signal);
+                if (requestToken !== modalReportRequestToken) return;
+                modalReportSourcePayload = result;
+                renderModalReportForSelectedYear();
+                if (modalReportLoading) modalReportLoading.hidden = true;
+                if (modalReportWrapper) modalReportWrapper.hidden = false;
+                if (modalPrintReportBtn) modalPrintReportBtn.disabled = false;
             } catch (err) {
+                if (err.name === "AbortError" || requestToken !== modalReportRequestToken) return;
                 if (modalReportLoading) modalReportLoading.hidden = true;
                 if (modalReportError) modalReportError.hidden = false;
                 if (modalReportErrorMsg) modalReportErrorMsg.textContent = err.message || "Failed to prepare report preview.";
+                if (modalReportYearHint) modalReportYearHint.textContent = "Preview not loaded. Retry or choose another available year before printing.";
             }
         };
 
@@ -2834,16 +2879,19 @@
 
             const updateClosedUiState = (clientData) => {
                 const isClosed = Boolean(clientData && clientData.remarks === "closed");
+                const remark = String(clientData && clientData.remarks || "new");
+                currentClientProfile.remarks = remark;
+                const statusLabel = formatRemarksLabel(remark);
+                const statusColors = { new: "info", active: "success", separated: "warning", closed: "secondary" };
+                const statusColor = statusColors[remark] || "info";
                 const titleBadge = document.querySelector(".client-details-status-badge");
                 if (titleBadge) {
-                    titleBadge.className = isClosed
-                        ? "badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1-5 client-details-status-badge"
-                        : "badge bg-success-subtle text-success border border-success-subtle px-3 py-1-5 client-details-status-badge";
-                    titleBadge.textContent = isClosed ? "Closed" : "Active";
+                    titleBadge.className = `badge bg-${statusColor}-subtle text-${statusColor} border border-${statusColor}-subtle px-3 py-1-5 client-details-status-badge`;
+                    titleBadge.textContent = statusLabel;
                 }
                 const remarksField = document.querySelector('[data-client-profile-field="remarks"]');
                 if (remarksField) {
-                    remarksField.textContent = isClosed ? "Closed" : "Active";
+                    remarksField.textContent = statusLabel;
                 }
 
                 const banner = document.getElementById("clientClosedNoticeBanner");
@@ -3033,12 +3081,16 @@
 
             if (modalReportYearFilter) {
                 modalReportYearFilter.addEventListener("change", () => {
-                    renderModalReportForSelectedYear();
+                    loadModalReport(false);
                 });
             }
 
             if (modalEl) {
                 modalEl.addEventListener("hidden.bs.modal", () => {
+                    ++modalReportRequestToken;
+                    if (modalReportAbortController) modalReportAbortController.abort();
+                    modalLatestReport = null;
+                    if (modalPrintReportBtn) modalPrintReportBtn.disabled = true;
                     if (modalReportLoading) modalReportLoading.hidden = true;
                     if (modalReportError) modalReportError.hidden = true;
 

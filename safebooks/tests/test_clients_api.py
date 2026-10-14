@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
 from datetime import date, timedelta
 from decimal import Decimal
@@ -18,11 +20,13 @@ class ClientsApiTests(TestCase):
             email=f"clients_{suffix}@example.com",
             password_hash="not-used-in-test",
             status=BookkeeperAccount.STATUS_APPROVED,
+            client_details_password_required=False,
         )
 
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _build_tin(self, token: str) -> str:
@@ -255,8 +259,11 @@ class ClientsApiTests(TestCase):
 
         self.assertEqual(create_response.status_code, 201)
         created_client = create_response.json()["client"]
+        self.assertEqual(created_client["custom_fields"], [])
+        detail_response = self.client.get(reverse("api_client_detail", args=[created_client["id"]]))
+        self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(
-            created_client["custom_fields"],
+            detail_response.json()["client"]["custom_fields"],
             [
                 {"label": "SSS Number", "value": "12-3456789-0", "type": "text"},
                 {"label": "Portal PIN", "value": "secure-pin", "type": "password"},

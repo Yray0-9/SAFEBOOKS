@@ -148,7 +148,7 @@
         }, delay);
     };
 
-    const logoutCurrentUser = async (options) => {
+    const confirmLogout = async (options) => {
         const config = options || {};
         const logoutUrl = String(config.logoutUrl || "").trim();
         let redirectUrl = String(config.loginUrl || "").trim() || "/login/";
@@ -159,20 +159,30 @@
             headers["X-CSRFToken"] = csrfToken;
         }
 
-        if (logoutUrl) {
+        if (!logoutUrl) {
+            throw new Error("Logout is unavailable. Reload this page and try again.");
+        }
+        let response;
+        try {
+            response = await fetch(logoutUrl, {
+                method: "POST",
+                headers,
+                credentials: "same-origin",
+            });
+        } catch (requestError) {
+            throw new Error("Unable to confirm logout. Check your connection and retry; your session may still be active.");
+        }
+        const payload = await parseJsonSafe(response);
+        const alreadySignedOut = response.status === 401 && payload && payload.ok === false;
+        if (!alreadySignedOut && (!response.ok || !payload || payload.ok !== true)) {
+            throw new Error("Logout was not confirmed. Reload this page and try again; your session may still be active.");
+        }
+        if (!alreadySignedOut && typeof payload.redirect_url === "string" && payload.redirect_url.trim()) {
             try {
-                const response = await fetch(logoutUrl, {
-                    method: "POST",
-                    headers,
-                    credentials: "same-origin",
-                });
-
-                const payload = await parseJsonSafe(response);
-                if (payload && typeof payload.redirect_url === "string" && payload.redirect_url.trim()) {
-                    redirectUrl = payload.redirect_url.trim();
-                }
-            } catch (requestError) {
-                // Keep local cleanup + redirect behavior even on network failures.
+                const destination = new URL(payload.redirect_url, window.location.href);
+                if (destination.origin === window.location.origin) redirectUrl = destination.href;
+            } catch (error) {
+                // Logout succeeded; a malformed destination cannot undo it.
             }
         }
 
@@ -180,14 +190,24 @@
             if (config.authUserKey) {
                 window.localStorage.removeItem(config.authUserKey);
             }
-            if (config.loginWelcomeKey) {
-                window.sessionStorage.removeItem(config.loginWelcomeKey);
-            }
         } catch (storageError) {
-            // Ignore storage errors to avoid blocking logout flow.
+            // Server logout is confirmed even when browser storage is blocked.
+        }
+        try {
+            if (config.loginWelcomeKey) window.sessionStorage.removeItem(config.loginWelcomeKey);
+        } catch (storageError) {
+            // Independent cleanup: one blocked store must not skip the other.
         }
 
         return redirectUrl;
+    };
+
+    let pendingLogout = null;
+    const logoutCurrentUser = (options) => {
+        if (!pendingLogout) {
+            pendingLogout = confirmLogout(options).finally(() => { pendingLogout = null; });
+        }
+        return pendingLogout;
     };
 
     const THEME_STORAGE_KEY = "safebooks.ui.theme";
@@ -203,6 +223,7 @@
     const readThemePreference = () => {
         let theme = "light";
         let followSystem = false;
+        let storageAvailable = true;
 
         try {
             const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -212,9 +233,10 @@
         } catch (error) {
             theme = "light";
             followSystem = false;
+            storageAvailable = false;
         }
 
-        return { theme, followSystem };
+        return { theme, followSystem, storageAvailable };
     };
 
     const resolveSystemTheme = () => {
@@ -272,14 +294,20 @@
         const theme = normalizeTheme(themeValue);
         const followSystem = Boolean(followSystemValue);
 
+        let persisted = false;
         try {
             window.localStorage.setItem(THEME_STORAGE_KEY, theme);
             window.localStorage.setItem(THEME_FOLLOW_KEY, followSystem ? "1" : "0");
+            persisted = window.localStorage.getItem(THEME_STORAGE_KEY) === theme
+                && window.localStorage.getItem(THEME_FOLLOW_KEY) === (followSystem ? "1" : "0");
         } catch (error) {
-            // Ignore storage errors to keep UI responsive.
+            // Apply a temporary theme, but never claim this preference was saved.
         }
 
-        return applyStoredTheme();
+        const resolvedTheme = followSystem ? resolveSystemTheme() : theme;
+        applyThemeClass(resolvedTheme);
+        syncSystemThemeListener(followSystem);
+        return { theme: resolvedTheme, followSystem, persisted };
     };
 
     const getThemePreference = () => {

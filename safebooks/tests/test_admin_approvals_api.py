@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from unittest.mock import patch
@@ -25,6 +27,7 @@ class AdminApprovalsApiTests(TestCase):
     def _login_admin(self, account: AdminAccount) -> None:
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _create_bookkeeper(self, suffix: str, status: str) -> BookkeeperAccount:
@@ -39,6 +42,7 @@ class AdminApprovalsApiTests(TestCase):
     def _login_bookkeeper(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def test_admin_approvals_requires_admin_authentication(self):
@@ -356,7 +360,7 @@ class AdminApprovalsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload.get("email_delivery", {}).get("status"), "sent")
-        self.assertIn("Decision email sent", payload.get("message", ""))
+        self.assertIn("Decision email accepted for delivery", payload.get("message", ""))
         self.assertEqual(len(mail.outbox), 1)
         sent_email = mail.outbox[0]
         self.assertEqual(sent_email.to, [pending.email])

@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 from django.contrib.auth.hashers import check_password, make_password
 from django.test import TestCase
 from django.urls import reverse
@@ -18,6 +20,7 @@ class AdminProfileApiTests(TestCase):
     def _login_admin(self, account: AdminAccount) -> None:
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _login_bookkeeper(self) -> None:
@@ -30,6 +33,7 @@ class AdminProfileApiTests(TestCase):
         )
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
+        bind_authenticated_session(session)
         session.save()
 
     def test_admin_profile_requires_admin_authentication(self):

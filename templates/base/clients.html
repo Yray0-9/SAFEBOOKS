@@ -98,7 +98,7 @@
         </button>
         <button type="button" class="btn directory-tab-btn" id="tabClosed" aria-selected="false">
             <i class="bi bi-x-circle-fill"></i>
-            <span>Closed</span>
+            <span title="Clients marked Closed or Separated">Inactive</span>
         </button>
     </div>
 
@@ -467,7 +467,7 @@
                     <textarea id="modalCloseClientNotesInput" class="form-control client-form-input" rows="2" placeholder="Add additional details or context..."></textarea>
                 </div>
                 
-                <p class="clients-delete-note text-muted small mt-2 mb-0">This will mark their status as "Closed" and move them to the Closed tab.</p>
+                <p class="clients-delete-note text-muted small mt-2 mb-0">This will mark their status as "Closed" and move them to the Inactive tab.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
@@ -514,7 +514,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=1.0.7"></script>
 {% if client_details_access_target %}
 {{ client_details_access_target|json_script:"clientDetailsAccessTarget" }}
 {% endif %}
@@ -638,6 +638,7 @@
         let CLIENTS_DATA = [];
         let clientsSearchDebounceTimer = null;
         let clientsListRequestToken = 0;
+        let clientProfileRequestToken = 0;
         let clientsListAbortController = null;
         let isClientsLoading = false;
         let addClientFormDirty = false;
@@ -1146,7 +1147,7 @@
 
         const logoutCurrentUser = async () => {
             if (!shared || typeof shared.logoutCurrentUser !== "function") {
-                return "{% url 'login' %}";
+                throw new Error("Logout is unavailable. Reload this page and try again.");
             }
 
             return shared.logoutCurrentUser({
@@ -1600,9 +1601,7 @@
             const permitNumber = toReportValue(clientData.permitNumber);
             const birthday = toReportValue(clientData.birthday);
             const email = toReportValue(clientData.email);
-            const emailPassword = toReportValue(clientData.emailPassword);
             const orusAccount = toReportValue(clientData.orusAccount);
-            const orusPassword = toReportValue(clientData.orusPassword);
             const customFields = Array.isArray(clientData.customFields) ? clientData.customFields : [];
 
             const reportTypeLabel = "Financial Summary Report";
@@ -1636,9 +1635,7 @@
                     permitNumber,
                     birthday,
                     email,
-                    emailPassword,
                     orusAccount,
-                    orusPassword,
                     customFields,
                 },
                 table: {
@@ -1825,9 +1822,11 @@
             }
         };
 
-        const openClientAccessConfirmModal = (clientData, targetUrl) => {
+        const openClientAccessConfirmModal = (clientData, targetUrl, onConfirmed = null) => {
             pendingClientDetailsTarget = {
                 url: targetUrl,
+                clientId: clientData ? clientData.clientId : null,
+                onConfirmed,
                 clientName: clientData && clientData.clientName ? clientData.clientName : "selected client",
             };
 
@@ -1848,7 +1847,7 @@
 
         const confirmClientDetailsAccess = async () => {
             const target = pendingClientDetailsTarget;
-            if (!target || !target.url) {
+            if (!target || (!target.url && !target.onConfirmed)) {
                 return;
             }
 
@@ -1878,7 +1877,7 @@
                     method: "POST",
                     headers,
                     credentials: "same-origin",
-                    body: JSON.stringify({ current_password: currentPassword }),
+                    body: JSON.stringify({ current_password: currentPassword, client_id: target.clientId }),
                 });
 
                 if (response.status === 401) {
@@ -1897,7 +1896,17 @@
 
                 clientDetailsVerifiedUntil = 0;
                 setClientAccessStatus("Access confirmed.", "success");
-                window.location.assign(target.url);
+                if (target.onConfirmed) {
+                    setClientAccessLoading(false);
+                    if (clientAccessConfirmModal && clientAccessConfirmModalElement) {
+                        clientAccessConfirmModalElement.addEventListener("hidden.bs.modal", target.onConfirmed, { once: true });
+                        clientAccessConfirmModal.hide();
+                    } else {
+                        await target.onConfirmed();
+                    }
+                } else {
+                    window.location.assign(target.url);
+                }
             } catch (error) {
                 if (pendingClientDetailsTarget === target) {
                     setClientAccessStatus(error && error.message ? String(error.message) : "Unable to confirm access.", "danger");
@@ -1925,16 +1934,44 @@
             }
         };
 
-        const openEditModal = (row) => {
+        const openEditModal = async (row) => {
             if (!row || !editClientModal) {
                 return;
             }
-            editingRow = row;
-            const clientData = getClientDataFromRow(row);
-            setEditFormData(row, clientData);
-            renderCustomFields(editClientCustomFields, clientData.customFields, "edit");
-            editClientModal.show();
-            editClientFormDirty = false;
+            const selectedClient = getClientDataFromRow(row);
+            const requestToken = ++clientProfileRequestToken;
+            showToast("Loading client details...");
+            try {
+                // Never fill an edit form from a redacted directory response.
+                const response = await fetch(buildClientDetailApiUrl(selectedClient.clientId), {
+                    method: "GET",
+                    headers: { Accept: "application/json" },
+                    credentials: "same-origin",
+                });
+                const result = await parseJsonSafe(response);
+                if (requestToken !== clientProfileRequestToken || !row.isConnected) return;
+                if (response.status === 401) {
+                    redirectToLogin();
+                    return;
+                }
+                if (response.status === 403 && result && result.client_access_required) {
+                    openClientAccessConfirmModal(selectedClient, "", () => openEditModal(row));
+                    return;
+                }
+                if (!response.ok || !result || !result.ok) {
+                    throw new Error(result && result.message ? result.message : "Unable to load client details.");
+                }
+                const clientData = mapClientFromApi(result.client);
+                editingRow = row;
+                setEditFormData(row, clientData);
+                renderCustomFields(editClientCustomFields, clientData.customFields, "edit");
+                editClientFormDirty = false;
+                editClientModal.show();
+            } catch (error) {
+                if (requestToken === clientProfileRequestToken) {
+                    showToast(error && error.message ? error.message : "Unable to load client details. Please try again.");
+                }
+            }
         };
 
         const openDeleteModal = (row) => {
@@ -2200,32 +2237,17 @@
                 return;
             }
 
-            const payload = {
-                client_name: clientData.clientName,
-                tin_number: clientData.tinRaw || clientData.tin,
-                trade_name: clientData.tradeName,
-                location: clientData.location,
-                permit_number: clientData.permitNumber,
-                birthday: clientData.birthday,
-                email: clientData.email,
-                email_password: clientData.emailPassword,
-                orus_account: clientData.orusAccount,
-                orus_password: clientData.orusPassword,
-                custom_fields: clientData.customFields,
-                forecast_growth_percent: 0,
-                remarks: "active"
-            };
-
             const csrfToken = getCookieValue("csrftoken");
             try {
-                const response = await fetch(buildClientDetailApiUrl(clientData.clientId), {
-                    method: "PUT",
+                // Restore status only; redacted list values must not overwrite a profile.
+                const response = await fetch(`${buildClientDetailApiUrl(clientData.clientId)}reopen/`, {
+                    method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRFToken": csrfToken
                     },
                     credentials: "same-origin",
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({})
                 });
 
                 const result = await parseJsonSafe(response);
@@ -2692,6 +2714,8 @@
                     const redirectUrl = await logoutCurrentUser();
                     showToast("Logging out...");
                     window.location.assign(redirectUrl);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                 } finally {
                     dashboardLogoutAction.disabled = false;
                 }
@@ -2710,7 +2734,7 @@
             const clientsListHeading = document.getElementById("clientsListHeading");
             if (clientsListHeading) {
                 if (directoryTabFilter === "closed") {
-                    clientsListHeading.textContent = "Closed Client Businesses";
+                    clientsListHeading.textContent = "Inactive Clients (Closed or Separated)";
                 } else {
                     clientsListHeading.textContent = "Registered Clients";
                 }

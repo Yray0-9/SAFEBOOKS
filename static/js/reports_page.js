@@ -243,7 +243,7 @@
 
     const logoutCurrentUser = async () => {
         if (!shared || typeof shared.logoutCurrentUser !== "function") {
-            return String(urls.loginPage || "/login/");
+            throw new Error("Logout is unavailable. Reload this page and try again.");
         }
 
         return shared.logoutCurrentUser({
@@ -979,9 +979,7 @@
         const permitNumber = toDisplayText(client && client.permit_number);
         const birthday = client && client.birthday ? formatClientBirthday(client.birthday) : "-";
         const email = toDisplayText(client && client.email);
-        const emailPassword = toDisplayText(client && client.email_password);
         const orusAccount = toDisplayText(client && client.orus_account);
-        const orusPassword = toDisplayText(client && client.orus_password);
         const customFields = client && Array.isArray(client.custom_fields) ? client.custom_fields : [];
 
         const reportTypeLabel = toDisplayText(report.reportLabel, "Client Report");
@@ -1038,9 +1036,7 @@
                 permitNumber,
                 birthday,
                 email,
-                emailPassword,
                 orusAccount,
-                orusPassword,
                 customFields,
             },
             table: {
@@ -2383,6 +2379,8 @@
                     const redirectUrl = await logoutCurrentUser();
                     showToast("Logging out...", "success");
                     window.location.assign(redirectUrl);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                 } finally {
                     dashboardLogoutAction.disabled = false;
                 }

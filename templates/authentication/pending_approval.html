@@ -107,7 +107,7 @@
             const logoutActions = Array.from(document.querySelectorAll("[data-pending-logout]"));
             const shared = window.SafeBooksShared || null;
 
-            if (!logoutActions.length || !shared || typeof shared.logoutCurrentUser !== "function") {
+            if (!logoutActions.length) {
                 return;
             }
 
@@ -127,21 +127,24 @@
                 let redirectUrl = "{% url 'login' %}";
 
                 try {
+                    if (!shared || typeof shared.logoutCurrentUser !== "function") {
+                        throw new Error("Logout is unavailable. Reload this page and try again.");
+                    }
                     redirectUrl = await shared.logoutCurrentUser({
                         logoutUrl: "{% url 'api_logout' %}",
                         loginUrl: "{% url 'login' %}",
                         authUserKey: "safebooks.authUser",
                         loginWelcomeKey: "safebooks.loginWelcome",
                     });
+                    window.location.assign(redirectUrl);
                 } catch (logoutError) {
-                    // Keep fallback redirect in place.
-                }
-
-                window.location.assign(redirectUrl);
-                action.dataset.logoutPending = "0";
-                action.removeAttribute("aria-disabled");
-                if (action.tagName === "BUTTON") {
-                    action.disabled = false;
+                    window.alert(logoutError.message || "Logout was not confirmed. Please retry.");
+                } finally {
+                    action.dataset.logoutPending = "0";
+                    action.removeAttribute("aria-disabled");
+                    if (action.tagName === "BUTTON") {
+                        action.disabled = false;
+                    }
                 }
             };
 

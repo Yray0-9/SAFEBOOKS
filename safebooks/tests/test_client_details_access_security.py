@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
 
 from django.contrib.auth.hashers import make_password
@@ -22,6 +24,7 @@ class ClientDetailsAccessSecurityTests(TestCase):
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _create_client(self, account: BookkeeperAccount) -> Client:

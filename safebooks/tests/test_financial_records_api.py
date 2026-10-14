@@ -1,9 +1,11 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
 from datetime import date
 from decimal import Decimal
 
 from django.core import mail
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.test import override_settings
 from django.urls import reverse
 
@@ -22,7 +24,7 @@ from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
     DEFAULT_FROM_EMAIL="SafeBooks <no-reply@safebooks.test>",
     SAFEBOOKS_CLIENT_RECORD_EMAILS_ENABLED=True,
 )
-class FinancialRecordsApiTests(TestCase):
+class FinancialRecordsApiTests(TransactionTestCase):
     def _create_bookkeeper(self, suffix: str) -> BookkeeperAccount:
         return BookkeeperAccount.objects.create(
             full_name=f"Bookkeeper {suffix}",
@@ -35,6 +37,7 @@ class FinancialRecordsApiTests(TestCase):
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _build_tin(self, token: str) -> str:
@@ -272,6 +275,7 @@ class FinancialRecordsApiTests(TestCase):
         self.assertEqual(list_payload["summary"]["total_amount"], "1120.00")
 
         update_payload = {
+            "expected_revision": create_payload["record"]["revision"],
             "month": 4,
             "year": 2026,
             "date": "2026-04-18",
@@ -310,6 +314,8 @@ class FinancialRecordsApiTests(TestCase):
                 "api_financial_record_detail",
                 kwargs={"client_id": client.id, "record_id": record_id},
             ),
+            data=json.dumps({"expected_revision": update_json["record"]["revision"]}),
+            content_type="application/json",
             HTTP_ACCEPT="application/json",
         )
         self.assertEqual(delete_response.status_code, 200)
@@ -421,6 +427,7 @@ class FinancialRecordsApiTests(TestCase):
 
         # 2. Update to July deadline -> not completed yet
         update_payload = {
+            "expected_revision": create_payload["record"]["revision"],
             "month": 3,
             "year": 2026,
             "date": "2026-03-15",
@@ -474,6 +481,7 @@ class FinancialRecordsApiTests(TestCase):
 
         # 5. Clear deadline_date
         clear_payload = {
+            "expected_revision": update_json["record"]["revision"],
             "month": 3,
             "year": 2026,
             "date": "2026-03-15",

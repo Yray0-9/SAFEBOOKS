@@ -7,6 +7,8 @@ from django.core.cache import cache
 from django.core.mail import get_connection, send_mail
 from django.utils import timezone
 
+from safebooks.services.email_delivery_service import email_count_confirmed, preview_only_email_backend
+
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +132,9 @@ def submit_bookkeeper_feedback(bookkeeper, payload: dict) -> dict:
     if page_path is None:
         return _result(False, "Invalid page context.", code="invalid_page_context")
 
+    if preview_only_email_backend():
+        return _result(False, "Feedback cannot reach the developer with this environment's local email backend.", code="delivery_failed")
+
     if not _consume_rate_limit(bookkeeper.id):
         return _result(
             False,
@@ -166,11 +171,9 @@ def submit_bookkeeper_feedback(bookkeeper, payload: dict) -> dict:
             fail_silently=False,
             connection=connection,
         )
-    except Exception:
+    except Exception as error:
         logger.warning(
-            "Failed to deliver beta feedback for bookkeeper %s.",
-            bookkeeper.id,
-            exc_info=True,
+            "Beta feedback delivery failed (%s).", type(error).__name__,
         )
         return _result(
             False,
@@ -178,7 +181,7 @@ def submit_bookkeeper_feedback(bookkeeper, payload: dict) -> dict:
             code="delivery_failed",
         )
 
-    if sent_count < 1:
+    if not email_count_confirmed(sent_count):
         logger.warning(
             "The email backend did not confirm beta feedback delivery for bookkeeper %s.",
             bookkeeper.id,
@@ -191,5 +194,5 @@ def submit_bookkeeper_feedback(bookkeeper, payload: dict) -> dict:
 
     return _result(
         True,
-        "Thank you - your feedback was sent to the SafeBooks developer.",
+        "Thank you - your feedback was accepted for delivery to the SafeBooks developer.",
     )

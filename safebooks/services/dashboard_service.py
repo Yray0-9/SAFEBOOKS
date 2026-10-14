@@ -1,4 +1,3 @@
-from datetime import date
 from decimal import Decimal
 
 from django.db.models import Count, Max, OuterRef, Q, Subquery
@@ -101,10 +100,9 @@ def _build_client_activity_payload(client, current_period_label: str, reference_
     deadline_completed = False
     if getattr(client, "last_deadline_date", None):
         days_remaining = (client.last_deadline_date - reference_date).days
-        deadline_completed = FinancialRecord.objects.filter(
-            client=client,
-            entry_date__gte=date(client.last_deadline_date.year, client.last_deadline_date.month, 1),
-        ).exists()
+        deadline_completed = bool(
+            client.last_entry_date and client.last_entry_date >= client.last_deadline_date.replace(day=1)
+        )
 
     return {
         "client_id": client.id,
@@ -135,10 +133,7 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
     current_month = today.month
     current_period_label = _period_label(current_month, current_year)
 
-    # Dynamic Client Promotion & Status Checks
-    from safebooks.services.client_service import check_and_promote_new_client
-    for client in Client.objects.filter(bookkeeper=bookkeeper).exclude(remarks=Client.REMARK_CLOSED):
-        check_and_promote_new_client(client)
+    from safebooks.services.client_service import resolve_client_remarks, with_status_activity
 
     latest_record_for_client = (
         FinancialRecord.objects.filter(
@@ -149,7 +144,8 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
     )
 
     clients = list(
-        Client.objects.filter(bookkeeper=bookkeeper)
+        with_status_activity(Client.objects.filter(bookkeeper=bookkeeper), today=today)
+        .defer("email_password", "orus_password", "custom_fields")
         .annotate(
             record_count=Count(
                 "financial_records",
@@ -177,6 +173,8 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
         )
         .order_by("-created_at", "-id")
     )
+    for client in clients:
+        client.remarks = resolve_client_remarks(client, today=today)
 
     recent_client_activity = [
         _build_client_activity_payload(client, current_period_label, today)

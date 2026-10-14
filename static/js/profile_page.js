@@ -89,7 +89,7 @@
 
     const logoutCurrentUser = async () => {
         if (!shared || typeof shared.logoutCurrentUser !== "function") {
-            return String(urls.loginPage || "/login/");
+            throw new Error("Logout is unavailable. Reload this page and try again.");
         }
 
         return shared.logoutCurrentUser({
@@ -412,6 +412,8 @@
                     const redirectUrl = await logoutCurrentUser();
                     showToast("Logging out...", "success");
                     window.location.assign(redirectUrl);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                 } finally {
                     dashboardLogoutAction.disabled = false;
                 }
