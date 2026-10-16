@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth.hashers import check_password
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
@@ -9,6 +10,10 @@ from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
 
 
 class AuthApiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
     def test_register_then_login_success_sets_session(self):
         register_payload = {
             "full_name": "Login Success User",
@@ -63,9 +68,9 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload.get("ok"))
-        self.assertEqual(payload.get("message"), "Incorrect password. Please try again.")
-        self.assertEqual(payload.get("field"), "password")
-        self.assertEqual(payload.get("error_code"), "incorrect_password")
+        self.assertEqual(payload.get("message"), "Invalid email or username, or password.")
+        self.assertEqual(payload.get("field"), "both")
+        self.assertEqual(payload.get("error_code"), "invalid_credentials")
 
     def test_login_legacy_plaintext_password_hash_is_upgraded(self):
         account = BookkeeperAccount.objects.create(
@@ -92,7 +97,7 @@ class AuthApiTests(TestCase):
         self.assertNotEqual(account.password_hash, "LegacyPass#123")
         self.assertTrue(check_password("LegacyPass#123", account.password_hash))
 
-    def test_login_user_not_found_returns_clear_account_not_found_message(self):
+    def test_login_unknown_account_returns_generic_credentials_message(self):
         response = self.client.post(
             reverse("api_login"),
             data=json.dumps({
@@ -105,6 +110,6 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload.get("ok"))
-        self.assertEqual(payload.get("message"), "No account found with this email or username.")
-        self.assertEqual(payload.get("field"), "identifier")
-        self.assertEqual(payload.get("error_code"), "account_not_found")
+        self.assertEqual(payload.get("message"), "Invalid email or username, or password.")
+        self.assertEqual(payload.get("field"), "both")
+        self.assertEqual(payload.get("error_code"), "invalid_credentials")

@@ -2,6 +2,7 @@ from datetime import date
 
 from safebooks.models import Client
 from safebooks.models.workspace_defaults_model import WorkspaceDefaults
+from safebooks.validators.data_validator import normalize_positive_id
 
 
 DEFAULT_CLIENT_SCOPES = {
@@ -52,15 +53,7 @@ def _normalize_last_client_id(value):
     if value in (None, "", "all", "null"):
         return None, None
 
-    raw_value = _normalize_text(value)
-    if not raw_value.isdigit():
-        return None, "Last used client must be a valid id."
-
-    client_id = int(raw_value)
-    if client_id <= 0:
-        return None, "Last used client must be a valid id."
-
-    return client_id, None
+    return normalize_positive_id(value, label="Last used client")
 
 
 def _normalize_optional_date(value, label: str):

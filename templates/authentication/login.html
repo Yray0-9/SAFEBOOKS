@@ -561,6 +561,14 @@
 
                     const result = await response.json();
 
+                    if (response.status === 429 && result.error_code === "login_rate_limited") {
+                        // Keep the draft and allow manual retry after the server's
+                        // wait period. Never automatically retry authentication.
+                        setFeedback(result.message || "Too many sign-in attempts. Please wait before trying again.", "warning");
+                        clearSkeletonState();
+                        return;
+                    }
+
                     if (!response.ok || !result.ok) {
                         clearLoginFieldErrors();
                         const errorMsg = result.message || "Unable to login.";

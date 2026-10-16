@@ -22,10 +22,8 @@ from safebooks.validators.data_validator import model_text_errors
 from safebooks.services.email_delivery_service import email_count_confirmed, LOCAL_EMAIL_BACKENDS
 
 
-AUTH_FAILURE_MESSAGE = "Invalid credentials."
+AUTH_FAILURE_MESSAGE = "Invalid email or username, or password."
 logger = logging.getLogger(__name__)
-AUTH_USER_NOT_FOUND_MESSAGE = "No account found with this email or username."
-AUTH_WRONG_PASSWORD_MESSAGE = "Incorrect password. Please try again."
 AUTH_INACTIVE_ACCOUNT_MESSAGE = "This account is inactive. Please contact support."
 GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -681,6 +679,14 @@ def register_user(data: dict) -> dict:
     }
 
 
+def _invalid_login_credentials() -> dict:
+    # One public result for missing accounts and failed passwords, for both roles.
+    return {
+        "ok": False, "message": AUTH_FAILURE_MESSAGE, "errors": [AUTH_FAILURE_MESSAGE],
+        "field": "both", "error_code": "invalid_credentials",
+    }
+
+
 def login_user(data: dict) -> dict:
     identifier = str(data.get("identifier", "")).strip()
     password = str(data.get("password", ""))
@@ -715,13 +721,10 @@ def login_user(data: dict) -> dict:
     ).first()
 
     if account is None:
-        return {
-            "ok": False,
-            "message": AUTH_USER_NOT_FOUND_MESSAGE,
-            "errors": [AUTH_USER_NOT_FOUND_MESSAGE],
-            "field": "identifier",
-            "error_code": "account_not_found",
-        }
+        # Django's default authentication backend performs equivalent hash work
+        # on unknown users. Avoid an immediate, noticeably cheaper rejection.
+        make_password(password)
+        return _invalid_login_credentials()
 
     stored_password_hash = str(account.password_hash or "")
     is_authenticated = check_password(password, stored_password_hash)
@@ -734,13 +737,7 @@ def login_user(data: dict) -> dict:
             account.save(update_fields=["password_hash"])
 
     if not is_authenticated:
-        return {
-            "ok": False,
-            "message": AUTH_WRONG_PASSWORD_MESSAGE,
-            "errors": [AUTH_WRONG_PASSWORD_MESSAGE],
-            "field": "password",
-            "error_code": "incorrect_password",
-        }
+        return _invalid_login_credentials()
 
     status = account.status or BookkeeperAccount.STATUS_PENDING
     if status == BookkeeperAccount.STATUS_REJECTED:
@@ -813,15 +810,6 @@ def login_user(data: dict) -> dict:
 
 
 def _login_admin_account(account: AdminAccount, password: str) -> dict:
-    if not account.is_active:
-        return {
-            "ok": False,
-            "message": AUTH_INACTIVE_ACCOUNT_MESSAGE,
-            "errors": [AUTH_INACTIVE_ACCOUNT_MESSAGE],
-            "field": "identifier",
-            "error_code": "account_inactive",
-        }
-
     stored_password_hash = str(account.password_hash or "")
     is_authenticated = check_password(password, stored_password_hash)
 
@@ -831,12 +819,14 @@ def _login_admin_account(account: AdminAccount, password: str) -> dict:
             account.password_hash = make_password(password)
 
     if not is_authenticated:
+        return _invalid_login_credentials()
+
+    # Account status is private until the submitted password has been verified.
+    if not account.is_active:
         return {
-            "ok": False,
-            "message": AUTH_WRONG_PASSWORD_MESSAGE,
-            "errors": [AUTH_WRONG_PASSWORD_MESSAGE],
-            "field": "password",
-            "error_code": "incorrect_password",
+            "ok": False, "message": AUTH_INACTIVE_ACCOUNT_MESSAGE,
+            "errors": [AUTH_INACTIVE_ACCOUNT_MESSAGE], "field": "identifier",
+            "error_code": "account_inactive",
         }
 
     # A valid password is not a completed admin sign-in when a second factor

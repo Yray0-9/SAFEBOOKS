@@ -292,6 +292,55 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertEqual(payload["forecast"]["sparkline"], [])
         self.assertEqual(len(payload.get("monthly_trend", [])), 6)
 
+    def test_empty_selected_year_keeps_other_year_history_accessible(self):
+        owner = self._create_bookkeeper("empty-year")
+        self._login_as(owner)
+        client = self._create_client(bookkeeper=owner, suffix="empty-year", remarks=Client.REMARK_NEW)
+        record = self._create_record_with_lines(
+            bookkeeper=owner, client=client, entry_date=date(2025, 4, 1),
+            lines=[("Sales", "Synthetic previous-year sale", Decimal("125.00"))],
+        )
+        before = (record.updated_at, client.updated_at, client.remarks)
+        url = reverse("api_analytics_summary")
+        empty = self.client.get(url, {"client_id": client.pk, "year": "2024"})
+        self.assertEqual(empty.status_code, 200)
+        self.assertFalse(empty.json()["has_data"])
+        self.assertEqual(empty.json()["summary"]["total_sales"], 0.0)
+        for params in ({"client_id": client.pk}, {"client_id": client.pk, "year": "2025"}):
+            response = self.client.get(url, params)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json()["has_data"])
+            self.assertEqual(response.json()["summary"]["total_sales"], 125.0)
+        record.refresh_from_db()
+        client.refresh_from_db()
+        self.assertEqual((record.updated_at, client.updated_at, client.remarks), before)
+        self.assertEqual(record.line_items.count(), 1)
+
+    def test_zero_totals_can_have_saved_records(self):
+        owner = self._create_bookkeeper("zero-totals")
+        self._login_as(owner)
+        client = self._create_client(bookkeeper=owner, suffix="zero-totals", remarks=Client.REMARK_NEW)
+        record = self._create_record_with_lines(
+            bookkeeper=owner, client=client, entry_date=date(2025, 4, 1),
+            lines=[("Sales", "Synthetic zero-activity record", Decimal("0.00"))],
+        )
+        response = self.client.get(reverse("api_analytics_summary"), {"client_id": client.pk, "year": "2025"})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["has_data"])
+        self.assertTrue(FinancialRecord.objects.filter(pk=record.pk).exists())
+        self.assertEqual(record.line_items.count(), 1)
+
+    def test_client_details_empty_message_keeps_year_controls_and_record_link(self):
+        owner = self._create_bookkeeper("empty-copy")
+        self._login_as(owner)
+        client = self._create_client(bookkeeper=owner, suffix="empty-copy", remarks=Client.REMARK_NEW)
+        response = self.client.get(reverse("client_details", args=[client.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="analyticsEmptyMessage"')
+        self.assertContains(response, 'id="analyticsYearFilter"')
+        self.assertContains(response, 'id="clientDetailsEmptyAddRecordsLink"')
+        self.assertNotContains(response, "No financial records yet for this client.")
+
     def test_client_workflow_uses_quarterly_schedule_when_latest_record_is_quarterly(self):
         today = timezone.localdate()
         current_quarter_end_month = (((today.month - 1) // 3) + 1) * 3

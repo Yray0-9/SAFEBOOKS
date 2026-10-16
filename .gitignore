@@ -9,6 +9,10 @@ db.sqlite3
 
 # Archived local database backups contain private account and financial data.
 /cleanup_archive/**/backups/*.bak
+# Keep these database exports local; unrelated JSON files remain trackable.
+/cleanup_archive/non_runtime_20260427_034851/backups/safebooks_data_20260425.json
+/cleanup_archive/non_runtime_20260427_034851/backups/sqlite_dump_20260425.json
+/cleanup_archive/non_runtime_20260427_034851/datadump.json
 
 # Virtual environment
 .venv/
@@ -24,3 +28,6 @@ env/
 /staticfiles/
 /DEPLOYMENT.md
 /USABILITY_DEPLOYMENT.md
+
+# Private deployment notes may contain service credentials.
+/Changes/Verification/Neon_prompt.md

@@ -2,6 +2,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.test import Client as TestClient, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -17,6 +18,10 @@ from safebooks.views import (
 
 
 class SessionSecurityTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
     def _create_admin(self, suffix: str = "session") -> AdminAccount:
         return AdminAccount.objects.create(
             full_name="Session Admin",

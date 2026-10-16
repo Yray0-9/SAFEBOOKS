@@ -111,6 +111,7 @@ from safebooks.services.feedback_service import (
 )
 from safebooks.services.session_security_service import account_session_auth_hash, session_auth_hash_matches
 from safebooks.services.email_delivery_service import email_delivery_hint
+from safebooks.services.login_attempt_service import reserve_password_login
 
 logger = logging.getLogger(__name__)
 
@@ -2229,8 +2230,18 @@ def google_complete_signup_view(request):
 @require_POST
 def login_view(request):
     payload = _decode_request_data(request)
+    denial = reserve_password_login(
+        (payload or {}).get("identifier", ""), request.META.get("REMOTE_ADDR"),
+    )
+    if denial:
+        response = _no_store_json(
+            denial, status=429 if denial["error_code"] == "login_rate_limited" else 503,
+        )
+        if denial.get("retry_after_seconds"):
+            response["Retry-After"] = str(denial["retry_after_seconds"])
+        return response
     if payload is None:
-        return JsonResponse(
+        return _no_store_json(
             {"ok": False, "message": "Invalid request payload."},
             status=400,
         )
@@ -2299,10 +2310,10 @@ def login_view(request):
         "Email or username is required.",
         "Password is required.",
     } or result.get("error_code") in {"missing_credentials", "missing_identifier", "missing_password"}:
-        return JsonResponse(result, status=400)
+        return _no_store_json(result, status=400)
 
     # Keep expected auth failures as normal API responses to avoid noisy server warnings.
-    return JsonResponse(result)
+    return _no_store_json(result)
 
 
 @require_POST

@@ -523,7 +523,7 @@
             <article class="client-card analytics-empty-state" id="analyticsEmptyState" hidden>
                 <div class="dashboard-data-empty text-center py-5">
                     <i class="bi bi-file-earmark-bar-graph text-muted mb-3 client-details-empty-icon"></i>
-                    <p class="text-muted mb-3">No financial records yet for this client. Add records when this client's period is ready.</p>
+                    <p class="text-muted mb-3" id="analyticsEmptyMessage">No financial activity to display for this client. Review the financial records, or add records when the period is ready.</p>
                     <div class="dashboard-empty-actions">
                         <a href="{% url 'financial_records_client' %}?client_id={{ client.id }}&client={{ client.client_name|urlencode }}&tin={{ client.tin_number|urlencode }}&trade={{ client.trade_name|urlencode }}&action=add" class="btn dashboard-action-btn primary" id="clientDetailsEmptyAddRecordsLink">Add Financial Records</a>
                     </div>
@@ -852,6 +852,7 @@
         const analyticsDataPanels = document.getElementById("analyticsDataPanels");
         const analyticsLoadingState = document.getElementById("analyticsLoadingState");
         const analyticsEmptyState = document.getElementById("analyticsEmptyState");
+        const analyticsEmptyMessage = document.getElementById("analyticsEmptyMessage");
         const clientPeriodReadinessTag = document.getElementById("clientPeriodReadinessTag");
         const clientPeriodReadinessText = document.getElementById("clientPeriodReadinessText");
         const clientPeriodReadinessHint = document.getElementById("clientPeriodReadinessHint");
@@ -2050,6 +2051,15 @@
             }
         };
 
+        const updateAnalyticsEmptyMessage = () => {
+            if (!analyticsEmptyMessage) return;
+            const year = String(analyticsYearFilter ? analyticsYearFilter.value : "all");
+            // Empty totals do not prove that the client has no saved records.
+            analyticsEmptyMessage.textContent = /^[0-9]{4}$/.test(year)
+                ? `No financial activity to display for ${year}. Choose All Time or another year, or review this client's financial records.`
+                : "No financial activity to display for this client. Review the financial records, or add records when the period is ready.";
+        };
+
         const applyAnalyticsFallbackState = () => {
             if (analyticsDataPanels) analyticsDataPanels.hidden = true;
             if (analyticsEmptyState) analyticsEmptyState.hidden = false;
@@ -2071,6 +2081,7 @@
             const hasData = Boolean(payload && payload.has_data);
 
             if (!hasData) {
+                updateAnalyticsEmptyMessage();
                 if (analyticsDataPanels) analyticsDataPanels.hidden = true;
                 if (analyticsEmptyState) analyticsEmptyState.hidden = false;
             } else {
@@ -2150,6 +2161,7 @@
 
                 if (shared && typeof shared.parseJsonSafe === "function") {
                     const result = await shared.parseJsonSafe(response);
+                    if (requestToken !== analyticsRequestToken) return;
                     if (!response.ok || !result || !result.ok) {
                         setAnalyticsLoadingState(false);
                         applyAnalyticsFallbackState();

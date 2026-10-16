@@ -7,6 +7,25 @@ from django.core.validators import validate_email
 from django.db.models import CharField, EmailField, TextField
 
 
+def normalize_positive_id(value, *, label, maximum=(2**63) - 1):
+    """Bound integer IDs before conversion or a database lookup."""
+    error = f"{label} must be a valid id."
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return None, error
+    if isinstance(value, int):
+        return (value, None) if 0 < value <= maximum else (None, error)
+    text = str(value).strip()
+    if not re.fullmatch(r"[0-9]+", text):
+        return None, error
+    digits = text.lstrip("0")
+    maximum_text = str(maximum)
+    if not digits or len(digits) > len(maximum_text):
+        return None, error
+    if len(digits) == len(maximum_text) and digits > maximum_text:
+        return None, error
+    return int(digits), None
+
+
 def text_value_error(value, label):
     if value is not None and not isinstance(value, (str, int, float, Decimal)):
         return f"{label} must be text."
