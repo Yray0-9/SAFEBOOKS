@@ -22,7 +22,8 @@ from safebooks.validators.data_validator import model_text_errors
 from safebooks.services.email_delivery_service import email_count_confirmed, LOCAL_EMAIL_BACKENDS
 
 
-AUTH_FAILURE_MESSAGE = "Invalid email or username, or password."
+AUTH_INCORRECT_PASSWORD_MESSAGE = "Incorrect password. Please try again."
+AUTH_ACCOUNT_NOT_FOUND_MESSAGE = "No account found with that email or username."
 logger = logging.getLogger(__name__)
 AUTH_INACTIVE_ACCOUNT_MESSAGE = "This account is inactive. Please contact support."
 GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -679,11 +680,13 @@ def register_user(data: dict) -> dict:
     }
 
 
-def _invalid_login_credentials() -> dict:
-    # One public result for missing accounts and failed passwords, for both roles.
+def _invalid_login_credentials(*, account_not_found: bool = False) -> dict:
+    # Owner-approved disclosure is limited to account existence, never profile
+    # or status. Keep the envelope and error code stable for both account roles.
+    message = AUTH_ACCOUNT_NOT_FOUND_MESSAGE if account_not_found else AUTH_INCORRECT_PASSWORD_MESSAGE
     return {
-        "ok": False, "message": AUTH_FAILURE_MESSAGE, "errors": [AUTH_FAILURE_MESSAGE],
-        "field": "both", "error_code": "invalid_credentials",
+        "ok": False, "message": message, "errors": [message],
+        "field": "identifier" if account_not_found else "password", "error_code": "invalid_credentials",
     }
 
 
@@ -724,7 +727,7 @@ def login_user(data: dict) -> dict:
         # Django's default authentication backend performs equivalent hash work
         # on unknown users. Avoid an immediate, noticeably cheaper rejection.
         make_password(password)
-        return _invalid_login_credentials()
+        return _invalid_login_credentials(account_not_found=True)
 
     stored_password_hash = str(account.password_hash or "")
     is_authenticated = check_password(password, stored_password_hash)

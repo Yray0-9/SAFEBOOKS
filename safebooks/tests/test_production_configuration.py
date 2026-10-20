@@ -180,6 +180,14 @@ assert asset_url.startswith('/static/') and asset_url != '/static/images/favicon
 asset = client.get(asset_url, HTTP_HOST='app.example.com', secure=True)
 assert asset.status_code == 200 and asset['X-Content-Type-Options'] == 'nosniff'
 asset.close()
+missing = client.get('/this-page-does-not-exist/', HTTP_HOST='app.example.com', secure=True)
+assert missing.status_code == 404
+assert b'Page not found' in missing.content and b'Back to Home' in missing.content
+error_styles_url = staticfiles_storage.url('css/not_found.css')
+assert error_styles_url.encode() in missing.content
+error_styles = client.get(error_styles_url, HTTP_HOST='app.example.com', secure=True)
+assert error_styles.status_code == 200
+error_styles.close()
 favicon = client.get('/favicon.ico', HTTP_HOST='app.example.com', secure=True)
 assert favicon.status_code == 302 and favicon['Location'] == asset_url
 rejected = client.post('/api/auth/login/', '{}', content_type='application/json', HTTP_HOST='app.example.com', secure=True)

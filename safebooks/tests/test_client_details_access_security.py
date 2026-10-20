@@ -1,6 +1,9 @@
 from safebooks.tests.session_helpers import bind_authenticated_session
 
 import json
+import re
+from html import unescape
+from urllib.parse import parse_qs, urlsplit
 
 from django.contrib.auth.hashers import make_password
 from django.test import TestCase
@@ -65,6 +68,71 @@ class ClientDetailsAccessSecurityTests(TestCase):
         self.assertContains(response, reverse("api_client_detail", kwargs={"client_id": client.id}))
         self.assertContains(response, "syncClientProfileUi")
         self.assertNotContains(response, "window.location.reload")
+
+    def test_client_details_actions_keep_add_entry_without_redundant_records_link(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "base/client_details.html")
+        self.assertNotContains(response, "clientDetailsRecordsLink")
+        self.assertContains(response, 'id="editClientDetailsButton"')
+        self.assertContains(response, 'id="generateReportActionBtn"')
+        self.assertContains(response, 'id="closeClientActionBtn"')
+        self.assertContains(response, f'href="{reverse("financial_records")}"')
+        add_link = re.search(
+            r'<a href="([^"]+)"[^>]*id="clientDetailsAddEntryLink"',
+            response.content.decode(),
+        )
+        self.assertIsNotNone(add_link)
+        target = urlsplit(unescape(add_link.group(1)))
+        self.assertEqual(target.path, reverse("financial_records_client"))
+        self.assertEqual(parse_qs(target.query), {
+            "client_id": [str(client.id)],
+            "client": [client.client_name],
+            "tin": [client.tin_number],
+            "trade": [client.trade_name],
+            "action": ["add"],
+        })
+
+    def test_closed_client_actions_keep_report_and_reopen_without_records_link(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+        client.remarks = Client.REMARK_CLOSED
+        client.save(update_fields=["remarks"])
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "clientDetailsRecordsLink")
+        self.assertNotContains(response, 'id="clientDetailsAddEntryLink"')
+        self.assertNotContains(response, 'id="closeClientActionBtn"')
+        self.assertContains(response, 'id="editClientDetailsButton"')
+        self.assertContains(response, 'id="generateReportActionBtn"')
+        self.assertContains(response, 'id="reopenClientActionBtn"')
+        self.assertContains(response, f'href="{reverse("financial_records")}"')
+
+    def test_client_details_keeps_key_labels_without_repeated_explanations(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Record Schedule Status")
+        self.assertContains(response, 'class="visually-hidden" id="clientPeriodReadinessText"')
+        self.assertContains(response, 'id="clientWorkflowScheduleList" aria-label="Record schedule status" hidden')
+        self.assertContains(response, "Projected Sales")
+        self.assertContains(response, 'id="analyticsPredictiveSalesNote"')
+        self.assertContains(response, 'for="analyticsYearFilter"')
+        self.assertContains(response, 'for="analyticsHorizonFilter"')
+        self.assertNotContains(response, "Checks each record frequency saved for this client.")
+        self.assertNotContains(response, 'class="client-panel-defense-labels"')
 
     def test_client_details_only_reminds_about_email_when_notifications_are_enabled(self):
         account = self._create_bookkeeper(lock_enabled=False)

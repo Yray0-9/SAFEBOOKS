@@ -95,6 +95,27 @@
     padding: 1.25rem;
 }
 
+/* Empty directories should not reserve the populated table's height. */
+body.clients-page .clients-list-card:has(> .clients-empty-state:not([hidden])) .table-responsive {
+    min-height: 0;
+}
+
+body.clients-page .clients-empty-state {
+    margin-inline: auto;
+    max-width: none;
+    width: 100%;
+}
+
+body.clients-page .clients-empty-state .dashboard-action-btn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    max-width: 100%;
+    min-height: 44px;
+    min-width: 10rem;
+    width: auto;
+}
+
 .client-manage-modal .modal-dialog {
     max-width: 920px;
 }

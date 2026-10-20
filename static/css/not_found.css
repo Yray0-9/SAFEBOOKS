@@ -1,0 +1,125 @@
+:root {
+    color-scheme: light;
+    font-family: "Manrope", "Segoe UI", system-ui, sans-serif;
+    color: #14284f;
+    background: #f3f7ff;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.not-found-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: 0;
+    padding: clamp(1rem, 4vw, 3rem);
+    background: radial-gradient(ellipse at 50% 0%, #e0ebff 0%, transparent 65%), #f3f7ff;
+}
+
+.not-found-card {
+    width: 100%;
+    max-width: 38rem;
+    padding: clamp(1.75rem, 5vw, 3.5rem);
+    border: 1px solid #dce7fc;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 22px 60px rgb(33 68 131 / 10%);
+    text-align: center;
+}
+
+.not-found-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    max-width: 100%;
+    margin-bottom: 1.75rem;
+    border-radius: 8px;
+    color: #215bd5;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    text-decoration: none;
+}
+
+.not-found-brand img {
+    display: block;
+    flex: 0 0 auto;
+}
+
+.not-found-brand img {
+    object-fit: cover;
+}
+
+.not-found-code {
+    margin: 0 0 0.7rem;
+    color: #215bd5;
+    font-size: clamp(5.5rem, 16vw, 8rem);
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    line-height: 1;
+}
+
+.not-found-card h1 {
+    margin: 0 0 0.85rem;
+    font-size: clamp(1.6rem, 4vw, 2rem);
+    font-weight: 750;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.not-found-description {
+    max-width: 27rem;
+    margin: 0 auto 1.75rem;
+    color: #536b92;
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+.not-found-home {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 48px;
+    max-width: 100%;
+    padding: 0.8rem 1.7rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: linear-gradient(120deg, #215fe2, #1c48b7);
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+.not-found-home svg {
+    flex: 0 0 auto;
+}
+
+.not-found-home:hover {
+    background: #1848ba;
+}
+
+.not-found-brand:focus-visible,
+.not-found-home:focus-visible {
+    outline: 3px solid #2462d9;
+    outline-offset: 5px;
+}
+
+@media (max-width: 480px) {
+    .not-found-card {
+        border-radius: 20px;
+    }
+
+    .not-found-home {
+        width: 100%;
+    }
+}
+

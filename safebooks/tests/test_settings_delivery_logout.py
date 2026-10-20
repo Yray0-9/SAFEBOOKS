@@ -19,7 +19,6 @@ from safebooks.services import auth_service, client_service
 from safebooks.services.approval_notification_service import send_approval_decision_email
 from safebooks.services.client_notification_service import send_financial_record_created_email
 from safebooks.services.email_delivery_service import email_count_confirmed
-from safebooks.services.feedback_service import submit_bookkeeper_feedback
 from safebooks.tests.session_helpers import bind_authenticated_session
 from safebooks.views import SESSION_ADMIN_ID_KEY, SESSION_BOOKKEEPER_ID_KEY
 
@@ -92,15 +91,28 @@ class SettingsDeliveryLogoutTests(TestCase):
             auth_service.complete_bookkeeper_login(self.owner)
         self.assertNotIn("SyntheticPrivateSMTPMarker", " ".join(logs.output))
 
-    @override_settings(SAFEBOOKS_FEEDBACK_ENABLED=True, SAFEBOOKS_FEEDBACK_RECIPIENT_EMAIL="developer@example.test", SAFEBOOKS_FEEDBACK_RATE_LIMIT_COUNT=10)
-    def test_feedback_does_not_claim_inbox_delivery_for_preview_or_unacknowledged_email(self):
-        data = {"category": "suggestion", "message": "Synthetic feedback for isolated testing", "page_path": "/settings/"}
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend"), patch("safebooks.services.feedback_service.send_mail") as sender:
-            self.assertFalse(submit_bookkeeper_feedback(self.owner, data)["ok"])
-        sender.assert_not_called()
-        for count in (0, None):
-            with patch("safebooks.services.feedback_service.send_mail", return_value=count):
-                self.assertFalse(submit_bookkeeper_feedback(self.owner, data)["ok"])
+    def test_workspace_pages_keep_navigation_without_retired_developer_form(self):
+        pages = [
+            reverse(name) for name in (
+                "dashboard", "clients", "financial_records", "financial_records_client",
+                "bookkeeper_audit_log", "settings", "profile",
+            )
+        ]
+        pages.append(reverse("client_details", args=[self.ledger.id]))
+        for url in pages:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                for retired_markup in ("bookkeeperFeedback", "bookkeeper-feedback", "feedback_widget.", "/api/feedback/", "Send Feedback"):
+                    self.assertNotContains(response, retired_markup)
+                self.assertNotIn("feedback_enabled", response.context)
+                self.assertContains(response, 'aria-label="Sidebar navigation"')
+                self.assertContains(response, "data-bookkeeper-logout")
+
+    def test_retired_developer_submission_endpoint_is_not_routed(self):
+        for browser in (self.client, TestClient()):
+            response = browser.post("/api/feedback/submit/", "{}", content_type="application/json")
+            self.assertEqual(response.status_code, 404)
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend", SAFEBOOKS_CLIENT_RECORD_EMAILS_ENABLED=False)
     def test_settings_render_saved_preferences_and_environment_delivery_limits_without_javascript(self):

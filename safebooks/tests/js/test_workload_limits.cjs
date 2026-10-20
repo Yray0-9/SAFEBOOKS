@@ -131,12 +131,35 @@ const makeReport = () => {
     workflowContext.apply({});
     assert.equal(workflowContext.latestClientWorkflowStatus, null);
     assert.equal(workflowNodes.clientPeriodReadinessTag.textContent, "Not loaded");
+    assert.equal(workflowNodes.clientPeriodReadinessHint.hidden, false);
+    assert.equal(workflowNodes.clientPeriodReadinessHint.textContent, "Records not checked. Retry or choose another year.");
+    assert.equal(workflowNodes.clientWorkflowScheduleList.hidden, true);
     assert(!workflowNodes.clientWorkflowScheduleList.innerHTML.includes("No monthly record"));
     workflowContext.unavailable(true);
     assert.equal(workflowNodes.clientWorkflowCard["aria-busy"], "true");
     assert.equal(workflowNodes.clientPeriodReadinessTag.textContent, "Checking");
+    assert.equal(workflowNodes.clientWorkflowScheduleList.hidden, true);
     workflowContext.apply({overall_status: "ready", schedule_items: [{frequency_label: "Monthly", period_label: "Oct 2026", status: "ready", has_record: true, entry_count: 5, transaction_detail_count: 20}]});
     assert.equal(workflowNodes.clientPeriodReadinessTag.textContent, "Records ready");
     assert.equal(workflowNodes.clientWorkflowCard["aria-busy"], "false");
+    assert.equal(workflowNodes.clientPeriodReadinessHint.hidden, true);
+    assert.equal(workflowNodes.clientWorkflowScheduleList.hidden, false);
+    assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Oct 2026 · 5 records · 20 transaction details"));
+    workflowContext.apply({overall_status: "missing", schedule_items: [
+        {frequency_label: "Monthly", period_label: "Oct 2026", status: "missing"},
+        {frequency_label: "Quarterly", period_label: "Q1 2027", status: "upcoming"},
+    ]});
+    assert.equal(workflowNodes.clientPeriodReadinessTag.textContent, "Needs record");
+    assert.equal(workflowNodes.clientPeriodReadinessHint.hidden, false);
+    assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Monthly record"));
+    assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Oct 2026 · No saved record"));
+    assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Q1 2027 · Not due yet"));
+    workflowContext.apply({overall_status: "upcoming", schedule_items: [
+        {frequency_label: "Quarterly", period_label: "Q1 2027", status: "upcoming"},
+    ]});
+    assert.equal(workflowNodes.clientPeriodReadinessHint.textContent, "Upcoming periods are not due yet.");
+    workflowContext.unavailable();
+    assert.equal(workflowNodes.clientPeriodReadinessHint.hidden, false);
+    assert.equal(workflowNodes.clientWorkflowScheduleList.hidden, true);
     console.log("Workload/report tests passed: selected-year loading, no stale or partial prints, recovery, close cancellation, accessible errors, template syntax.");
 })().catch(error => { console.error(error); process.exitCode = 1; });

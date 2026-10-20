@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>SafeBooks | Page Not Found</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'css/not_found.css' %}?v=2">
+</head>
+<body class="not-found-page">
+    <main class="not-found-card" aria-labelledby="notFoundTitle">
+        <a class="not-found-brand" href="{% url 'home' %}" aria-label="SafeBooks home">
+            <img src="{% static 'images/Logo_safebooks.png' %}" alt="" width="44" height="44">
+            <span>SafeBooks</span>
+        </a>
+
+        <p class="not-found-code">404</p>
+        <h1 id="notFoundTitle">Page not found</h1>
+        <p class="not-found-description">The page you're looking for isn't available. Check the address, or return to SafeBooks to continue.</p>
+
+        <a class="not-found-home" href="{% url 'home' %}">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="m10 6-6 6 6 6M4 12h16"></path>
+            </svg>
+            <span>Back to Home</span>
+        </a>
+    </main>
+</body>
+</html>

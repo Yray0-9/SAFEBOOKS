@@ -105,10 +105,6 @@ from safebooks.services.admin_security_service import (
     regenerate_admin_two_factor_recovery_codes,
     verify_admin_two_factor_login,
 )
-from safebooks.services.feedback_service import (
-    is_feedback_feature_available,
-    submit_bookkeeper_feedback,
-)
 from safebooks.services.session_security_service import account_session_auth_hash, session_auth_hash_matches
 from safebooks.services.email_delivery_service import email_delivery_hint
 from safebooks.services.login_attempt_service import reserve_password_login
@@ -418,7 +414,6 @@ def _build_user_context(account):
     return {
         "current_user_name": display_name,
         "current_user_initials": initials,
-        "feedback_enabled": is_feedback_feature_available(),
     }
 
 
@@ -1232,29 +1227,6 @@ def _resolve_admin_bookkeeper_error_status(result):
     if message == "Bookkeeper not found.":
         return 404
     return 400
-
-
-@require_POST
-@require_bookkeeper_auth
-def submit_feedback_api_view(request):
-    payload = _decode_request_data(request)
-    if payload is None:
-        return _no_store_json(
-            {"ok": False, "message": "Invalid request payload.", "code": "invalid_payload"},
-            status=400,
-        )
-
-    result = submit_bookkeeper_feedback(request.bookkeeper_account, payload)
-    if result.get("ok"):
-        return _no_store_json(result)
-
-    status_by_code = {
-        "feature_unavailable": 403,
-        "rate_limited": 429,
-        "delivery_failed": 503,
-    }
-    status_code = status_by_code.get(str(result.get("code") or ""), 400)
-    return _no_store_json(result, status=status_code)
 
 
 @require_http_methods(["GET", "POST"])

@@ -624,6 +624,15 @@
     margin-top: 0.85rem;
 }
 
+.client-workflow-readiness:has(> #clientPeriodReadinessHint[hidden]),
+.client-workflow-list[hidden] {
+    display: none;
+}
+
+.client-workflow-readiness:has(> #clientPeriodReadinessHint[hidden]) + .client-workflow-list {
+    margin-top: 0;
+}
+
 .client-workflow-item {
     display: flex;
     gap: 0.65rem;
@@ -752,6 +761,16 @@
 .client-details-page .analytics-predictive-report-scroll {
     flex: 0 0 auto;
     max-height: 232px;
+}
+
+.client-details-page .analytics-predictive-report-table th,
+.client-details-page .analytics-predictive-report-table td {
+    white-space: normal;
+}
+
+.client-details-page .analytics-predictive-report-table thead th {
+    line-height: 1.35;
+    vertical-align: bottom;
 }
 
 .client-stat-card {
@@ -1759,7 +1778,6 @@ body.theme-dark .client-details-toggle-btn:focus,
         width: 100%;
     }
 
-    body.client-details-page #closeClientActionBtn,
     body.client-details-page #reopenClientActionBtn {
         grid-column: 1 / -1;
     }

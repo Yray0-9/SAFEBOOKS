@@ -68,8 +68,8 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload.get("ok"))
-        self.assertEqual(payload.get("message"), "Invalid email or username, or password.")
-        self.assertEqual(payload.get("field"), "both")
+        self.assertEqual(payload.get("message"), "Incorrect password. Please try again.")
+        self.assertEqual(payload.get("field"), "password")
         self.assertEqual(payload.get("error_code"), "invalid_credentials")
 
     def test_login_legacy_plaintext_password_hash_is_upgraded(self):
@@ -97,7 +97,7 @@ class AuthApiTests(TestCase):
         self.assertNotEqual(account.password_hash, "LegacyPass#123")
         self.assertTrue(check_password("LegacyPass#123", account.password_hash))
 
-    def test_login_unknown_account_returns_generic_credentials_message(self):
+    def test_login_unknown_account_points_to_identifier(self):
         response = self.client.post(
             reverse("api_login"),
             data=json.dumps({
@@ -110,6 +110,20 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload.get("ok"))
-        self.assertEqual(payload.get("message"), "Invalid email or username, or password.")
-        self.assertEqual(payload.get("field"), "both")
+        self.assertEqual(payload.get("message"), "No account found with that email or username.")
+        self.assertEqual(payload.get("field"), "identifier")
         self.assertEqual(payload.get("error_code"), "invalid_credentials")
+
+    def test_login_page_preserves_validation_and_password_controls(self):
+        response = self.client.get(reverse("login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "authentication/login.html")
+        self.assertContains(response, 'novalidate data-auth-login-form')
+        self.assertContains(response, 'id="loginFeedback" role="alert"')
+        self.assertContains(response, 'name="csrfmiddlewaretoken"')
+        self.assertContains(response, 'autocomplete="username" required')
+        self.assertContains(response, 'autocomplete="current-password" required')
+        self.assertContains(response, 'data-password-toggle-target="login_password"')
+        self.assertContains(response, "Please enter your password.")
+        self.assertContains(response, "Please enter your email or username.")

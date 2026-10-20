@@ -178,10 +178,10 @@ login-alert, and client-details-lock preferences commit with their audit entries
 an audit/storage failure rolls back the preference. An unknown save outcome
 requires reloading Settings before retrying, not an automatic repeat write.
 
-Client, approval, feedback, verification/reset, and login-alert email paths check
+Client, approval, verification/reset, and login-alert email paths check
 the backend's positive integer acknowledgement. Acceptance is **not** proof of
 inbox delivery. Local console/file/dummy backends skip client and approval
-notifications and reject feedback delivery instead of claiming inbox delivery;
+notifications instead of claiming inbox delivery;
 locmem remains a synthetic test capture, not a real delivery service. Local
 verification/reset code generation retains development behavior and explicitly
 states no inbox delivery. SMTP errors are logged by class, without exception
@@ -234,7 +234,7 @@ Step 7 changed files:
   `dashboard_service.py`, `analytics_service.py`, `financial_record_service.py`.
 - Delivery handling: `safebooks/services/email_delivery_service.py`,
   `client_notification_service.py`, `approval_notification_service.py`,
-  `auth_service.py`, `feedback_service.py`.
+  `auth_service.py`.
 - Shared/browser behavior: `static/js/app_shared.js`, `settings_page.js`,
   `profile_page.js`, `reports_page.js`.
 - Connected templates: `templates/base/settings.html`, `bookkeeper_base.html`,

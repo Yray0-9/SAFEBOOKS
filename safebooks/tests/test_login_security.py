@@ -115,12 +115,31 @@ class LoginSecurityApiTests(TestCase):
     def login(self, identifier, password="WrongSyntheticOnly#123", **extra):
         return self.client.post(reverse("api_login"), json.dumps({"identifier": identifier, "password": password}), content_type="application/json", **extra)
 
-    def test_unknown_bookkeeper_and_admin_wrong_password_responses_match(self):
-        responses = [self.login(identifier) for identifier in ("missing-synthetic", self.bookkeeper.username, self.admin.email)]
-        for response in responses:
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json(), _invalid_login_credentials())
-            self.assertEqual(response["Cache-Control"], "no-store")
+    def test_unknown_username_and_email_point_to_identifier_without_account_details(self):
+        for identifier in ("missing-synthetic", "missing@example.test"):
+            with self.subTest(identifier=identifier):
+                response = self.login(identifier)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), {
+                    "ok": False, "message": "No account found with that email or username.",
+                    "errors": ["No account found with that email or username."],
+                    "field": "identifier", "error_code": "invalid_credentials",
+                })
+                self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertNotIn(SESSION_BOOKKEEPER_ID_KEY, self.client.session)
+        self.assertNotIn(SESSION_ADMIN_ID_KEY, self.client.session)
+
+    def test_wrong_password_points_to_password_for_both_roles_and_case_insensitive_identifiers(self):
+        for identifier in (self.bookkeeper.username, self.bookkeeper.email.upper(), self.admin.email.upper()):
+            with self.subTest(identifier=identifier):
+                response = self.login(identifier)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), {
+                    "ok": False, "message": "Incorrect password. Please try again.",
+                    "errors": ["Incorrect password. Please try again."],
+                    "field": "password", "error_code": "invalid_credentials",
+                })
+                self.assertEqual(response["Cache-Control"], "no-store")
         self.assertNotIn(SESSION_BOOKKEEPER_ID_KEY, self.client.session)
         self.assertNotIn(SESSION_ADMIN_ID_KEY, self.client.session)
 
@@ -133,7 +152,7 @@ class LoginSecurityApiTests(TestCase):
 
     def test_unknown_account_performs_default_dummy_hash_work(self):
         with patch("safebooks.services.auth_service.make_password", wraps=make_password) as dummy:
-            self.assertEqual(self.login("missing-synthetic").json(), _invalid_login_credentials())
+            self.assertEqual(self.login("missing-synthetic").json(), _invalid_login_credentials(account_not_found=True))
         dummy.assert_called_once_with("WrongSyntheticOnly#123")
 
     def test_blocked_attempt_never_looks_up_or_hashes_even_correct_password(self):
@@ -174,7 +193,22 @@ class LoginSecurityApiTests(TestCase):
             self.assertNotIn(SESSION_BOOKKEEPER_ID_KEY, self.client.session)
 
     def test_missing_fields_still_report_validation_errors_and_malformed_json_is_safe(self):
-        self.assertEqual(self.login("", "").json()["error_code"], "missing_credentials")
+        for identifier, password, field, code, message in (
+            ("", "", "both", "missing_credentials", "Email or username and password are required."),
+            (self.bookkeeper.email, "", "password", "missing_password", "Password is required."),
+            ("missing-synthetic", "", "password", "missing_password", "Password is required."),
+            (self.admin.email, "", "password", "missing_password", "Password is required."),
+            ("", self.password, "identifier", "missing_identifier", "Email or username is required."),
+            ("   ", self.password, "identifier", "missing_identifier", "Email or username is required."),
+        ):
+            with self.subTest(field=field, identifier=identifier):
+                response = self.login(identifier, password)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json()["error_code"], code)
+                self.assertEqual(response.json()["field"], field)
+                self.assertEqual(response.json()["message"], message)
+                self.assertNotIn(SESSION_BOOKKEEPER_ID_KEY, self.client.session)
+                self.assertNotIn(SESSION_ADMIN_ID_KEY, self.client.session)
         response = self.client.post(reverse("api_login"), "[", content_type="application/json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response["Cache-Control"], "no-store")
