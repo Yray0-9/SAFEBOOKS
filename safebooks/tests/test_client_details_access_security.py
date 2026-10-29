@@ -80,7 +80,7 @@ class ClientDetailsAccessSecurityTests(TestCase):
         self.assertTemplateUsed(response, "base/client_details.html")
         self.assertNotContains(response, "clientDetailsRecordsLink")
         self.assertContains(response, 'id="editClientDetailsButton"')
-        self.assertContains(response, 'id="generateReportActionBtn"')
+        self.assertNotContains(response, 'id="generateReportActionBtn"')
         self.assertContains(response, 'id="closeClientActionBtn"')
         self.assertContains(response, f'href="{reverse("financial_records")}"')
         add_link = re.search(
@@ -98,7 +98,7 @@ class ClientDetailsAccessSecurityTests(TestCase):
             "action": ["add"],
         })
 
-    def test_closed_client_actions_keep_report_and_reopen_without_records_link(self):
+    def test_closed_client_actions_keep_reopen_without_records_or_report_button(self):
         account = self._create_bookkeeper(lock_enabled=False)
         self._login_as(account)
         client = self._create_client(account)
@@ -112,7 +112,7 @@ class ClientDetailsAccessSecurityTests(TestCase):
         self.assertNotContains(response, 'id="clientDetailsAddEntryLink"')
         self.assertNotContains(response, 'id="closeClientActionBtn"')
         self.assertContains(response, 'id="editClientDetailsButton"')
-        self.assertContains(response, 'id="generateReportActionBtn"')
+        self.assertNotContains(response, 'id="generateReportActionBtn"')
         self.assertContains(response, 'id="reopenClientActionBtn"')
         self.assertContains(response, f'href="{reverse("financial_records")}"')
 

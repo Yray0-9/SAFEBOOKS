@@ -1,0 +1,15 @@
+.analytics-trend-chart { position: relative; }
+.analytics-month-tooltip { position: absolute; top: 10px; z-index: 2; width: max-content; max-width: calc(100% - 16px); padding: .65rem .85rem; border: 1px solid #c9dafa; border-radius: 10px; background: #fff; box-shadow: 0 6px 20px #15396b22; color: #193b72; pointer-events: none; font-size: .88rem; }
+.analytics-month-tooltip:not([hidden]) { display: flex; flex-direction: column; gap: .2rem; animation: analytics-tooltip-enter 140ms ease-out; }
+@keyframes analytics-tooltip-enter {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .analytics-month-tooltip:not([hidden]) { animation: none; }
+}
+.analytics-month-rule { stroke: #91add5; stroke-width: 1; stroke-dasharray: 3 3; }
+.analytics-month-target { cursor: crosshair; }
+.analytics-month-target:focus { outline: none; }
+.analytics-month-target:focus-visible { stroke: #2366dd; stroke-width: 1; }
+body.theme-dark .analytics-month-tooltip { color: #cfe0f7; background: #101b2f; border-color: #2b3c5a; }

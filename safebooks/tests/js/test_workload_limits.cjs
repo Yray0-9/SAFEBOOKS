@@ -5,6 +5,7 @@ const vm = require("node:vm");
 const root = path.resolve(__dirname, "../../..");
 const read = name => fs.readFileSync(path.join(root, name), "utf8").replace(/\r\n/g, "\n");
 const details = read("templates/base/client_details.html");
+const records = read("templates/base/financial_records_client.html");
 const extract = (source, start, end) => {
     const first = source.indexOf(start), last = source.indexOf(end, first);
     assert(first >= 0 && last > first, `Missing flow: ${start}`);
@@ -15,12 +16,28 @@ for (const name of ["client_details", "analytics", "financial_records_client"]) 
         if (!/application\/json/i.test(match[1]) && match[2].trim()) new vm.Script(match[2].replace(/\{%[\s\S]*?%\}/g, "/synthetic-route/").replace(/\{\{[\s\S]*?\}\}/g, "synthetic-value"));
     }
 }
-const loader = extract(details, "        const fetchModalReportPayload =", "        const showReportModal =");
-const events = extract(details, "        const setupModalReportEvents =", "        // Export globally");
+const loader = extract(records, "        const fetchModalReportPayload =", "        const showReportModal =");
+const events = extract(records, "        const setupModalReportEvents =", "        // End report preview events");
+const recordState = {
+    isRecordsLoading: true, validClient: true,
+    financialTableBody: null, financialTableWrap: null, financialEmptyState: null,
+    financialPagination: null, periodEntriesTag: null,
+    openClientAnalyticsButton: {}, financialAddEntryButton: {}, financialPreviewReportButton: { disabled: true },
+};
+recordState.hasValidClientId = () => recordState.validClient;
+vm.createContext(recordState);
+vm.runInContext(extract(records, "        const setRecordsLoadingState =", "        const generatePaginationPages =") + "\nthis.setLoading = setRecordsLoadingState;", recordState);
+recordState.setLoading(false);
+assert.equal(recordState.financialPreviewReportButton.disabled, false, "Preview must be available after loading finishes");
+recordState.setLoading(true);
+assert.equal(recordState.financialPreviewReportButton.disabled, true);
+recordState.validClient = false;
+recordState.setLoading(false);
+assert.equal(recordState.financialPreviewReportButton.disabled, true, "Missing client must not open a report");
 const makeReport = () => {
     const handlers = {};
     const context = {
-        CLIENT_ID: 7, REPORTS_PRINT_LAYOUT_API_URL: "/api/reports/print-layout/", URLSearchParams, AbortController,
+        activeClientId: 7, reportClientProfile: {}, REPORTS_PRINT_LAYOUT_API_URL: "/api/reports/print-layout/", URLSearchParams, AbortController,
         modalReportRequestToken: 0, modalReportAbortController: null, modalLatestReport: null, modalReportSourcePayload: null,
         modalReportLoading: { hidden: true }, modalReportError: { hidden: true }, modalReportErrorMsg: {},
         modalReportWrapper: { hidden: true }, modalPrintReportBtn: { disabled: false, addEventListener() {} },

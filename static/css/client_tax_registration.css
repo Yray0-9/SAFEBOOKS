@@ -1,0 +1,30 @@
+.client-tax-registration {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0.2rem 0 0.2rem 0.45rem;
+    padding: 0.18rem 0.55rem;
+    border: 1px solid #c6d9ff;
+    border-radius: 999px;
+    background: #eff5ff;
+    color: #244d8c;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.45;
+    white-space: normal;
+}
+.client-tax-registration.is-non-vat { background: #f5f8fc; color: #385274; border-color: #d4deec; }
+.client-tax-registration.is-not-set { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+.financial-client-heading .client-tax-registration { margin-left: 0; }
+.client-registration-identity { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.client-registration-identity .client-tax-registration {
+    display: table;
+    max-width: 100%;
+    margin: 0.25rem 0 0;
+}
+@media (max-width: 767.98px) {
+    .client-registration-identity .client-tax-registration { margin-left: auto; text-align: right; }
+}
+body.theme-dark .client-tax-registration { background: #172d50; color: #bdd5ff; border-color: #3b5680; }
+body.theme-dark .client-tax-registration.is-non-vat,
+body.theme-dark .client-tax-registration.is-not-set { background: #1b293d; color: #c1ccdc; border-color: #42516a; }

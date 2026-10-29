@@ -109,18 +109,17 @@ class WorkloadLimitTests(TestCase):
         self.assertEqual(payload["available_clients"][0]["id"], ledger.id)
         self.assertNotIn("email_password", payload["available_clients"][0])
 
-    def test_year_filtered_analytics_remains_usable_with_larger_older_workflow_history(self):
+    def test_year_filtered_analytics_bounds_earlier_training_history_before_fitting(self):
         ledger = self.make_client()
         for _ in range(3):
             self.make_record(ledger, entry_date=date(2025, 9, 3))
         self.make_record(ledger)
-        with patch.object(analytics, "MAX_RECORDS", 2):
+        with patch.object(analytics, "MAX_RECORDS", 2), patch("safebooks.services.forecasting_service._fit_sarima") as fit:
             self.assert_limit(analytics.get_analytics_summary_for_bookkeeper(self.owner, ledger.id))
             narrow = analytics.get_analytics_summary_for_bookkeeper(self.owner, ledger.id, year_filter="2026")
-        self.assertTrue(narrow["ok"])
-        self.assertEqual(narrow["summary"]["total_sales"], 1.0)
-        self.assertTrue(narrow["client_workflow"]["has_any_records"])
-        self.assertEqual(narrow["client_workflow"]["latest_entry_date"], "2026-09-03")
+        self.assert_limit(narrow)
+        fit.assert_not_called()
+        self.assertEqual(narrow["available_clients"][0]["id"], ledger.id)
 
     def test_observation_limit_precedes_any_model_fit(self):
         ledger = self.make_client()

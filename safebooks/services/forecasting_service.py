@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 SARIMA_ORDER = (0, 1, 0)
 SARIMA_OPTIMIZER = "powell"
 SARIMA_MAX_ITERATIONS = 250
+FORECAST_READY_STATUSES = frozenset({'forecast', 'partial_forecast'})
+REJECTED_PREDICTION_NOTES = {
+    'negative_prediction': 'Negative SARIMA prediction',
+    'non_finite_prediction': 'Non-finite SARIMA prediction',
+}
 FREQUENCY_CONFIG = {
     "monthly": {"interval": 1, "seasonal_period": 12, "minimum_observations": 24},
     "quarterly": {"interval": 3, "seasonal_period": 4, "minimum_observations": 8},
@@ -96,6 +101,11 @@ def _validate_regular_periods(periods: list[tuple[int, int]], frequency: str) ->
         if actual != expected:
             return False
     return True
+
+
+def rejected_prediction_note(model: dict, period: tuple[int, int]) -> str:
+    reason = model.get('rejected_periods', {}).get(period)
+    return REJECTED_PREDICTION_NOTES.get(reason, '')
 
 
 def _fit_sarima(values: list[float], seasonal_period: int, steps: int) -> list[float]:
@@ -258,15 +268,19 @@ def build_sarima_forecast(
         })
         return result
 
-    if any(not math.isfinite(value) or value < 0 for value in predicted_values):
+    valid_predictions, rejected_periods = {}, {}
+    for period, value in zip(scheduled_periods, predicted_values):
+        if not math.isfinite(value):
+            rejected_periods[period] = 'non_finite_prediction'
+        elif value < 0:
+            rejected_periods[period] = 'negative_prediction'
+        else:
+            valid_predictions[period] = Decimal(str(value))
+    result['rejected_periods'] = rejected_periods
+    result['forecast_by_period'] = valid_predictions
+    if rejected_periods:
         result.update({
-            "status": "unreliable_result",
-            "message": "The SARIMA result was negative or non-finite and was not displayed.",
+            "status": "partial_forecast" if valid_predictions else "unreliable_result",
+            "message": "Negative or non-finite SARIMA predictions were withheld; valid periods remain available.",
         })
-        return result
-
-    result["forecast_by_period"] = {
-        period: Decimal(str(value))
-        for period, value in zip(scheduled_periods, predicted_values)
-    }
     return result

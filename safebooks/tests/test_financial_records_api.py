@@ -112,6 +112,272 @@ class FinancialRecordsApiTests(TransactionTestCase):
             ],
         }
 
+    def test_separate_coverage_survives_create_edit_copy_and_report(self):
+        owner = self._create_bookkeeper("coverage")
+        ledger = self._create_client(bookkeeper=owner, suffix="coverage")
+        self._login_as(owner)
+        url = reverse("api_financial_records", kwargs={"client_id": ledger.id})
+        payload = {"date": "2026-03-31", "line_items": [
+            {"type_code": "Sales", "description": "Saved sales", "amount": "75000", "coverage_frequency": "monthly"},
+            {"type_code": "Expenses", "description": "Saved expenses", "amount": "5000", "coverage_frequency": "quarterly"},
+            {"type_code": "BIR Form 2551Q", "description": "PQ", "amount": "500", "remarks": "Paid", "cogs_cos": "0"},
+        ]}
+        created = self.client.post(url, json.dumps(payload), content_type="application/json")
+        self.assertEqual(created.status_code, 201, created.content)
+        record = created.json()["record"]
+        self.assertEqual(record["total_amount"], "80500.00")
+        self.assertEqual([line["coverage_frequency"] for line in record["line_items"]], ["monthly", "quarterly", None])
+        self.assertIn("mixed financial entry", mail.outbox[-1].body)
+        self.assertIn("Monthly", mail.outbox[-1].alternatives[0].content)
+        self.assertIn("Quarterly", mail.outbox[-1].alternatives[0].content)
+        detail = reverse("api_financial_record_detail", kwargs={"client_id": ledger.id, "record_id": record["id"]})
+        update = {"date": record["date"], "expected_revision": record["revision"], "line_items": [
+            {**line, "client_line_id": str(line["id"])} for line in record["line_items"]
+        ]}
+        update["line_items"][0]["coverage_frequency"] = "quarterly"
+        edited = self.client.patch(detail, json.dumps(update), content_type="application/json")
+        self.assertEqual(edited.status_code, 200, edited.content)
+        current = edited.json()["record"]
+        self.assertEqual([line["coverage_frequency"] for line in current["line_items"]], ["quarterly", "quarterly", None])
+        self.assertEqual(current["total_amount"], record["total_amount"])
+        copied = self.client.get(reverse("api_financial_records_last_entry", kwargs={"client_id": ledger.id}),
+                                 {"year": 2026, "month": 6, "frequency": "all"}).json()["record"]
+        self.assertEqual(copied["line_items"], current["line_items"])
+        report = self.client.get(reverse("api_reports_print_layout"),
+                                 {"client_id": ledger.id, "date_from": "2026-01-01", "date_to": "2026-12-31"}).json()
+        self.assertTrue(report["ok"], report)
+        self.assertEqual([line["coverage_frequency"] for line in report["rows"]], ["quarterly", "quarterly", None])
+        self.assertEqual(report["rows"][2]["remarks"], "Paid")
+        self.assertEqual(report["rows"][2]["cogs_cos"], "0.00")
+        self.assertEqual(FinancialRecord.objects.get(pk=record["id"]).total_amount, Decimal("80500.00"))
+        # A stale editor cannot overwrite the explicit per-line coverage.
+        stale = self.client.patch(detail, json.dumps(update), content_type="application/json")
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.json()["code"], "stale_record")
+        old_payload = {"expected_revision": current["revision"], "line_items": payload["line_items"]}
+        del old_payload["line_items"][0]["coverage_frequency"]
+        rejected = self.client.patch(detail, json.dumps(old_payload), content_type="application/json")
+        self.assertFalse(rejected.json()["ok"])
+        self.assertEqual(rejected.json()["code"], "coverage_required")
+
+    def test_invalid_coverage_and_wrong_end_month_do_not_write(self):
+        owner = self._create_bookkeeper("bad-coverage")
+        ledger = self._create_client(bookkeeper=owner, suffix="bad-coverage")
+        self._login_as(owner)
+        url = reverse("api_financial_records", kwargs={"client_id": ledger.id})
+        for coverage, month in [(True, 3), ({}, 3), ([], 3), ("weekly", 3), ("", 3),
+                                ("quarterly", 2), ("quarterly", 10), ("quarterly", 11), ("annually", 3)]:
+            with self.subTest(coverage=coverage, month=month):
+                category = "Expenses" if month == 11 else "Sales"
+                payload = {"date": f"2026-{month:02d}-01", "line_items": [
+                    {"type_code": category, "description": category, "amount": "0", "coverage_frequency": coverage}
+                ]}
+                response = self.client.post(url, json.dumps(payload), content_type="application/json")
+                self.assertFalse(response.json()["ok"], response.content)
+                if coverage == "quarterly" and month in (10, 11):
+                    self.assertEqual(response.json()["message"], f"{category}: For a whole quarter, set Record Date to December 2026.")
+                self.assertFalse(FinancialRecord.objects.filter(client=ledger).exists())
+                self.assertFalse(Period.objects.filter(client=ledger).exists())
+
+    def test_legacy_noncalendar_coverage_is_not_retagged_by_edit(self):
+        owner = self._create_bookkeeper("legacy-coverage")
+        ledger = self._create_client(bookkeeper=owner, suffix="legacy-coverage")
+        self._login_as(owner)
+        record = self._create_record(bookkeeper=owner, client=ledger, year=2026, month=2, day=1,
+                                     amount=Decimal("123.45"), type_code="Sales", frequency="quarterly")
+        url = reverse("api_financial_record_detail", kwargs={"client_id": ledger.id, "record_id": record.id})
+        response = self.client.patch(url, json.dumps({"expected_revision": record.updated_at.isoformat(),
+            "notes": "Reviewed", "line_items": [{"type_code": "Sales", "description": "Line item", "amount": "123.45", "coverage_frequency": None}]}), content_type="application/json")
+        self.assertEqual(response.status_code, 200, response.content)
+        record.refresh_from_db()
+        self.assertEqual(record.frequency, "quarterly")
+        self.assertIsNone(record.line_items.get().coverage_frequency)
+        self.assertEqual(record.entry_date, date(2026, 2, 1))
+        self.assertEqual(record.total_amount, Decimal("123.45"))
+
+    def test_entry_remarks_create_and_edit_reach_report_without_changing_amounts(self):
+        owner = self._create_bookkeeper("remarks")
+        client = self._create_client(bookkeeper=owner, suffix="remarks")
+        self._login_as(owner)
+        payload = self._build_create_payload()
+        payload["notes"] = "Pending for payment"
+        url = reverse("api_financial_records", kwargs={"client_id": client.id})
+        created = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(created.status_code, 201, created.content)
+        saved = created.json()["record"]
+        self.assertEqual(saved["notes"], "Pending for payment")
+        report_url = reverse("api_reports_print_layout")
+        report_params = {"client_id": client.id, "date_from": "2026-04-01", "date_to": "2026-04-30"}
+        report = self.client.get(report_url, report_params)
+        self.assertEqual(report.status_code, 200)
+        self.assertEqual([row["notes"] for row in report.json()["rows"]], ["Pending for payment"] * 2)
+
+        detail_url = reverse("api_financial_record_detail", kwargs={"client_id": client.id, "record_id": saved["id"]})
+        for remarks in ("Paid", "Paid on April 20", ""):
+            updated = self.client.put(detail_url, data=json.dumps({
+                "expected_revision": saved["revision"], "notes": remarks,
+            }), content_type="application/json")
+            self.assertEqual(updated.status_code, 200, updated.content)
+            current = updated.json()["record"]
+            self.assertEqual(current["notes"], remarks)
+            self.assertEqual(current["line_items"], saved["line_items"])
+            self.assertEqual(current["total_amount"], saved["total_amount"])
+            report = self.client.get(report_url, report_params)
+            self.assertEqual(report.status_code, 200)
+            self.assertEqual([row["notes"] for row in report.json()["rows"]], [remarks] * 2)
+            saved = current
+
+    def test_per_form_remarks_survive_save_copy_edit_and_report(self):
+        owner = self._create_bookkeeper("form-remarks")
+        client = self._create_client(bookkeeper=owner, suffix="form-remarks")
+        self._login_as(owner)
+        payload = self._build_create_payload()
+        payload["notes"] = "Original entry note"
+        payload["line_items"] = [
+            {"type_code": "Sales", "description": "Sales", "amount": "1000", "remarks": None},
+            {"type_code": "BIR Form 0619E", "description": "TW", "amount": "500", "remarks": "Paid", "tax_withheld": "0"},
+            {"type_code": "BIR Form 2551Q", "description": "PQ", "amount": "500", "remarks": "Pending for payment"},
+        ]
+        url = reverse("api_financial_records", kwargs={"client_id": client.id})
+        created = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(created.status_code, 201, created.content)
+        saved = created.json()["record"]
+        self.assertEqual(saved["total_amount"], "2000.00")
+        self.assertEqual([line["remarks"] for line in saved["line_items"]], [None, "Paid", "Pending for payment"])
+        copied = self.client.get(reverse("api_financial_records_last_entry", kwargs={"client_id": client.id}), {
+            "month": 5, "year": 2026, "frequency": "quarterly",
+        }).json()["record"]
+        self.assertEqual(copied["line_items"], saved["line_items"])
+        detail_url = reverse("api_financial_record_detail", kwargs={"client_id": client.id, "record_id": saved["id"]})
+        lines_before = list(FinancialRecordLine.objects.filter(record_id=saved["id"]).order_by("id").values())
+        old_payload = {"expected_revision": saved["revision"], "line_items": [
+            {key: value for key, value in line.items() if key != "remarks"} for line in saved["line_items"]
+        ]}
+        rejected = self.client.put(detail_url, data=json.dumps(old_payload), content_type="application/json")
+        self.assertEqual(rejected.json()["code"], "line_remarks_required")
+        self.assertEqual(list(FinancialRecordLine.objects.filter(record_id=saved["id"]).order_by("id").values()), lines_before)
+
+        payload["line_items"] = saved["line_items"]
+        payload["expected_revision"] = saved["revision"]
+        payload["line_items"][2]["remarks"] = "Paid on April 20"
+        updated = self.client.put(detail_url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(updated.status_code, 200, updated.content)
+        current = updated.json()["record"]
+        self.assertEqual(current["total_amount"], "2000.00")
+        self.assertEqual(current["notes"], "Original entry note")
+        self.assertEqual([line["remarks"] for line in current["line_items"]], [None, "Paid", "Paid on April 20"])
+        self.assertEqual(current["line_items"][1]["tax_withheld"], "0.00")
+        stale = self.client.put(detail_url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(stale.json()["code"], "stale_record")
+        report_params = {"client_id": client.id, "date_from": "2026-04-01", "date_to": "2026-04-30"}
+        report = self.client.get(reverse("api_reports_print_layout"), report_params)
+        self.assertEqual(report.status_code, 200)
+        self.assertEqual([line["remarks"] for line in report.json()["rows"]], [None, "Paid", "Paid on April 20"])
+        self.assertEqual([line["notes"] for line in report.json()["rows"]], ["Original entry note"] * 3)
+        other = self._create_bookkeeper("remarks-other")
+        self._login_as(other)
+        self.assertEqual(self.client.get(reverse("api_reports_print_layout"), report_params).status_code, 404)
+        self.assertFalse(self.client.put(detail_url, data=json.dumps({
+            "expected_revision": current["revision"], "notes": "Unauthorized",
+        }), content_type="application/json").json()["ok"])
+
+    def test_legacy_form_remarks_keep_null_until_explicitly_changed(self):
+        owner = self._create_bookkeeper("legacy-remarks")
+        client = self._create_client(bookkeeper=owner, suffix="legacy-remarks")
+        self._login_as(owner)
+        record = self._create_record(bookkeeper=owner, client=client, year=2026, month=4, day=15, amount=Decimal("500"))
+        url = reverse("api_financial_record_detail", kwargs={"client_id": client.id, "record_id": record.id})
+        original_line = record.line_items.get()
+        self.assertIsNone(original_line.remarks)
+        response = self.client.put(url, data=json.dumps({
+            "expected_revision": record.updated_at.isoformat(), "notes": "Legacy note retained",
+        }), content_type="application/json")
+        self.assertEqual(response.status_code, 200, response.content)
+        saved = response.json()["record"]
+        self.assertIsNone(saved["line_items"][0]["remarks"])
+        self.assertEqual(saved["line_items"][0]["id"], original_line.id)
+        saved["line_items"][0]["remarks"] = ""
+        response = self.client.put(url, data=json.dumps({
+            "expected_revision": saved["revision"], "line_items": saved["line_items"],
+        }), content_type="application/json")
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["record"]["line_items"][0]["remarks"], "")
+        self.assertEqual(response.json()["record"]["notes"], "Legacy note retained")
+        self.assertEqual(response.json()["record"]["total_amount"], "500.00")
+
+    def test_invalid_form_remarks_do_not_persist(self):
+        owner = self._create_bookkeeper("invalid-remarks")
+        client = self._create_client(bookkeeper=owner, suffix="invalid-remarks")
+        self._login_as(owner)
+        url = reverse("api_financial_records", kwargs={"client_id": client.id})
+        for value in ("x" * 256, {"paid": True}, True, 123, "bad\x00remark"):
+            with self.subTest(value_type=type(value).__name__):
+                payload = self._build_create_payload()
+                payload["line_items"][1]["remarks"] = value
+                response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+                self.assertEqual(response.status_code, 400, response.content)
+                self.assertFalse(FinancialRecord.objects.filter(client=client).exists())
+                self.assertFalse(Period.objects.filter(client=client).exists())
+
+    def test_worksheet_amounts_round_trip_without_increasing_totals(self):
+        owner = self._create_bookkeeper("worksheet-owner")
+        client = self._create_client(bookkeeper=owner, suffix="worksheet")
+        self._login_as(owner)
+        payload = self._build_create_payload()
+        fields = FinancialRecordLine.WORKSHEET_AMOUNT_LABELS
+        payload["line_items"][0].update(dict.fromkeys(fields, None))
+        payload["line_items"][1].update(mict="", cogs_cos="9000.125", income_payments_2307="10000", tax_withheld=0)
+        url = reverse("api_financial_records", kwargs={"client_id": client.id})
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 201, response.content)
+        saved = response.json()["record"]
+        self.assertEqual(saved["total_amount"], "1120.00")
+        self.assertIsNone(saved["line_items"][1]["mict"])
+        self.assertEqual(saved["line_items"][1]["cogs_cos"], "9000.12")
+        self.assertEqual(saved["line_items"][1]["tax_withheld"], "0.00")
+        copied = self.client.get(reverse("api_financial_records_last_entry", kwargs={"client_id": client.id}),
+                                 {"month": 5, "year": 2026, "frequency": "quarterly"}).json()["record"]
+        self.assertEqual(copied["line_items"], saved["line_items"])
+        detail_url = reverse("api_financial_record_detail", kwargs={"client_id": client.id, "record_id": saved["id"]})
+        response = self.client.put(detail_url, data=json.dumps({"expected_revision": saved["revision"], "notes": "Notes only"}), content_type="application/json")
+        self.assertEqual(response.status_code, 200, response.content)
+        updated = response.json()["record"]
+        self.assertEqual(updated["line_items"], saved["line_items"])
+        # An older editor must reload rather than erase values it did not receive.
+        old_payload = self._build_create_payload()
+        old_payload["expected_revision"] = updated["revision"]
+        rejected = self.client.put(detail_url, data=json.dumps(old_payload), content_type="application/json")
+        self.assertFalse(rejected.json()["ok"])
+        self.assertEqual(FinancialRecordLine.objects.get(record_id=saved["id"], sort_order=2).cogs_cos, Decimal("9000.12"))
+        payload["expected_revision"] = updated["revision"]
+        payload["line_items"][1]["cogs_cos"] = None
+        response = self.client.put(detail_url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertIsNone(response.json()["record"]["line_items"][1]["cogs_cos"])
+        self.assertEqual(response.json()["record"]["total_amount"], "1120.00")
+        stale = self.client.put(detail_url, data=json.dumps(payload), content_type="application/json")
+        self.assertFalse(stale.json()["ok"])
+        other = self._create_bookkeeper("worksheet-other")
+        self._login_as(other)
+        denied = self.client.put(detail_url, data=json.dumps(payload), content_type="application/json")
+        self.assertFalse(denied.json()["ok"])
+        self.assertEqual(FinancialRecordLine.objects.get(record_id=saved["id"], sort_order=2).tax_withheld, Decimal("0.00"))
+
+    def test_invalid_worksheet_amounts_do_not_create_records_or_periods(self):
+        owner = self._create_bookkeeper("worksheet-invalid")
+        client = self._create_client(bookkeeper=owner, suffix="worksheet-invalid")
+        self._login_as(owner)
+        for name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS:
+            for value in ("-0.01", "NaN", "Infinity", True, {}, "1000000000000"):
+                with self.subTest(field=name, value=value):
+                    payload = self._build_create_payload()
+                    payload["line_items"][1][name] = value
+                    response = self.client.post(reverse("api_financial_records", kwargs={"client_id": client.id}),
+                                                data=json.dumps(payload), content_type="application/json")
+                    self.assertFalse(response.json()["ok"])
+                    self.assertFalse(FinancialRecord.objects.filter(client=client).exists())
+                    self.assertFalse(Period.objects.filter(client=client).exists())
+
     def test_financial_records_api_requires_authentication(self):
         owner = self._create_bookkeeper("auth-owner")
         client = self._create_client(bookkeeper=owner, suffix="auth-client")
@@ -530,7 +796,7 @@ class FinancialRecordsApiTests(TransactionTestCase):
         self.assertEqual(response_negative.status_code, 400)
         self.assertEqual(
             response_negative.json().get("message"),
-            "Line item #1: Amount cannot be negative.",
+            "Sales: Amount cannot be negative.",
         )
 
         missing_items_payload = self._build_create_payload()
@@ -543,7 +809,7 @@ class FinancialRecordsApiTests(TransactionTestCase):
         self.assertEqual(response_missing.status_code, 400)
         self.assertEqual(
             response_missing.json().get("message"),
-            "At least one line item is required.",
+            "At least one record detail is required.",
         )
 
     def test_financial_records_period_and_date_validation_edges(self):

@@ -134,6 +134,7 @@ def serialize_client(client: Client, *, include_sensitive: bool = False) -> dict
         "client_name": client.client_name,
         "tin_number": client.tin_number,
         "trade_name": client.trade_name,
+        "tax_registration": client.tax_registration,
         "location": client.location,
         "permit_number": client.permit_number if include_sensitive else "",
         "birthday": client.birthday.isoformat() if include_sensitive and client.birthday else "",
@@ -174,6 +175,9 @@ def _build_clean_payload(data: dict):
     custom_fields, custom_fields_error = _normalize_custom_fields(data.get("custom_fields"))
 
     errors = []
+    tax_registration = data.get("tax_registration", "")
+    if not isinstance(tax_registration, str) or tax_registration not in {value for value, _ in Client.TAX_REGISTRATION_CHOICES}:
+        errors.append("Tax registration must be VAT, Non-VAT, or Not set.")
     if not client_name:
         errors.append("Client name is required.")
     if not tin_number:
@@ -206,6 +210,7 @@ def _build_clean_payload(data: dict):
         "client_name": client_name,
         "tin_number": tin_number,
         "trade_name": trade_name,
+        "tax_registration": tax_registration,
         "location": location,
         "permit_number": permit_number,
         "birthday": birthday_value,
@@ -309,6 +314,7 @@ def create_client_for_bookkeeper(bookkeeper, data: dict) -> dict:
         client_name=payload["client_name"],
         tin_number=payload["tin_number"],
         trade_name=payload["trade_name"],
+        tax_registration=payload["tax_registration"],
         location=payload["location"],
         permit_number=payload["permit_number"],
         birthday=payload["birthday"],
@@ -385,6 +391,10 @@ def update_client_for_bookkeeper(bookkeeper, client_id: int, data: dict, *, incl
         "forecast_growth_percent",
         "updated_at",
     ]
+
+    if "tax_registration" in data:
+        client.tax_registration = payload["tax_registration"]
+        update_fields.append("tax_registration")
 
     if payload["has_remarks"]:
         if client.remarks == Client.REMARK_CLOSED and payload["remarks"] != Client.REMARK_CLOSED:

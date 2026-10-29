@@ -161,7 +161,7 @@
 .analytics-month-labels {
     margin-top: 0.24rem;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--trend-month-count, 6), minmax(0, 1fr));
     gap: 0.3rem;
 }
 
@@ -386,6 +386,8 @@
     display: block;
     margin-bottom: 0.42rem;
 }
+.analytics-predictive-chart-shell.is-sparse { min-height: 0; }
+.analytics-predictive-chart-shell.is-sparse .analytics-predictive-spark { display: none; }
 
 .analytics-predictive-line {
     fill: none;
@@ -407,7 +409,7 @@
 .analytics-predictive-report-scroll {
     flex: 1 1 auto;
     margin-top: 0.88rem;
-    max-height: 268px;
+    max-height: 28rem;
     min-height: 0;
     overflow: auto;
     scrollbar-gutter: stable;
@@ -449,6 +451,38 @@
     font-size: 0.74rem;
     padding-left: 0.72rem;
     padding-right: 0.72rem;
+}
+
+.analytics-forecast-cell-value {
+    display: block;
+}
+
+.analytics-forecast-cell-comparison {
+    white-space: normal;
+}
+
+.analytics-forecast-cell-value + .analytics-forecast-cell-value {
+    margin-top: 0.45rem;
+}
+
+.analytics-forecast-interval {
+    display: block;
+    color: var(--dashboard-muted, #526b99);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.analytics-forecast-basis {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--dashboard-muted, #526b99);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    white-space: normal;
+}
+
+.analytics-forecast-basis > span {
+    display: block;
 }
 
 .analytics-predictive-report-table td {
@@ -654,7 +688,9 @@
 .analytics-forecast-projection-tooltip {
     position: absolute;
     z-index: 3;
-    min-width: 138px;
+    box-sizing: border-box;
+    width: min(180px, calc(100% - 16px));
+    overflow-wrap: anywhere;
     border: 1px solid #cddbf5;
     border-radius: 10px;
     background: #ffffff;
@@ -705,7 +741,8 @@
 .analytics-forecast-projection-labels span {
     min-width: 0;
     text-align: center;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .analytics-forecast-projection-shell[data-active-series] .analytics-forecast-projection-line,
@@ -796,8 +833,12 @@
     }
 
     .analytics-month-labels {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.42rem;
+        grid-template-columns: repeat(var(--trend-month-count, 6), minmax(0, 1fr));
+        gap: 0.12rem;
+    }
+
+    .analytics-month-labels span {
+        font-size: clamp(0.5rem, 2.5vw, 0.72rem);
     }
 
     .analytics-line-svg {

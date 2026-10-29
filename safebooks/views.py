@@ -49,7 +49,7 @@ from safebooks.services.financial_record_service import (
     update_record_for_client_period,
 )
 from safebooks.services.dashboard_service import get_dashboard_summary_for_bookkeeper
-from safebooks.services.analytics_service import get_analytics_summary_for_bookkeeper
+from safebooks.services.analytics_service import get_analytics_summary_for_bookkeeper, get_analytics_year_options
 from safebooks.services.settings_service import (
     get_workspace_defaults_for_bookkeeper,
     update_client_record_email_notifications_preference,
@@ -1039,6 +1039,7 @@ def client_details_page_view(request, client_id):
     context["active_nav"] = "clients"
     client.remarks = resolve_client_remarks(client)
     context["client"] = client
+    context.update(get_analytics_year_options(request.bookkeeper_account, client_id=client.id))
     context["client_record_email_notifications_enabled"] = bool(
         getattr(request.bookkeeper_account, "client_record_email_notifications_enabled", True)
     )

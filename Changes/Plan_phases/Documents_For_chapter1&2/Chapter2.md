@@ -4,24 +4,58 @@
 
 # METHODOLOGY
 
-This chapter presents the methodology used to develop SafeBooks: A Web-Based Financial Records and Compliance Monitoring System with Forecasting Analytics. It describes the activities undertaken to define the requirements, design and implement the platform, verify its functions, and prepare it for use by its intended users. The methodology also establishes how revisions identified during development and testing were addressed before proceeding with the succeeding activities.
+This chapter discusses the methodology employed in the development of
+SafeBooks: A Web-Based Bookkeeping Platform for Client Transaction Entry
+Records with Financial Analytics and Forecasting Insights. The chapter describes
+the systematic sequence of procedures that were adhered to in the process of
+planning, analysis, design, development, testing, implementation, and
+maintenance of the system for the provision of assistance to accounting
 
-The study adopted the Modified Waterfall Model under the System Development Life Cycle (SDLC). This model follows an organized sequence while allowing the proponents to return to an earlier phase when a requirement, design decision, or system function needs revision [21]. As shown in Figure 1, the development process covers Planning, Requirements Analysis, System Design, Development and Implementation, Testing and Deployment, and Maintenance. This structure provided a clear progression of activities without treating the output of each phase as unchangeable.
-(Attached image at the chatbox)
+specialists in their implementation of bookkeeping and accounting activities.
+The Modified Waterfall Model was chosen for this study as part of the
+System Development Life Cycle (SDLC), due to its systematic and orderly
+approach characteristic of projects where the requirements are already specified
+[23]. This model goes through different phases including Planning, Requirements
+Analysis, System Design, Development and Implementation, Testing and
+Deployment, and Maintenance, as illustrated in Figure 1.
+
+(If you want to see the image i will share it)
 
 **Figure 1.** Modified Waterfall Model
 
 
 **System Planning**
 
-The system planning phase established the problem to be addressed, the intended users, and the boundaries of SafeBooks. The proponents identified home-based bookkeepers as the primary users and the System Administrator as the supporting user responsible for account oversight. The objectives and initial development activities were then organized around the management of multiple client records, internal schedule monitoring, financial review, and report preparation. These decisions provided the basis for the requirements examined in the next phase.
+During the system planning step, the issue that needs to be resolved, the
+intended users, and the limits of SafeBooks were determined. The supporters
+recognized home-based bookkeepers as the main users and the System
+Administrator as the assisting user who is in charge of monitoring the accounts in
+the next phase of the design process. The plans were made with a view to
+working on many client records, keeping track of internal schedules, revising
+financial data, and preparing necessary reports by the team.
 
-The project was planned in response to the difficulty of organizing financial information and compliance-related schedules for several client businesses through separate or manually maintained records. SafeBooks was therefore defined as a web-based platform that connects client profiles, period-based financial records, descriptive analytics, SARIMA forecasts, remarks, and printable reports within one internal workflow. The platform was planned as an internal record-management environment rather than a replacement for government tax services. Its boundaries exclude official tax calculation, return filing, tax payment processing, and confirmation of BIR compliance.
+The objective of the project is to provide a solution for the problem of
+managing financial data and compliance schedules for multiple businesses of
+clients under separate or manually operated records. This is why the project
+defines SafeBooks as a platform that integrates profiles of clients, periodic
+financial records, descriptive data analytics, models of forecasts developed in
+accordance with the selected model, and notes about the reports that can be
+printed.The aim of the platform is thus to create an environment for internal
+records management rather than replace a governmental tax service; the scope
+excludes any activities related to taxation, including tax calculation, tax return, tax
+payment, and BIR compliance confirmation.
 
 
 **Project Team Organization**
 
-The project development team consisted of three proponents assigned as Systems Analyst, System Developer, and Documentarian, as shown in Figure 2. Each proponent had a primary area of responsibility while coordinating decisions involving the requirements, implementation, and documentation of SafeBooks. The partner organization and Project Adviser supported the project through operational input and academic guidance but are not included in the organizational chart.
+The project development team was comprised of three individuals who
+served as proponents in the roles of Systems Analyst, System Developer, and
+Documentarian (as seen in Figure 2). Each member of the team performed
+specific functions yet all were required to coordinate their choices regarding the
+requirements, implementation, and documentation phases of SafeBooks. The
+partner organization and Project Adviser provided support in the form of
+operational expertise as well as theoretical knowledge but were not displayed in
+the organizational chart.
 
 (attached image at the chatbox)
 
@@ -29,22 +63,57 @@ The project development team consisted of three proponents assigned as Systems A
 
 **Roles and Responsibilities**
 
-**Partner Organization: Bookkeepers Guild of Panabo City Inc.** The organization provided the practical context for understanding how bookkeepers manage financial information for multiple client businesses. Its input helped the proponents identify concerns involving record organization, retrieval, and compliance-related schedule monitoring. The proponents remained responsible for translating these concerns into system requirements and development decisions.
+**Partner Organization: Bookkeepers Guild of Panabo City Inc.** The organization
+gave a clear example of how accountants handle financial data for numerous
+businesses run by various clients. The organization also made it possible for the
+proponents to identify issues related to the process of keeping, retrieving, and
+reporting records. The proponents had to make use of this information to outline
+what system requirements they needed, as well as what developments they
+needed to make.
 
-**Project Adviser: Lady Ben Roselle D. Nalzaro.** The Project Adviser provided academic guidance and reviewed the manuscript and system deliverables at different stages of the project. She recommended revisions concerning the scope, methodology, design, implementation, and presentation of the study. Her guidance helped the proponents address concerns and maintain consistency with the academic requirements of the Capstone Project.
+**Project Adviser: Lady Ben Roselle D. Nalzaro.** The Project Adviser
+gave academic supervision and checked the whole research paper and the project outcomes from time to time. This expert offered some corrections in terms
+of the scope, methodology, project design, and presentation. Her assistance has
+provided the authors with a possibility to answer the questions raised and meet
+the academic criteria for a Capstone Project.
 
-**Systems Analyst: Jose Agbas.** The Systems Analyst identified and organized the functional and non-functional requirements of SafeBooks. The role involved translating the identified bookkeeping concerns into system workflows, data requirements, and user interactions. The Systems Analyst also checked whether the proposed design and implemented functions remained consistent with the objectives and scope of the study.
+**Systems Analyst: Jose Agbas.** The Systems Analyst gathered and categorized the
+functional and nonfunctional requirements of SafeBooks. Her job included
+transforming the gathered information into business processes, data needs, and
+use cases. The Systems Analyst proved that the adopted system design and the
+implemented features were compliant with the goals and scope of the project.
 
-**System Developer: Romulo Magos.** The System Developer implemented the user interface, application functions, and database operations of SafeBooks according to the approved requirements and design. The role included integrating the authentication, client-management, financial-record, analytics, forecasting, monitoring, and reporting modules. The System Developer also corrected identified defects and verified that the connected modules operated as intended.
+**System Developer: Romulo Magos.** The System Developer provided the implementation of the
+user interface and functionalities of SafeBooks according to project specification.
+This position entailed creating the modules for identification, clients’
+management, keeping financial records, analysis, forecast, and reporting. The
+System Developer dealt with bugs fixing and checking whether all modules were
+working appropriately.
 
-**Documentarian: Jandrie Daro.** The Documentarian prepared and maintained the research manuscript, system documentation, progress records, and other required project materials. The role included organizing revisions and checking that the written descriptions, figures, tables, and references reflected the current scope and implementation of SafeBooks. The Documentarian also reviewed the consistency, grammar, and formatting of the documents before submission.
+**Documentarian: Jandrie Daro.**  The role of Documentarian was responsible for the
+preparation and maintenance of research manuscript, system documentation,
+progress records, and other required project materials. Responsibilities included
+organizing revisions and verifying that the written descriptions, illustrations,
+tables, and references are up-to-date with respect to the objectives and
+implementation of SafeBooks. The Documentarian was responsible for checking
+the consistency, style, and format of the documents prior to submission.
 
 
 **Work Breakdown Structure (WBS)**
 
-Figure 3 presents the Work Breakdown Structure, which divides the SafeBooks project into smaller and manageable activities. Its six major divisions correspond to Planning, Requirements Analysis, System Design, Development and Implementation, Testing and Deployment, and Maintenance. Within each phase, the required work is separated into specific tasks that contribute to the development of the system.
+As depicted in Figure 3, Work Breakdown Structure breaks down
+SafeBooks project into smaller activities. The major divisions in the Work
+Breakdown Structure include Planning, Requirements Analysis, Systems Design,
+Development and Implementation, Testing and Deployment, and Maintenance.
+Each phase then further breaks down the required work into different tasks.
 
-The WBS served as a guide for organizing project activities and monitoring their progress. It helped the proponents connect individual tasks with the objectives and expected output of each development phase. Since the Modified Waterfall Model permits revisions, unfinished or revised work could also be traced to the phase in which further action was required.
+In essence, the Work Breakdown Structure has served as a basis for
+organizing project activities and monitoring the work progress. In particular, the
+Work Breakdown Structure allowed the developers to link the tasks to the goals
+and desired outcomes of each project phase. Moreover, the Modified Waterfall
+Model allows the project team to track activities that have not been completed or
+have been revised.
+
 (attached image at the chatbox)
 
 **Figure 3.** Work Breakdown Structure (WBS)
@@ -52,9 +121,16 @@ The WBS served as a guide for organizing project activities and monitoring their
 
 **Gantt Chart**
 
-Figure 4 presents the planned schedule for the phases identified in the Work Breakdown Structure. It shows the start and end dates allotted to Planning, Requirements Analysis, System Design, Development and Implementation, Testing and Deployment, and Maintenance. The timeline begins on February 28, 2026, and ends on December 20, 2026, allowing the duration and sequence of the phases to be viewed across the monthly schedule.
+In the provided figure 4, the anticipated plan for each phase defined in the
+Work Breakdown Structure is shown. Several development stages such as
+Planning, Requirements Analysis, System Design, Development and
+Implementation, Testing, Deployment, and Maintenance are likely to start from
+February 28, 2026, and finish by December 20, 2026.
 
-The Gantt chart served as a reference for organizing activities and monitoring progress against the target dates. It helped the proponents coordinate the work assigned to each development phase and identify activities that required follow-up or adjustment. Revisions encountered during development or testing could therefore be considered without losing track of the overall project schedule.
+The Gantt chart acted as an ideal tool which assisted in organizing
+activities in an appropriate manner and to monitor progress with respect to the
+planned dates and target milestones.
+
 (attached image at the chatbox)
 
 **Figure 4.** Gantt Chart
@@ -62,112 +138,327 @@ The Gantt chart served as a reference for organizing activities and monitoring p
 
 **System Analysis**
 
-The system analysis phase examined the bookkeeping concerns identified during planning and translated them into functional and non-functional requirements. It defined the responsibilities and interactions of the Bookkeeper and System Administrator, together with the data needed for client profiles, financial records, internal schedule monitoring, analytics, forecasting, and reports. The proponents also identified the operational boundaries that separate SafeBooks from official tax calculation, filing, payment, and confirmation of BIR compliance. The results of this phase provided the basis for the system models and detailed requirements presented in the succeeding sections.
+The phase of system analysis evaluated the accounting issues raised in
+the phase of planning and converted those issues into functional or
+non-functional requirements. This phase included determination of duties of the
+Bookkeeper and System Administrator and the types of data needed in the
+different functions of the system including client account details, accounts and
+transaction data, control of internal scheduling, analytics and reporting. The
+phase also covered clearly the operational limits of the system to distinguish
+SafeBooks from computation, filing and payment tax duties and procedures of
+BIR. The findings of the analysis also formed the base of future development of
+the system
 
 
 **System Architecture**
-SafeBooks uses a three-tier, web-based architecture composed of presentation, application, and data layers. This arrangement separates the user interface, processing rules, and data-management responsibilities of the platform [22]. Figure 5 presents the proposed deployment of these layers through a browser interface, a Django application hosted on Render, and a relational database. The structure supports the functions assigned to the Bookkeeper and System Administrator without exposing the database directly to either user.
+SafeBooks has a three-layer web-based architecture, which includes
+presentation, application and data layers. The principle of three-layer architecture
+allows for separating user interface, processing rules and responsibilities in terms
+of data management of the system technology [24]. Figure (5) provides
+information about the implementation of technologies of the system using
+web-desktop interface, a Django application and relational database system. In accordance with this architecture possibilities are provided for fulfilling all
+necessary duties by the Bookkeeper and System Administrator but there is no
+risk of direct access to database by any of the users.
 
-The presentation layer consists of the web browser through which the Bookkeeper and System Administrator access their authorized functions. Pages created with Django templates, HTML, CSS, and JavaScript display forms, dashboards, financial information, analytics, reports, and account-management options. Requests from the browser pass through the Render public endpoint using an HTTPS connection. The endpoint directs the requests to the web service and returns the processed pages or data through the same client-server exchange [23].
+The function of the presentation layer encompasses the web browser
+through which the users can fulfill all of their functions. Pages created with
+Django templates, HTML, CSS, and JavaScript display forms, dashboards,
+financial information, analytics, reports, and account-management options.
+Requests from the browser pass through the Render public endpoint using an
+HTTPS connection. The endpoint directs the requests to the web service and
+returns the processed pages or data through the same client-server exchange
+[25].
 
-The application layer is hosted as a Render Web Service running one Django application. Its routes, views, service modules, and models manage authentication, account approval, client profiles, financial records, internal schedule monitoring, descriptive analytics, SARIMA forecasting, settings, audit logs, and reports. Authentication, role-based access, sessions, CSRF protection, and validation remain within the Django application and are applied before the requested function is processed. The application also uses Gmail SMTP to send account-related and security email messages.
 
-The data layer stores the related information for user accounts, client profiles, reporting periods, financial records, transaction details, settings, and audit logs. Render PostgreSQL is identified as the database for the proposed deployment environment. SQLite remains limited to local development and is not used at the same time as the deployment database. The Django Object-Relational Mapper connects the application to the database when stored information is read or updated.
+The application layer is hosted as a Render Web Service running one
+Django application. Its routes, views, service modules, and models manage
+authentication, account approval, client profiles, financial records, internal
+schedule monitoring, descriptive analytics, SARIMA forecasting, settings, audit
+logs, and reports. Authentication, role-based access, sessions, CSRF protection,
+and validation remain within the Django application and are applied before the
+requested function is processed. The application also uses Gmail SMTP to send
+account-related and security email messages.
+
+The data layer stores the related information for user accounts, client
+profiles, reporting periods, financial records, transaction details, settings, and
+audit logs. Render PostgreSQL is identified as the database for the proposed
+deployment environment. SQLite remains limited to local development and is not
+used at the same time as the deployment database. The Django
+Object-Relational Mapper connects the application to the database when stored
+information is read or updated.
+
 (attached image from the Chatbox)
 
 **Figure 5.** System Architecture
 
-During operation, the user sends a request through the browser and the Render public endpoint forwards it to the Django application. The application checks the session, assigned role, submitted data, and requested action before accessing the required function and database records. Financial summaries and forecasts are produced from the stored client information and transaction details when requested. The resulting page or data is then returned to the browser through the same secured path.
+During operation, the user sends a request through the browser and the
+Render public endpoint forwards it to the Django application. The application
+checks the session, assigned role, submitted data, and requested action before
+accessing the required function and database records. Financial summaries and
+forecasts are produced from the stored client information and transaction details
+when requested. The processed page or requested data is then securely sent
+back to the user's browser through the same protected connection.
 
 
 **Conceptual Framework**
 
-The conceptual framework presents how information entered into SafeBooks moves through its main operations and produces records and analytical results for the Bookkeeper. Figure 6 organizes this relationship into input, process, and output components. The inputs consist of account and client information, period-based financial records and transaction details, reporting frequency, internal deadline dates, remarks, and system settings. These data are handled through authentication and account approval, client and financial record management, validation, internal schedule monitoring, descriptive analytics, SARIMA forecasting, report preparation, and audit logging.
+The conceptual framework illustrates how data that is registered in
+SafeBooks functions in its principal operations and generates records and
+reports for the Bookkeeper. Figure 6 presents this interaction as input, process,
+and output components. The inputs consist of information regarding accounts
+and clients and all financial records and transactions over a specific time,
+frequency of reporting, internal deadlines, and additional comments as well as
+system settings. The input data undergoes the processes of authentication/approval of accounts, management of clients and financial
+records, validation, internal scheduling, analytics, forecasting through the
+selected model, report generation, and audit logging
+
 (attached image at the chatbox)
 
 **Figure 6.** SafeBooks Conceptual Framework (IPO Model)
 
-These processes produce organized client profiles and financial records, internal schedule-monitoring results, financial summaries, descriptive analytics, SARIMA forecasts, printable reports, and audit records. The outputs help the Bookkeeper review a client’s recorded information and prepare internal reports from the same set of data. They also allow the System Administrator to oversee user accounts and review system activities within the assigned role. The framework does not represent official tax calculation, filing, payment, or confirmation of BIR compliance.
+The procedures lead to the formation of structured customer profiles as well
+as records of finances, results of internal scheduling monitoring, reports, financial
+review, and forecast results based on the chosen model, printed records, and
+audit information. As such, the results allow the Bookkeeper to analyze a client’s
+records and generate internal reports. In addition, the framework enables the
+System Administrator to track user accounts and monitor system activities in the
+given capacity. The framework is not a proper instrument for tax computation.
 
 
 **Functional and Non-Functional Requirements**
 
-SafeBooks supports client profile management, financial record management, internal schedule monitoring, descriptive analytics, forecasting, reporting, and administrative account oversight. The Bookkeeper can maintain client information, record period-based financial data, review summaries, monitor internal deadlines, and prepare reports through the assigned interfaces. Each financial record contains transaction details, a reporting frequency, an entry date, optional notes and deadline information, and a calculated total. Search by client name or TIN supports record retrieval without being treated as the main contribution of the system.
+SafeBooks supports client profile management, financial record
+management, internal schedule monitoring, descriptive analytics, forecasting,
+reporting, and administrative account oversight. The Bookkeeper can maintain
+client information, record period-based financial data, review summaries, monitor internal deadlines, and prepare reports through the assigned interfaces. Each
+financial record contains transaction details, a reporting frequency, an entry date,
+optional notes and deadline information, and a calculated total. Search by client
+name or TIN supports record retrieval without being treated as the main
+contribution of the system.
 
-The non-functional requirements describe the expected quality of SafeBooks in terms of functional suitability, performance efficiency, compatibility, usability, reliability, security, maintainability, and portability. These attributes provide the basis for evaluating how well the implemented functions operate under normal use. The platform uses authenticated and role-based access, validates submitted information, and limits each Bookkeeper to the assigned client and financial records. Its web-based and modular structure also supports consistent browser access, testing, maintenance, and deployment.
+Non-functional requirements are the specifications for the characteristics
+desired by SafeBooks, such as performance effectiveness, efficiency,
+compatibility, usability, reliability, security, maintainability, and portability of the
+application. These requirements are the parameters for evaluating how the
+functionalities are performed in practice. The application provides verified and
+role-based access and verifies the inputs from users and prevents all
+Bookkeepers from accessing the same client. Its web-based and modular
+structure also supports consistent browser access, testing, maintenance, and
+deployment.
 
 **Functional Requirements**
 
-1. Provide user authentication, email verification, session management, optional two-factor authentication, and administrator approval for Bookkeeper accounts.
-2. Allow the System Administrator to approve, reject, deactivate, and reactivate Bookkeeper accounts and review related account activities.
-3. Allow the Bookkeeper to create and maintain client profiles containing the client name, TIN, trade name, location, permit information, contact details, and remarks.
-4. Validate required client information and email formats and prevent the use of a duplicate TIN.
-5. Record monthly, quarterly, and annual financial information with an entry date, transaction details, notes, an optional internal deadline date, and a calculated total.
-6. Monitor internal deadline information and indicate the remaining time or completion state based on the financial records entered for the client.
-7. Enable the Bookkeeper to search and filter client information by client name or TIN in the appropriate client and analytics views.
-8. Present dashboard information for client records, recent financial activity, client remarks, internal deadlines, and recorded financial totals.
-9. Generate descriptive summaries and SARIMA forecasts from recorded sales, expenses, and tax-related amounts when sufficient, regularly spaced historical observations are available.
-10. Produce printable client reports for selected reporting ranges and maintain role-appropriate audit records of important system activities.
+1. Provide user 2FA authentication, email verification, session management,
+two-factor authentication, and administrator approval for Bookkeeper
+accounts.
+2. Allow the System Administrator to approve, reject, deactivate, and
+reactivate Bookkeeper accounts and review related account activities.
+3. Allow the Bookkeeper to create and maintain client profiles containing the
+client name, TIN, trade name, location, permit information, contact details,
+and remarks.
+4. Validate required client information and email formats and prevent the use
+of a duplicate TIN.
+5. Record monthly, quarterly, and annual financial information with an entry
+date, transaction details, notes, an optional internal deadline date, and a
+calculated total.
+6. Monitor internal deadline information and indicate the remaining time or
+completion state based on the financial records entered for the client.
+7. Enable the Bookkeeper to search and filter client information by client
+name or TIN in the appropriate client and analytics views.
+8. Present dashboard information for client records, recent financial activity,
+client remarks, internal deadlines, and recorded financial totals.
+9. Generate descriptive summaries and SARIMA forecasts from recorded
+sales, expenses, and tax-related amounts when sufficient, regularly
+spaced historical observations are available.
+10. Produce printable client reports for selected reporting ranges and maintain
+role-appropriate audit records of important system activities.
 
 **Non-Functional Requirements**
 
-1. Functional Suitability: The system provides the functions required for client profile management, financial record management, internal schedule monitoring, descriptive analytics, SARIMA forecasting, reporting, audit review, and administrative account management. These functions support the assigned activities of the Bookkeeper and System Administrator within the defined scope of SafeBooks.
-2. Performance Efficiency: The system processes submitted records, searches client information, displays dashboards and analytics, and prepares reports within a practical response time during normal use. Its database queries and application services are organized to avoid unnecessary processing when retrieving information for an authorized user.
-3. Compatibility: The system operates through commonly used desktop and laptop web browsers while maintaining its intended functions and readable interface. Users can access SafeBooks without installing a separate desktop application, browser extension, or specialized hardware.
-4. Usability: The system provides clear navigation, organized dashboards, consistent page layouts, understandable labels, and validation messages. These elements help the Bookkeeper and System Administrator complete assigned tasks and correct incomplete or invalid entries.
-5. Reliability: The system maintains consistent operation during client management, financial record entry, internal schedule monitoring, analytics review, and report preparation. Validation and database controls help preserve submitted information and calculated totals during normal operation.
-6. Security: The system protects accounts and financial information through authenticated login, email verification, administrator approval, role-based access, session controls, and optional two-factor authentication. It also restricts Bookkeepers to their assigned records and records important activities in the appropriate audit logs.
-7. Maintainability: The system uses an organized Django project structure, separated service modules, database models, migrations, and ORM-based data access. This structure supports testing, troubleshooting, corrections, and later improvements without requiring the entire application to be rewritten.
-8. Portability: The system can operate in compatible web environments that support Python and Django. SQLite supports local development, while PostgreSQL is configured for the proposed Render deployment without changing the core functions of SafeBooks.
+1. Functional Suitability: The system provides the functions required for client
+profile management, financial record management, internal schedule
+monitoring, descriptive analytics, SARIMA forecasting, reporting, audit
+review, and administrative account management. These functions support
+the assigned activities of the Bookkeeper and System Administrator within
+the defined scope of SafeBooks.
+2. Performance Efficiency: The system processes submitted records,
+searches client information, displays dashboards and analytics, and
+prepares reports within a practical response time during normal use. Its
+database queries and application services are organized to avoid
+unnecessary processing when retrieving information for an authorized
+user.
+3. Compatibility: The system operates through commonly used desktop and
+laptop web browsers while maintaining its intended functions and readable
+interface. Users can access SafeBooks without installing a separate
+desktop application, browser extension, or specialized hardware.
+4. Usability: The system provides clear navigation, organized dashboards,
+consistent page layouts, understandable labels, and validation messages. These elements help the Bookkeeper and System Administrator complete
+assigned tasks and correct incomplete or invalid entries.
+5. Reliability: The system maintains consistent operation during client
+management, financial record entry, internal schedule monitoring,
+analytics review, and report preparation. Validation and database controls
+help preserve submitted information and calculated totals during normal
+operation.
+6. Security: The system protects accounts and financial information through
+authenticated login, email verification, administrator approval, role-based
+access, session controls, and two-factor authentication. It also restricts
+Bookkeepers to their assigned records and records important activities in
+the appropriate audit logs.
+7. Maintainability: The system uses an organized Django project structure,
+separated service modules, database models, migrations, and
+ORM-based data access. This structure supports testing, troubleshooting,
+corrections, and later improvements without requiring the entire
+application to be rewritten.
+8. Portability: The system can operate in compatible web environments that
+support Python and Django. SQLite supports local development, while
+PostgreSQL is configured for the proposed Render deployment without
+changing the core functions of SafeBooks.
 
 
 **Use Case Diagram**
 
-The Use Case Diagram, shown in Figure 7, identifies the interactions available to the Bookkeeper and System Administrator within SafeBooks. The system boundary separates the functions performed through the platform from the two external user roles. The Bookkeeper manages client profiles, financial records, internal deadlines, analytics, forecasts, reports, and account settings. The System Administrator reviews registrations, manages Bookkeeper accounts, monitors administrative information, maintains system settings, and reviews audit activities.
+The Use Case Diagram, shown in Figure 7, identifies the main functions
+available to the Bookkeeper and System Administrator in SafeBooks. The
+Bookkeeper manages client profiles, searches for clients by name or TIN,
+maintains financial records and internal deadlines, reviews analytics and
+forecasts, generates printable reports, and examines personal activity records.
+The System Administrator reviews Bookkeeper registrations and deactivation
+requests, manages Bookkeeper accounts, views administrative information,
+maintains system settings, and reviews audit records. Both actors can manage
+their own profile and security settings through their respective accounts.
 (attached image at the chatbox)
 
 **Figure 7.** Use Case Diagram
 
-Both roles log in before accessing the functions assigned to them and may manage their respective profile and security settings. The Bookkeeper can search for a client by name or TIN, review dashboard information, maintain transaction details, monitor internal deadline information, and prepare printable reports. The System Administrator can approve or reject registrations, manage account status and deactivation requests, review the administrative dashboard, and maintain system-wide settings. Role-based access prevents either user from performing functions that are not assigned to the account.
-
+Access to SafeBooks is limited to authenticated users, although
+authentication is not represented as a main use case. The functions of each
+actor remain separated according to the account’s assigned role. A deactivation
+request is reviewed only after it has been submitted by a Bookkeeper, and the
+resulting decision is handled through Bookkeeper account management. These
+restrictions allow both actors to perform their responsibilities without accessing
+functions assigned to the other role.
 
 **Context Flow Diagram**
 
-The Context Flow Diagram, shown in Figure 8, treats SafeBooks as a single process and shows the information exchanged with its external entities. The Bookkeeper and System Administrator remain outside the system boundary because they provide data to the platform and receive information based on their assigned roles. Each labeled arrow represents information entering or leaving SafeBooks rather than the internal steps used to process it. This level of detail keeps the diagram focused on the system’s external interactions.
+The Context Flow Diagram shown in Figure 8 considers SafeBooks as a
+single process and indicates the information exchanged with external entities.
+The Bookkeeper and the Systems Administrator can be found outside the system
+boundary as they are the relevant providers of data to the system. Each arrow
+contains a label and indicates the information that has been sent into or out of
+SafeBooks. At this level of abstraction, the diagram shows the emphasis on
+external interactions of the system.
+
 (attached image at the chatbox)
 
 **Figure 8.** SafeBooks Level 0 Context Flow Diagram
 
-The Bookkeeper submits login credentials, client profile information, financial record and internal deadline data, report parameters, and profile or security updates. SafeBooks returns authentication and account information, client and financial record information, dashboard and deadline summaries, analytics and forecast results, printable reports, and role-appropriate activity information. The System Administrator submits login credentials, registration and account decisions, deactivation-request decisions, and system or security updates, while receiving authentication results, Bookkeeper account information, administrative metrics, pending-request information, settings, and audit records. No data flow is shown between SafeBooks and the Bureau of Internal Revenue because the platform does not perform official tax filing, payment, or compliance confirmation.
+The Bookkeeper passes along the login information, the information about
+the client profiles including financial records and deadlines, the report settings,
+and data on any profile or security updates. SafeBooks replies with the
+necessary authentication and account information, as well as the client and
+financial records’ information, deadlines, and analytics and forecasts, printable
+reports, and information on the functions available for the user. The System
+Administrator sends login information, registration and deactivation requests, and
+security updates by receiving the authentication messages, Bookkeeper account
+information, administrative data, and audit information in return. There is no
+information exchange between SafeBooks and the Bureau of Internal Revenue
+since the latter is not responsible for tax filing, payments, and confirmations.
+
 
 
 **Level 1 Data Flow Diagram**
 
-The Level 1 Data Flow Diagram, shown in Figure 9, expands SafeBooks into the processes that handle information received from the Bookkeeper and System Administrator. The inputs and outputs identified in the Context Flow Diagram are distributed among authentication, client management, financial record management, dashboards and analytics, reporting, account administration, settings, and audit review. D1 is identified as the SafeBooks Database because it represents the single logical data store used by these processes. It contains user accounts, client profiles, reporting periods, financial records, transaction details, settings, deactivation requests, and audit records.
+The Level 1 Data Flow Diagram, shown in Figure 9, expands SafeBooks into the processes that The Level 1 Data Flow Diagram shown in Figure 9 divides SafeBooks into
+six processes that handle the information identified in the Context Flow Diagram.
+These processes cover authentication and account access; client, financial, and
+deadline records; dashboards, analytics, forecasts, and reports; Bookkeeper
+account administration; system settings; and activity or audit review. D1 is
+identified as the SafeBooks Database because it represents the single logical
+data store used by these processes. It contains user accounts, client profiles,
+reporting periods, financial records, transaction details, settings, deactivation
+requests, and audit records.
+
 (attached image at the chatbox)
 
 **Figure 9.** Level 1 Data Flow Diagram
 
-Bookkeeper information passes through the appropriate processes before being stored or returned as client records, deadline summaries, analytics, SARIMA forecasts, printable reports, or activity information. Administrator decisions update Bookkeeper accounts, deactivation requests, and system settings, while the corresponding account information and metrics are returned to the System Administrator. Each process exchanges only the data required for its responsibility and communicates with the data store instead of allowing either user to access it directly. The flows remain within the scope of SafeBooks and do not represent official BIR filing, payment, or compliance confirmation.
+Information submitted by the Bookkeeper passes through the appropriate
+processes before it is stored or returned as client and financial information,
+deadline summaries, analytics, forecasts, printable reports, or activity
+information. Decisions made by the System Administrator update Bookkeeper
+accounts, deactivation requests, and system settings, while administrative and
+audit information is returned as needed. Each process exchanges only the
+information required for its assigned function and accesses the SafeBooks
+Database instead of allowing either actor to reach the data store directly. These
+flows remain within SafeBooks and do not represent BIR tax filing, payment, or
+compliance confirmation.
 
 **System Design**
 
-The System Design section describes how the identified requirements are translated into user interactions, application processes, and data structures. SafeBooks organizes its functions around authentication and account management, client profiles, financial records, internal schedule monitoring, descriptive analytics, SARIMA forecasting, reporting, audit review, and administrative oversight. The design reflects the assigned activities of the Bookkeeper and System Administrator from account access and record maintenance to analysis and report preparation. These functions operate within one connected web application rather than as independently deployed services.
+The System Design section explains how the specified requirements are
+turned into user operations, application processes, and data structures. The
+functions of SafeBooks are organized in accordance with authentication and
+account management; maintenance of client profiles; work with financial
+information; control over internal schedule; and data processing. In design, all
+activities of the Bookkeeper and System Administrator connected with access to
+accounts and keeping records, analysis, and making reports are reflected
 
-The design also defines the database structure, data relationships, and validation controls used to maintain organized bookkeeping information. Key considerations include unique TIN enforcement, required-field validation, reporting periods and frequencies, transaction details, optional internal deadlines, secure access, and role-based data restrictions. These controls support consistent record processing and prevent either user from accessing information outside the assigned role. The design remains within the project scope and does not provide official tax calculation, filing, payment, or confirmation of BIR compliance.
+The plan sets the framework for the database structure and the
+connection of the data and the validation processes involved, so that the
+recorded bookkeeping information is organized. Important considerations
+include: TIN uniqueness enforcement, validation of required fields, reporting
+periods and frequencies, transaction specifics, internal deadlines, secure system
+access and restrictions based on the user's role. The aim of such procedures is
+to execute records processing successfully while denying one user of using
+information not intended for him/her. The design remains within the boundaries of
+the project and does not include the provision of taxation calculation, payment,
+filing and BIR compliance confirmation.
 
 **Entity Relationship Diagram (ERD)**
 
-The Entity Relationship Diagram, shown in Figure 10, identifies the core data entities used by SafeBooks and the relationships that connect them. The structure supports account administration, client profiles, reporting periods, financial records, transaction details, internal deadline monitoring, workspace settings, deactivation requests, and audit activities. Primary and foreign keys maintain the links between related records while preserving the ownership assigned to the Bookkeeper and System Administrator. The diagram presents the principal database fields needed to explain these relationships without treating application functions as separate entities.
+The Entity Relationship Diagram, which can be found in Figure 10,
+identifies the main data entities used by SafeBooks and their connections. The
+structure provides for accounting operation management, client profile
+management, reporting periods, transaction details, making sure the internal
+deadlines are observed, creating settings for the workspace, requests for
+deactivation, and auditing. The primary and foreign keys maintain the
+connections between the records of data while preserving the information
+administration assignments. The diagram shows the main database fields related
+to presenting these records.
+
 (attached image at the chatbox)
 
 **Figure 10.** Entity Relationship Diagram (ERD)
 
-An AdminAccount may approve Bookkeeper accounts, review deactivation requests, and create administrative audit records. Each BookkeeperAccount owns its client profiles, financial records, workspace defaults, deactivation requests, and activity records. A Client is connected to its reporting periods and financial records, while each FinancialRecord belongs to one period and contains one or more transaction details. These relationships allow SafeBooks to retrieve connected information without giving either user direct access to records outside the assigned role.
+Some functions of an AdminAccount include approving Bookkeeper
+accounts, monitoring deactivation requests and forming login records for
+administrative purposes. Every BookkeeperAccount is responsible for the client
+profiles, financial information, workspace defaults and deactivation requests as
+well as activity records of its clients. Moreover, a Client is associated with the
+corresponding reporting periods and financial records, whereas each
+FinancialRecord is related to one particular period and may have a number of
+entries with transaction details. This provides SafeBooks with an opportunity of
+obtaining complete information without granting any of the users direct access to
+the records outside their assigned roles.
+
+**JSON Schema Diagram**
+
+As it is depicted in Figure 11, the JSON Schema Diagram presents the
+structure and organization of the data used in the SafeBooks system. The
+diagram shows how the data objects are interlinked and how the information is
+transferred between various system functions. 
+
+(attached image at the chatbox)
+**Figure 11:** JSON Schema Diagram
+
+The meaning of the diagram is that it serves as an aid in data organization
+and validation, which guarantees proper information distribution and processing.
+
 
 **Data Dictionary**
 
-The data dictionary summarizes the SafeBooks database tables and their attributes. It provides a clear reference for field names, data types, and key roles used across the system.
+The data dictionary gives a short overview of the tables of the SafeBooks
+database along with their features.
 
 **Table 2. List of SafeBooks Database Tables**
 (attached image at the chatbox)
@@ -177,65 +468,168 @@ The data dictionary summarizes the SafeBooks database tables and their attribute
 
 **Technologies, Concepts, and Theories**
 
-This section discusses the technologies, concepts, and analytical procedures considered in the development of SafeBooks. It explains how financial information is collected, validated, stored, summarized, and prepared for forecasting. It also describes the model-evaluation procedure used to select the forecasting method intended for later integration into the platform.
+This chapter presents the technological innovations, ideas and analytical
+tools that supported the creation of SafeBooks. It reveals how financial
+information is collected, verified, saved, summarized and applied for predictions.
+Moreover, it describes the method of evaluation used for choosing the right
+prediction model, the method that is planned to be integrated into the system
+later.
 
 **Financial Data Collection**
-SafeBooks obtains its financial information from records manually entered by an authorized Bookkeeper. The collected information includes client business details, reporting periods, transaction details for sales, expenses, and tax-related amounts, record frequencies, optional deadlines, and notes. Required information is entered through structured forms rather than gathered automatically from source documents or BIR systems. Centralized digital collection supports more organized access to bookkeeping information than records maintained across separate files or paper documents [24].
+SafeBooks receives its financial data from reports filled in organization by
+a registered bookkeeper. Information collected consists of data about clients’
+businesses, time frames of reporting, information about the transaction including
+sales, expenses and tax payments as well as frequency of information filling,
+optional deadlines, notes and additional information. Required information is
+manually provided through different forms instead of automatic collection from
+primary documents or BIR systems. The centralized digital collection makes
+bookkeeping systems more comprehendible than the systems that store
+information in different files or in paper archives[26].
 
-The submitted information is stored in related database tables according to the Bookkeeper, client, reporting period, and financial record to which it belongs. This arrangement supports client retrieval, period-based monitoring, analytics, forecasting preparation, and report generation from the same set of stored records. The accuracy of these outputs still depends on the completeness and correctness of the information entered by the Bookkeeper.
+Information received is organized into separate tables in the database
+where it is stored by the bookkeeper, customer, reporting period and financial record. Such arrangement allows for easy retrieval of data by client or time frame
+monitoring, analysis and report generation. Although the effectiveness of the
+outputs will depend on the accuracy and completeness of the information
+provided by the bookkeeper.
 
 **Financial Data Processing**
-Before accepting submitted information, SafeBooks checks required fields, numerical formats, permitted values, record ownership, and other applicable input rules. Client profiles are also checked for duplicate TIN values, while financial records must be linked to valid clients and reporting periods. These validation procedures reduce incomplete or inconsistent entries but do not independently establish whether the encoded information agrees with official documents [25]. The Bookkeeper therefore remains responsible for reviewing the source information and correcting identified encoding errors.
+fields, numeric patterns, allowed values, record ownership status, and other
+applied input rules. Information is also verified for duplicates of TIN in client
+records, and financial entries are paired with valid clients and reporting periods.
+Though this verification considerably minimizes the incidence of records that are
+either incomplete or inconsistent, it does not ensure compliance between data
+entered and official information [27]. This means that the job of the Bookkeeper is
+still to check the source documents and correct encoding errors discovered.
 
-After validation, the platform stores the accepted records and calculates the totals needed for dashboards, financial summaries, trend views, and printable reports. Period and frequency information organizes the records for monthly, quarterly, or annual review, while optional deadline dates support internal schedule monitoring. The same prepared historical values form the input for descriptive analytics and the forecasting procedure when sufficient observations are available.
+After the verification of records occurred, the system saves the records
+that are accepted and computes totals needed to create the dashboards,
+financial summaries, and trend charts, as well as printable reports. Time and
+frequency data serve to categorize records by the period of their monthly,
+quarterly, or annual visualization while optional due dates facilitate internal
+planning. The same historical data will be used for predictive analysis and
+forecasting if the counts are sufficient.
 
 **Descriptive Financial Analytics**
-SafeBooks uses descriptive financial analytics to organize recorded information into summaries, comparisons, and trend views. Descriptive analytics examines available historical data to show what has been recorded during the selected periods rather than determining the cause of a financial change or prescribing a business decision [26]. The platform summarizes sales, expenses, tax-related amounts, and resulting net values from the Bookkeeper's entries. These results are displayed through dashboards, client-level views, and printable reports.
+Descriptive financial analysis is used by SafeBooks to collate recorded
+data into summaries, comparisons, and trend charts. Descriptive analysis is a
+study of historical data that shows what happened rather than explaining how it
+happened or what to do next [28]. The application summarizes sales, expenses,
+taxes, and net values based on the recorded information.
 
-This approach was selected because it presents the stored financial information in a form that can be reviewed within the Bookkeeper's existing workflow. It allows the user to compare periods and identify values that may require closer examination without presenting the result as an official accounting conclusion. The descriptive outputs remain separate from the forecasting estimates discussed in the succeeding subsection.
+This method was chosen due to its ability to show financial data in a way
+that can be examined in accordance with the Bookkeeper's existing processes. It
+enables a user to compare different periods and to find numbers that need extra
+attention while keeping the outcome informal. The descriptive information is kept
+separate from the forecasting information in a further part of the report.
 
 **Forecasting Analytics Using Evaluated Statistical Forecasting Models**
-Forecasting analytics estimates possible future values from the sequence of previously recorded financial observations. Three statistical time-series models were evaluated for SafeBooks: Weighted Moving Average (WMA), Holt-Winters Exponential Smoothing, and Seasonal Autoregressive Integrated Moving Average (SARIMA). WMA assigns greater influence to selected recent observations, Holt-Winters represents level, trend, and seasonal behavior through exponential smoothing, and SARIMA models non-seasonal and seasonal relationships within a time series. The comparison was conducted to identify a model for subsequent integration rather than to assume that one method would perform best in every dataset.
+SafeBooks utilizes forecasting techniques in estimating the future financial
+performance based on previously input client data. In choosing the right
+forecasting strategy, three statistical approaches were assessed – Weighted
+Moving Average (WMA), Holt-Winters Exponential Smoothing, and Seasonal
+Autoregressive Integrated Moving Average (SARIMA). These approaches involve
+different techniques of forecasting including weighted averaging of actual
+observations, exponential smoothing of level, trend, and seasonal components,
+and modeling seasonal/non-seasonal relationships in time series.
 
-The models were evaluated through a time-based holdout procedure. Historical financial records from 2023 and 2024 formed the training set, while the corresponding 2025 records were reserved as the test set and were excluded during model fitting. Forecasts for the test period were then compared with the actual recorded values for 2025. Keeping the test observations separate from model fitting provides a more appropriate assessment of performance on unseen time-ordered data [27].
+The models were evaluated using the time-wise holdout method. The
+historical data for 2023 and 2024 formed the training set whereas the observed
+data for 2025 served as the test set and were not used for fitting. The predicted
+figures for the test period were compared with the actual values obtained in
+2025. It is believed that keeping the test data away from fitting results in better
+performance evaluation in unseen time series data [29].
 
-The comparison used Mean Absolute Error (MAE), Mean Absolute Percentage Error (MAPE), Root Mean Square Error (RMSE), and Weighted Absolute Percentage Error (WAPE). MAE represents the average absolute error, MAPE expresses the average error as a percentage, and RMSE gives greater influence to larger errors. WAPE expresses the total absolute error relative to the total actual value and was also used to derive a presentation value labeled as accuracy:
+The comparison used Mean Absolute Error (MAE), Mean Absolute
+Percentage Error (MAPE), Root Mean Square Error (RMSE), and Weighted
+Absolute Percentage Error (WAPE). MAE represents the average absolute error,
+MAPE expresses the average error as a percentage, and RMSE gives greater
+influence to larger errors. WAPE expresses the total absolute error relative to the
+total actual value and was also used to derive a presentation value labeled as
+accuracy:
 
 **WAPE-based Accuracy = 100% − WAPE**
 
-This accuracy value is a transformation of WAPE and not a separate forecasting metric. Lower MAE, MAPE, RMSE, and WAPE values indicate smaller forecast errors, while a higher WAPE-based accuracy indicates a smaller aggregate error relative to the actual values.
+This accuracy value is a transformation of WAPE and not a separate forecasting
+metric. Lower MAE, MAPE, RMSE, and WAPE values indicate smaller forecast
+errors, while a higher WAPE-based accuracy indicates a smaller aggregate error
+relative to the actual values
 
 **Table 4. Comparative Evaluation of Forecasting Models**
 (attached image at the chatbox)
 
-As shown in Table 4, SARIMA produced the lowest MAE, MAPE, RMSE, and WAPE among the three models under the reported evaluation. Its WAPE of 6.06% corresponds to a WAPE-based accuracy of 93.94%. Holt-Winters ranked next with a WAPE-based accuracy of 93.06%, while WMA obtained 72.10%. Based on these holdout results, SARIMA was selected for subsequent integration into the SafeBooks forecasting component, subject to the amount and regularity of the available client data.
+As shown in Table 4, SARIMA produced the lowest MAE, MAPE, RMSE,
+and WAPE among the three models under the reported evaluation. Its WAPE of
+6.06% corresponds to a WAPE-based accuracy of 93.94%. Holt-Winters ranked
+next with a WAPE-based accuracy of 93.06%, while WMA obtained 72.10%.
+Based on these holdout results, SARIMA was selected for subsequent
+integration into the SafeBooks forecasting component, subject to the amount and
+regularity of the available client data.
 
-SARIMA extends the ARIMA approach by combining non-seasonal and seasonal components, allowing recurring patterns at a defined interval to be represented [28]. Its general notation is:
+SARIMA extends the ARIMA approach by combining non-seasonal and
+seasonal components, allowing recurring patterns at a defined interval to be
+represented [30]. Its general notation is:
 
 **SARIMA (p, d, q)(P, D, Q)<sub>s</sub>**
 
-In this notation, *p*, *d*, and *q* are the non-seasonal autoregressive, differencing, and moving-average orders; *P*, *D*, and *Q* are their seasonal counterparts; and *s* is the number of observations in one seasonal cycle.
+In this notation, *p*, *d*, and *q* are the non-seasonal autoregressive,
+differencing, and moving-average orders; *P*, *D*, and *Q* are their seasonal
+counterparts; and *s* is the number of observations in one seasonal cycle.
 
-For this evaluation, the specification SARIMA (0,1,0)(0,1,0)<sub>s</sub> was used because the available training history was limited. A seasonal period of 12 represented regularly spaced monthly sales observations, while a seasonal period of 4 represented regularly spaced quarterly expense and tax-related observations. These settings allow the model to account for recurrence according to the frequency of the evaluated records. Forecasting will be made available only when a client has enough consistently spaced historical observations for the required model configuration.
+For this evaluation, the specification SARIMA (0,1,0)(0,1,0)<sub>s</sub>
+was used because the available training history was limited. A seasonal period of
+12 represented regularly spaced monthly sales observations, while a seasonal period of 4 represented regularly spaced quarterly expense and tax-related
+observations. These settings allow the model to account for recurrence according
+to the frequency of the evaluated records. Forecasting will be made available
+only when a client has enough consistently spaced historical observations for the
+required model configuration.
 
 **Emerging Web Technologies**
-SafeBooks was developed with Django, PostgreSQL, HTML, CSS, JavaScript, and Bootstrap. Django provides the server-side structure for routing, authentication, validation, application rules, and database access [29]. PostgreSQL is identified as the relational database for deployment, while SQLite remains limited to local development. HTML, CSS, JavaScript, and Bootstrap provide the structure, appearance, and interactive behavior of the browser interfaces.
+SafeBooks was developed with Django, PostgreSQL, HTML, CSS,
+JavaScript, and Bootstrap. Django provides the server-side structure for routing,
+authentication, validation, application rules, and database access [31].
+PostgreSQL is identified as the relational database for deployment, while SQLite
+remains limited to local development. HTML, CSS, JavaScript, and Bootstrap
+provide the structure, appearance, and interactive behavior of the browser
+interfaces.
 
-The proposed deployment uses a Render Web Service, Render PostgreSQL, an HTTPS endpoint, and Gmail SMTP for account-related email delivery. Responsive layout practices support consistent use within the desktop and laptop browser environment covered by the study. Together, these technologies allow the presentation, application, and data components of SafeBooks to operate as one connected web platform.
+The proposed deployment uses a Render Web Service, Render
+PostgreSQL, an HTTPS endpoint, and Gmail SMTP for account-related email
+delivery. Responsive layout practices support consistent use within the desktop
+and laptop browser environment covered by the study. Together, these
+technologies allow the presentation, application, and data components of
+SafeBooks to operate as one connected web platform.
 
 
 **Technologies Used in the System**
 
 **Visual Studio Code (VS Code)**
-Visual Studio Code served as the primary code editor during the development of SafeBooks. It provided one workspace for organizing the Python and Django source files, HTML templates, style sheets, JavaScript files, tests, and project configuration. Its integrated terminal, source navigation, and debugging support assisted the proponents in implementing and checking connected frontend and backend functions.
+Visual Studio Code served as the primary code editor during the
+development of SafeBooks. It provided one workspace for organizing the Python
+and Django source files, HTML templates, style sheets, JavaScript files, tests,
+and project configuration. Its integrated terminal, source navigation, and
+debugging support assisted the proponents in implementing and checking
+connected frontend and backend functions.
 
-HTML and CSS defined the structure and appearance of the browser interfaces, while JavaScript handled interactive page behavior. Bootstrap supported consistent layouts, navigation elements, forms, modal windows, and interface feedback across the Bookkeeper and System Administrator views. Django handled URL routing, request processing, authentication, application rules, and database access for the web platform.
+HTML and CSS defined the structure and appearance of the browser
+interfaces, while JavaScript handled interactive page behavior. Bootstrap
+supported consistent layouts, navigation elements, forms, modal windows, and
+interface feedback across the Bookkeeper and System Administrator views.
+Django handled URL routing, request processing, authentication, application
+rules, and database access for the web platform
 (attached image at the chatbox)
 
 **Figure 12.** Visual Studio Code (VS Code)
 
 **PostgreSQL Database Management System**
-PostgreSQL serves as the relational Database Management System for the configured SafeBooks environment and is identified as the database for the proposed Render deployment. It stores the related account, client, period, financial record, transaction detail, settings, deactivation-request, and audit data described in the data dictionary. Primary keys, foreign keys, unique constraints, and Django migrations help maintain the structure and consistency of these records. SQLite remains available for local development and is not used simultaneously with PostgreSQL in the same configured environment.
+PostgreSQL serves as the relational Database Management System for
+the configured SafeBooks environment and is identified as the database for the
+proposed Render deployment. It stores the related account, client, period,
+financial record, transaction detail, settings, deactivation-request, and audit data
+described in the data dictionary. Primary keys, foreign keys, unique constraints,
+and Django migrations help maintain the structure and consistency of these
+records. SQLite remains available for local development and is not used
+simultaneously with PostgreSQL in the same configured environment.
+
 (attached image at the chatbox)
 
 **Figure 13.** PostgreSQL Database Management System 
@@ -243,15 +637,42 @@ PostgreSQL serves as the relational Database Management System for the configure
 
 **System Testing and Implementation**
 
-This section describes the proposed testing and implementation procedures for determining whether SafeBooks operates according to its functional and non-functional requirements. Testing covers authentication, account administration, client profiles, financial records, internal deadlines, analytics, SARIMA forecasting, reporting, settings, and audit activities. Implementation includes preparing the deployment environment, applying the database migrations and configuration, and checking the connected functions before the platform is made available to its intended users.
+This section describes the proposed testing and implementation
+procedures for determining whether SafeBooks operates according to its
+functional and non-functional requirements. Testing covers authentication,
+account administration, client profiles, financial records, internal deadlines,
+analytics, SARIMA forecasting, reporting, settings, and audit activities.
+Implementation includes preparing the deployment environment, applying the
+database migrations and configuration, and checking the connected functions
+before the platform is made available to its intended users.
 
 **System Test Plan**
 
-The proponents will use Black Box Testing to evaluate SafeBooks through the inputs submitted by the users and the outputs returned by the platform. The procedure checks the visible behavior of each function without requiring the tester to examine the internal source code. This approach allows the test cases to be compared directly with the functional requirements and expected results.
+The promoters are going to use Black Box Testing to assess SafeBooks
+based on the information put into the system by users and the outputs the
+platform provides. The method evaluates the observable behavior of the
+functions without requiring the person carrying out the test to look at the internal
+source code. This way it becomes possible to compare the test cases directly
+with the functional requirements and the expected outcomes.
 
-The test cases cover account access, registration decisions, client-profile validation, period-based financial records, transaction details, internal deadline monitoring, dashboards, analytics, forecasts, reports, role restrictions, and audit logs. Valid, incomplete, duplicate, unauthorized, and out-of-range inputs will be used where applicable. The observed result of each test will be compared with the expected behavior before the test case is marked as passed or failed.
+Test cases cover everything from information access via account, to
+registering decisions and client profile verification, and to financial documents by
+period, transactions and time deadlines, dashboards, and analytics. Types of input
+we will test for include proper and incomplete entries, duplicate or unauthorized and
+too-advanced documents, among other types. We will be comparing our test results
+and the responses we saw.
 
-Testing will also check whether calculated totals, descriptive summaries, SARIMA results, and printable reports remain consistent with the stored financial information. Forecasting tests will include sufficient-data and insufficient-data conditions, the applicable seasonal frequency, and comparison of generated estimates with the expected calculation results. Required-field validation, duplicate-TIN prevention, account-status restrictions, session controls, and Bookkeeper data isolation will also be verified. After deployment configuration, the proponents will perform a basic operational check of authentication, database access, static resources, email delivery, and the main Bookkeeper and System Administrator workflows.
+The testing will also include confirmation of the accuracy of total
+computations, summary statistics, SARIMA calculation results, and printed report
+outputs in comparison with stored financial data. Forecasting tests will include
+both the sufficient data conditions and the insufficient data conditions, applicable
+seasonal frequency and comparison of the results with expected calculations. It
+will also check for required field validation, duplicate Tax Identification Number
+inhibition, account status restrictions, session rules, and the isolation of
+Bookkeeper information. Following the configuration, the authors will perform
+operational checks on the aspects of authentication, database access, available
+resources, email processing, and the defined Bookkeeper and System
+Administrator functioning.
 
 **Table 5. Proposed System Testing Plan for SafeBooks**
 (attached image at the Chatbox)
@@ -260,49 +681,147 @@ Testing will also check whether calculated totals, descriptive summaries, SARIMA
 **System Implementation Plan**
 
 **Environment Configuration and Database Setup**
-Implementation will begin by configuring the Render Web Service and the environment variables required by the Django application. Render PostgreSQL will serve as the deployment database, while SQLite will remain limited to local development. Django migrations will be used to create and update the database tables and their relationships without manually rebuilding the schema. Database connectivity, static resources, HTTPS access, and Gmail SMTP email delivery will be checked before the system is released to its intended users.
+The first step in implementation is to set up the Render Web Service and
+the necessary variables in the Django app. The only database we will deploy on
+Render PostgreSQL while using SQLite locally for development purposes.
+Django migrations will take care of the creation and modification of all database
+tables and relationships automatically. Once done, tests related to database
+connection, static resources, HTTPS support, and the Gmail SMTP delivery will
+be performed.
 
 **Module Integration and Verification**
-SafeBooks will be deployed as one Django web application, with its connected modules verified in a planned sequence. Authentication, email verification, account approval, and role-based access will be checked first to confirm that only authorized Bookkeepers and the System Administrator can use their assigned functions. Verification will then cover client profiles, financial records and transaction details, internal deadline monitoring, dashboards, analytics, SARIMA forecasting, printable reports, settings, deactivation requests, and audit logs. Relevant tests will be repeated after integration to confirm that stored data, calculated results, and access restrictions remain consistent across the system.
+SafeBooks will remain as a Django web application along with its
+interconnected modules that will have to be tested sequentially. Testing will start
+from Authentication, email verification, account approval, and access control
+confirming that the relevant user groups, namely Bookkeepers and the System
+Admin, can carry out their assigned functions only. Testing will go on to include
+client details, financial records, and Transaction details, tracking deadlines,
+dashboards, analytics, SARIMA forecasting, prints, settings, deactivation
+requests, and audit logs therefore. The relevant tests will be repeated after the
+integration stage to ensure the stability of the stored data
 
 **Production Deployment and User Evaluation** 
-After configuration and testing, SafeBooks will be made available through its secured Render web endpoint to selected Bookkeepers affiliated with the Bookkeepers Guild of Panabo City Inc. and the designated System Administrator. User accounts and assigned access rights will be confirmed before the participants begin the evaluation. The proponents will use a structured questionnaire based on the approved functional and non-functional requirements to assess whether the system performs its intended tasks and is suitable for the users' bookkeeping workflow. The results and reported issues will guide necessary revisions before the final release of the project.
+Upon completion of the configuration and testing process, SafeBooks will
+be accessible via the secured Render online platform to chosen Bookkeepers
+who are part of the Bookkeepers Guild of Panabo City Inc. as well as the
+appointed System Administrator. User accounts and their respective access
+rights will be verified before the user testing begins. A structured questionnaire
+will be used to measure the effectiveness of the software in carrying out its
+intended functions and suitability for the users bookkeeping processes. The
+findings obtained during this testing phase will help refine the project further.
 
 **Monitoring and Maintenance**
-Following deployment and evaluation, the proponents will monitor application logs, database connectivity, audit records, and issues reported by users. Confirmed errors will be corrected, while required security, dependency, and configuration updates will be applied when necessary. Affected functions will be retested before each correction or update is released to reduce the risk of disrupting existing workflows. Maintenance decisions will remain within the approved project scope and will consider the findings gathered during system testing and user evaluation.
+After the implementation has been carried out and results have been
+analyzed, the project team will keep track of the logs of the program, database
+connections, audit records, and errors reported by the users. Errors that have
+been identified will be amended, and also necessary updates to security,
+dependencies, and configurations will be undertaken as needed. Disturbed
+functions will be checked again prior to the release of any updates to minimize
+the disruptions caused to existing processes. Maintenance decisions will be
+executed accordingly to the project terms and will take into account the results of
+the testing and evaluation of the system by the users.
 
 
 **System Maintenance**
 
-System maintenance will cover corrective, adaptive, and preventive work after SafeBooks has been deployed and evaluated. Confirmed errors will be documented and corrected, while changes to the hosting environment, dependencies, security configuration, and database schema will be applied when required. Affected functions and data relationships will be retested before an update is released to the users. Application logs, audit records, and user feedback will help the proponents prioritize maintenance without extending the system beyond its approved scope.
+System maintenance involves making fixes, improvements, and repairs
+after SafeBooks has been set up and tested. Errors that have been confirmed will
+be recorded and fixed, while changes to the hosting environment, dependencies,
+security configuration, and database schema will be made when necessary. The
+functions of the system and the relationships between its data will be checked
+again before the new version is released to the customers. In order to carry out
+maintenance properly, it will be based on the application logs, audit records, and
+feedback on the application usage
 
 
 **Systems Security Plan**
 
-The Systems Security Plan defines the controls used to protect SafeBooks accounts, client information, financial records, and audit data from unauthorized access or modification.
+The Systems Security Plan defines the controls used to protect SafeBooks
+accounts, client information, financial records, and audit data from unauthorized
+access or modification.
 
 **Authentication and Authorization**
-SafeBooks uses separate access rules for the Bookkeeper and System Administrator through authenticated application sessions. A Bookkeeper can manage only the clients and financial records associated with that Bookkeeper's account, while the System Administrator is limited to account administration, system settings, and audit-related functions. Account approval, account-status checks, password protection, email verification, and optional two-factor authentication provide additional controls before protected functions can be accessed. Recorded activities are associated with the authenticated account to support accountability and review.
+Separate access rules are used by SafeBooks for Bookkeeper and
+System Administrator considering the authenticated sessions of the application.
+The Bookkeeper manages the clients and financial records of the respective Bookkeeper only. The activities can be performed by the System Administrator
+regarding the account management, settings of the system, and the checks on
+audit related tasks. The control checks include the approval of the account,
+checking on status of the account, protecting of the password, verifying the
+email, and the authentication of the procedure in cases where the access to the
+protected facilities is concerned. The actions being taken are related to the use of
+the logged-in account.
 
 **Data Transmission and Privacy Protection**
-The proposed Render deployment will use an HTTPS endpoint to encrypt data exchanged between the user's browser and the Django application. This protection applies to login details, Taxpayer Identification Numbers, client profiles, financial records, and other information submitted through the system. Database and email credentials will be supplied through protected environment variables rather than displayed in the interface or included in the manuscript. Access to the deployed PostgreSQL database will be limited to the configured application connection and authorized maintenance activities.
+The proposed Render deployment will incorporate an HTTPS endpoint
+that will encrypt data transmitted between the user's web browser and the Django
+application. This means that the login information, Taxpayer Identification
+Number, client profile, financial records, and all other data sent through the
+system will be protected. In the database and email system, the credentials will
+be supplied as secure environment variables so they will not be displayed
+through the user interface or be included in written documentation. Access to the
+deployed PostgreSQL database will only be possible through the configured
+application connection and authorized maintenance.
 
 **Application and Database Security**
-SafeBooks uses Django's security middleware, session controls, server-side validation, and Cross-Site Request Forgery protection for requests that modify stored information. Django's Object-Relational Mapping layer handles database operations through parameterized queries, reducing exposure to SQL injection when it is used correctly. Database constraints and application validation help enforce required fields, unique TIN values, valid relationships, and assigned record ownership. Security-related configuration and dependency updates will be tested before deployment to avoid weakening existing controls or disrupting authorized workflows.
+SafeBooks implements some of Django’s securities, such as its
+middleware, its session management, its validation procedures, and its protection
+from Cross-Site Request Forgery for all requests that impact data in its system.
+The Object-Relational Mapping of Django employs prepared statements to
+execute database commands while minimizing susceptibility to SQL injection.
+Various data constraints and application-level validations ensure proper
+recording of the information entered by the user including mandatory fields,
+unique TIN, valid relation types and identification of the owner of the record.
+Before deploying any security settings and updating dependencies, SafeBooks
+will rigorously test their security settings to protect against any possibility of
+hindering the ongoing security mechanisms.
 
 
 **Systems Maintenance Plan**
 
-The Systems Maintenance Plan outlines the post-deployment activities needed to preserve the reliability, security, and usability of SafeBooks. Maintenance will be initiated in response to confirmed system issues, hosting or dependency notices, changes to approved requirements, and feedback from the intended users. The plan covers database performance, software dependencies, analytics and schedule monitoring, and controlled system refinements.
+The Systems Maintenance Plan describes the activities necessary for
+maintaining SafeBooks’ effectiveness, integrity, and usability after its deployment.
+Maintenance will begin only in the presence of actual problems occurring in the
+system, notices regarding hosting or dependencies, changes in the set
+requirements, or comments from the target users. It includes database
+performance, software dependencies, analytics and scheduling, as well as
+system improvements.
 
 **Database Optimization and Performance Management**
-The proponents will review PostgreSQL connectivity, database growth, query performance, and the integrity of related records during maintenance. Indexes and frequently used queries may be examined when client, period, financial record, or audit data begins to affect response time. A database backup will be prepared before schema migrations or major corrective changes, and the affected records will be checked after the update. These activities will support reliable retrieval of client records by name or TIN as the database grows.
+During maintenance, the supporters will analyze the connection of
+PostgreSQL, database expansion, efficiency of queries, and the reliability of
+relevant records. Indexing and the most commonly used queries will be assessed
+when how long a customer has been in business, when they were last regards,
+and the record of accounts starts to affect timing. Prior to modifying the schema
+in any major way, database backup has to be done, and the records being
+influenced must be verified. These activities are meant to ensure safe access to
+client records by name or TIN as their number increases in the database.
 
 **Dependency and Framework Updates**
-The Django framework, Python packages, and deployment configuration will be reviewed for supported updates and reported security issues. An available update will first be checked for compatibility with the SafeBooks codebase, PostgreSQL database, and Render environment rather than being installed automatically. Authentication, database access, email delivery, analytics, reports, and the main Bookkeeper and System Administrator workflows will be retested after a relevant update. The tested version will be deployed only when it does not introduce unresolved errors or weaken existing security controls.
+An evaluation of Django framework, Python packages, and deployment
+settings will be made for updates and security issues. Updates will then be
+verified for compatibility with the codesource of SafeBooks, PostgreSQL
+database, and Render environment instead of applying the update automatically.
+Subsequent to applying the update, authentication, database access, email,
+analytics, and functionalities of Bookkeeper and System Administrator will be
+tested. The newly applied version will only be released once confirmed that it
+does not have any bugs nor any security flaws.
 
 **Analytics and Schedule-Monitoring Review**
-The descriptive analytics, calculated totals, and SARIMA results will be checked when an inconsistency is reported or an approved requirement changes. Any correction to the calculation logic will be compared with the stored financial records and tested across the supported reporting frequencies before release. Internal deadline and schedule-monitoring fields may be adjusted when the approved bookkeeping workflow changes. These functions remain internal monitoring aids and will not calculate tax liabilities, file returns, or confirm official BIR compliance.
+Any report of discrepancy, inconsistency in totals or problems with
+SARIMA results will prompt verification of descriptive analytics calculations,
+totals, and results. Any updates of calculation logic will be compared against
+existing storage of financial records and ensured to work properly at the various
+frequencies before being released. Internal deadlines and schedules can be
+changed when the updated approved accounting workflow is implemented.
+These functions will remain only internal monitoring mechanisms and will not
+calculate any tax liabilities and submit returns to BIR
 
 **Feature Iteration and User Feedback Integration**
-Feedback from the designated System Administrator and participating Bookkeepers will be recorded and classified as an error, usability concern, or enhancement request. Confirmed concerns may guide corrections to interface layouts, financial record forms, reports, and other existing functions. Each accepted change will be tested before release and documented when it affects the approved requirements or user procedures. Requests that introduce functions outside the project scope will require separate review and approval before implementation.
+After production is put into motion, user reviews of both system
+administrators and the independent accountants belonging to the Bookkeepers
+Guild of Panabo City Inc. will be collected to aid in making improvements to
+future versions of the software. The feedback will enable the developers to fix
+interface layout, improve the forms used for entering financial records, and add
+new types of dashboard visualization. The parameters of the feedback process
+would allow adjustments to the platform that would meet current workflow
+requirements of the local accountants perfectly     

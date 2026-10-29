@@ -2,12 +2,15 @@ from safebooks.tests.session_helpers import bind_authenticated_session
 
 from datetime import date
 from decimal import Decimal
+import re
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from safebooks.models import BookkeeperAccount, Client, FinancialRecord, FinancialRecordLine, Period
+from safebooks.services.analytics_service import get_analytics_year_options
 from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
 
 
@@ -103,7 +106,7 @@ class AnalyticsSummaryApiTests(TestCase):
         response = self.client.get(reverse("client_details", args=[client.id]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Generated using Seasonal ARIMA")
+        self.assertContains(response, '<span class="dashboard-tag analytics-method-tag">SARIMA</span>')
         self.assertNotContains(response, "Weighted Moving Average")
 
     def test_client_details_starts_in_neutral_analytics_loading_state(self):
@@ -292,6 +295,89 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertEqual(payload["forecast"]["sparkline"], [])
         self.assertEqual(len(payload.get("monthly_trend", [])), 6)
 
+    @patch("safebooks.services.analytics_service.timezone.localdate", return_value=date(2026, 10, 20))
+    def test_selected_year_trend_includes_all_months_and_only_owned_scope(self, _today):
+        owner = self._create_bookkeeper("year-trend")
+        other = self._create_bookkeeper("foreign-year-trend")
+        client = self._create_client(bookkeeper=owner, suffix="year-trend", remarks=Client.REMARK_ACTIVE)
+        sibling = self._create_client(bookkeeper=owner, suffix="year-sibling", remarks=Client.REMARK_NEW)
+        foreign = self._create_client(bookkeeper=other, suffix="foreign-trend", remarks=Client.REMARK_ACTIVE)
+        self._login_as(owner)
+        for year in (2024, 2025, 2026):
+            for month in range(1, 13):
+                self._create_record_with_lines(
+                    bookkeeper=owner, client=client, entry_date=date(year, month, 1),
+                    lines=[("Sales", "Synthetic sale", Decimal(year + month)),
+                           ("Expenses", "Synthetic expense", Decimal(month)),
+                           ("1701Q", "Synthetic tax", Decimal("0.25"))],
+                )
+            self._create_record_with_lines(
+                bookkeeper=owner, client=sibling, entry_date=date(year, 1, 1),
+                lines=[("Sales", "Sibling sale", Decimal("7.50"))],
+            )
+            self._create_record_with_lines(
+                bookkeeper=other, client=foreign, entry_date=date(year, 1, 1),
+                lines=[("Sales", "Foreign sale", Decimal("999999.00"))],
+            )
+
+        for year in (2024, 2025, 2026):
+            for all_clients in (False, True):
+                with self.subTest(year=year, all_clients=all_clients):
+                    query = {"year": str(year)}
+                    if not all_clients:
+                        query["client_id"] = client.id
+                    response = self.client.get(reverse("api_analytics_summary"), query)
+                    self.assertEqual(response.status_code, 200)
+                    payload = response.json()
+                    rows = payload["monthly_trend"]
+                    self.assertEqual([(row["year"], row["month"]) for row in rows], [(year, month) for month in range(1, 13)])
+                    self.assertEqual(rows[0]["month_label"], "Jan")
+                    self.assertEqual(rows[-1]["month_label"], "Dec")
+                    for month, row in enumerate(rows, start=1):
+                        expected_sales = year + month + (7.5 if all_clients and month == 1 else 0)
+                        self.assertEqual(row["sales"], expected_sales)
+                        self.assertEqual(row["expenses"], month)
+                        self.assertEqual(row["tax"], 0.25)
+                        self.assertEqual(row["net_value"], expected_sales - month)
+                        self.assertEqual(row["type_breakdown"]["Sales"], expected_sales)
+                    for key, total_key in (("sales", "total_sales"), ("expenses", "total_expenses"), ("tax", "total_tax"), ("net_value", "net_value")):
+                        self.assertEqual(sum(row[key] for row in rows), payload["summary"][total_key])
+
+        denied = self.client.get(reverse("api_analytics_summary"), {"client_id": foreign.id, "year": "2025"})
+        self.assertEqual(denied.status_code, 404)
+
+    @patch("safebooks.services.analytics_service.timezone.localdate", return_value=date(2026, 1, 20))
+    def test_selected_year_trend_zero_fills_missing_months_and_all_time_keeps_recent_window(self, _today):
+        owner = self._create_bookkeeper("sparse-trend")
+        client = self._create_client(bookkeeper=owner, suffix="sparse-trend", remarks=Client.REMARK_NEW)
+        self._login_as(owner)
+        for day, amount in ((1, "10.25"), (2, "20.75")):
+            self._create_record_with_lines(
+                bookkeeper=owner, client=client, entry_date=date(2025, 12, day),
+                lines=[("Sales", "Synthetic sale", Decimal(amount))],
+            )
+        self._create_record_with_lines(
+            bookkeeper=owner, client=client, entry_date=date(2024, 12, 1),
+            lines=[("Sales", "Different year", Decimal("500.00"))],
+        )
+        selected = self.client.get(reverse("api_analytics_summary"), {"client_id": client.id, "year": "2025"}).json()
+        self.assertEqual([row["sales"] for row in selected["monthly_trend"]], [0.0] * 11 + [31.0])
+        self.assertEqual(selected["summary"]["total_sales"], 31.0)
+        # The display window must not change the legacy six-month forecast input.
+        self.assertEqual(selected["forecast"]["sparkline"], [0.0, 0.0, 0.0, 0.0, 31.0, 0.0])
+        for year in (None, "all"):
+            query = {"client_id": client.id}
+            if year:
+                query["year"] = year
+            payload = self.client.get(reverse("api_analytics_summary"), query).json()
+            self.assertEqual([(row["year"], row["month"]) for row in payload["monthly_trend"]], [(2025, month) for month in range(8, 13)] + [(2026, 1)])
+            self.assertEqual(sum(row["sales"] for row in payload["monthly_trend"]), 31.0)
+            self.assertEqual(payload["summary"]["total_sales"], 531.0)
+        empty = self.client.get(reverse("api_analytics_summary"), {"client_id": client.id, "year": "2023"}).json()
+        self.assertFalse(empty["has_data"])
+        self.assertEqual(len(empty["monthly_trend"]), 12)
+        self.assertTrue(all(row["year"] == 2023 and row["sales"] == 0 for row in empty["monthly_trend"]))
+
     def test_empty_selected_year_keeps_other_year_history_accessible(self):
         owner = self._create_bookkeeper("empty-year")
         self._login_as(owner)
@@ -338,8 +424,92 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="analyticsEmptyMessage"')
         self.assertContains(response, 'id="analyticsYearFilter"')
+        year_options = response.content.decode().split('<select id="analyticsYearFilter"', 1)[1].split('</select>', 1)[0]
+        self.assertNotIn('value="all"', year_options)
+        self.assertNotIn('All Time', year_options)
+        current_year = timezone.localdate().year
+        self.assertEqual(re.findall(r'<option value="(\d+)"', year_options), [str(current_year)])
+        self.assertIn(f'<option value="{current_year}" selected>', year_options)
         self.assertContains(response, 'id="clientDetailsEmptyAddRecordsLink"')
         self.assertNotContains(response, "No financial records yet for this client.")
+
+    @patch("safebooks.services.analytics_service.timezone.localdate", return_value=date(2027, 1, 2))
+    def test_client_analytics_year_choices_are_owned_distinct_current_and_read_only(self, _today):
+        owner = self._create_bookkeeper("dynamic-years")
+        other = self._create_bookkeeper("foreign-years")
+        client = self._create_client(bookkeeper=owner, suffix="dynamic-years", remarks=Client.REMARK_NEW)
+        sibling = self._create_client(bookkeeper=owner, suffix="year-sibling", remarks=Client.REMARK_NEW)
+        foreign = self._create_client(bookkeeper=other, suffix="foreign-years", remarks=Client.REMARK_NEW)
+        for year, month in ((2023, 1), (2025, 1), (2025, 2), (2028, 1)):
+            self._create_record_with_lines(
+                bookkeeper=owner, client=client, entry_date=date(year, month, 1),
+                lines=[("Sales", "Synthetic year metadata", Decimal("1.00"))],
+            )
+        for account, ledger, year in ((owner, sibling, 2022), (other, foreign, 2021), (other, client, 2020)):
+            self._create_record_with_lines(
+                bookkeeper=account, client=ledger, entry_date=date(year, 1, 1),
+                lines=[("Sales", "Excluded year metadata", Decimal("1.00"))],
+            )
+        Period.objects.create(client=client, year=2019, month=1)  # No records: not a choice.
+        before = (list(Client.objects.values()), list(Period.objects.values()), list(FinancialRecord.objects.values()), list(FinancialRecordLine.objects.values()))
+        self._login_as(owner)
+        response = self.client.get(reverse("client_details", args=[client.pk]))
+        self.assertEqual(response.status_code, 200)
+        year_options = response.content.decode().split('<select id="analyticsYearFilter"', 1)[1].split('</select>', 1)[0]
+        self.assertEqual(re.findall(r'<option value="(\d+)"', year_options), ["2028", "2027", "2025", "2023"])
+        self.assertIn('<option value="2027" selected>', year_options)
+        self.assertNotIn('All Time', year_options)
+        after = (list(Client.objects.values()), list(Period.objects.values()), list(FinancialRecord.objects.values()), list(FinancialRecordLine.objects.values()))
+        self.assertEqual(before, after)
+        denied = self.client.get(reverse("client_details", args=[foreign.pk]))
+        self.assertEqual(denied.status_code, 404)
+
+    @patch("safebooks.services.analytics_service.timezone.localdate", return_value=date(2030, 1, 1))
+    def test_client_analytics_year_choices_roll_forward_without_records(self, _today):
+        owner = self._create_bookkeeper("next-year-empty")
+        client = self._create_client(bookkeeper=owner, suffix="next-year-empty", remarks=Client.REMARK_NEW)
+        self._login_as(owner)
+        response = self.client.get(reverse("client_details", args=[client.pk]))
+        self.assertEqual(response.status_code, 200)
+        year_options = response.content.decode().split('<select id="analyticsYearFilter"', 1)[1].split('</select>', 1)[0]
+        self.assertEqual(re.findall(r'<option value="(\d+)"', year_options), ["2030"])
+        self.assertIn('<option value="2030" selected>', year_options)
+
+    @patch("safebooks.services.analytics_service.timezone.localdate", return_value=date(2026, 10, 20))
+    def test_analytics_year_metadata_uses_one_query_and_matches_period_filter(self, _today):
+        owner = self._create_bookkeeper("year-metadata")
+        client = self._create_client(bookkeeper=owner, suffix="year-metadata", remarks=Client.REMARK_NEW)
+        for month in (1, 2):
+            record = self._create_record_with_lines(
+                bookkeeper=owner, client=client, entry_date=date(2025, month, 1),
+                lines=[("Sales", "Zero still counts as a saved record", Decimal("0.00"))],
+            )
+        # A legacy mismatch must match analytics' period-year filter, not entry_date.
+        FinancialRecord.objects.filter(pk=record.pk).update(entry_date=date(2024, 1, 1))
+        self._create_record_with_lines(
+            bookkeeper=owner, client=client, entry_date=date(2026, 1, 1),
+            lines=[("Sales", "Current year deduplication", Decimal("1.00"))],
+        )
+        with self.assertNumQueries(1):
+            options = get_analytics_year_options(owner, client_id=client.pk)
+        self.assertEqual(options, {"analytics_years": [2026, 2025], "analytics_current_year": 2026})
+        self._login_as(owner)
+        for year in options["analytics_years"]:
+            response = self.client.get(reverse("api_analytics_summary"), {"client_id": client.pk, "year": year})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(all(row["year"] == year for row in response.json()["monthly_trend"]))
+
+    def test_locked_client_does_not_load_analytics_year_metadata(self):
+        owner = self._create_bookkeeper("locked-year-options")
+        owner.client_details_password_required = True
+        owner.save(update_fields=["client_details_password_required"])
+        client = self._create_client(bookkeeper=owner, suffix="locked-year-options", remarks=Client.REMARK_NEW)
+        self._login_as(owner)
+        with patch("safebooks.views.get_analytics_year_options") as year_options:
+            response = self.client.get(reverse("client_details", args=[client.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("clients"), response.url)
+        year_options.assert_not_called()
 
     def test_client_workflow_uses_quarterly_schedule_when_latest_record_is_quarterly(self):
         today = timezone.localdate()
@@ -656,7 +826,7 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertFalse(projections[0]["expected_expenses_applicable"])
         self.assertFalse(projections[0]["expected_tax_applicable"])
         self.assertTrue(projections[0]["sales_unreliable"])
-        self.assertEqual(projections[0]["sales_readiness_note"], "3 of 24 monthly records")
+        self.assertEqual(projections[0]["sales_readiness_note"], "3 of 24 monthly periods")
         self.assertEqual(projections[0]["expenses_readiness_note"], "Not scheduled this period")
         self.assertEqual(projections[0]["tax_readiness_note"], "Not scheduled this period")
         self.assertIsNone(projections[0]["expected_net"])
@@ -884,7 +1054,7 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertFalse(projections[0]["expected_tax_applicable"])
         self.assertEqual(
             projections[0]["expenses_readiness_note"],
-            "1 of 24 monthly records",
+            "1 of 24 monthly periods",
         )
 
         self.assertEqual(projections[2]["period_label"], "Mar 2026")
@@ -893,7 +1063,7 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertTrue(projections[2]["expenses_unreliable"])
         self.assertEqual(
             projections[2]["expenses_readiness_note"],
-            "Review missing quarterly periods; 1 of 24 monthly records",
+            "Review missing quarterly periods; 1 of 24 monthly periods",
         )
         self.assertTrue(projections[2]["expected_tax_applicable"])
         self.assertIsNotNone(projections[2]["expected_tax"])

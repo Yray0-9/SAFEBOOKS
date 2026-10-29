@@ -41,6 +41,30 @@ for (const naming of ["snake", "camel"]) {
     assert(html.includes("&lt;img"));
 }
 
+vm.runInNewContext(fs.readFileSync(path.join(root, "static/js/client_tax_registration.js"), "utf8"), shared);
+const registration = shared.window.SafeBooksClientRegistration;
+assert.equal(registration.label('vat'), 'VAT');
+assert.equal(registration.label('non_vat'), 'Non-VAT');
+assert.equal(registration.label(''), 'Not set');
+for (const invalid of [null, undefined, true, {}, '__proto__', '<img src=x onerror=alert(1)>']) {
+    const badge = registration.badge(invalid);
+    assert(badge.includes('Tax registration not set'));
+    assert(!badge.includes('<img') && !badge.includes('onerror'));
+}
+for (const value of ['vat', 'non_vat', '']) {
+    assert(registration.badge(value).includes(`Tax registration: ${registration.label(value)}`));
+}
+for (const page of ['clients', 'client_details', 'financial_records', 'financial_records_client']) {
+    const source = fs.readFileSync(path.join(root, `templates/base/${page}.html`), 'utf8');
+    assert(source.includes('js/client_tax_registration.js'));
+    assert(source.includes('css/client_tax_registration.css'));
+    for (const match of source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
+        if (!match[1].trim() || /type=["']application\/json/.test(match[0])) continue;
+        new vm.Script(match[1].replace(/\{%[\s\S]*?%\}/g, '').replace(/\{\{[\s\S]*?\}\}/g, 'synthetic-value'));
+    }
+}
+console.log('Tax registration labels, unknown values, safe badges, page wiring and script syntax passed.');
+
 const template = fs.readFileSync(path.join(root, "templates/base/clients.html"), "utf8");
 const start = template.indexOf("        const openEditModal = async");
 const end = template.indexOf("        const openDeleteModal =", start);

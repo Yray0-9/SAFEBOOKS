@@ -9,7 +9,9 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.2">
+<link rel="stylesheet" href="{% static 'css/analytics_trend_tooltip.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/analytics_tax_breakdown.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.9">
 {% endblock %}
 
 {% block skeleton %}
@@ -87,10 +89,12 @@
             <div class="analytics-control-item">
                 <label class="analytics-control-label" for="analyticsYearFilter">Year Range</label>
                 <select id="analyticsYearFilter" class="form-select analytics-select">
-                    <option value="all">All Time</option>
-                    <option value="2026">2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
+                    {% for analytics_year in analytics_years %}
+                    <option value="{{ analytics_year }}"{% if analytics_year == analytics_current_year %} selected{% endif %}>{{ analytics_year }}</option>
+                    {% empty %}
+                    {% now "Y" as fallback_analytics_year %}
+                    <option value="{{ fallback_analytics_year }}" selected>{{ fallback_analytics_year }}</option>
+                    {% endfor %}
                 </select>
                 <p class="dashboard-guidance-text mt-2">Filter historical data</p>
             </div>
@@ -126,6 +130,7 @@
     <div id="analyticsDataPanels" class="tab-content mt-3">
         <!-- Tab 1: Financial Dashboard -->
         <div class="tab-pane fade show active" id="dashboard-tab-pane" role="tabpanel" aria-labelledby="dashboard-tab" tabindex="0">
+        <p class="analytics-timeframe-caption" id="analyticsDashboardEmptyNotice" hidden></p>
         <div class="row g-3 dashboard-stats-row mt-1">
             <div class="col-sm-6 col-xl-3 d-flex">
                 <article class="dashboard-stat-card dashboard-fade-up w-100 h-100" style="--delay: 0.1s;">
@@ -184,7 +189,7 @@
                     </div>
                     <p class="analytics-timeframe-caption analytics-timeframe-caption-trend" id="analyticsTrendTimeframeCaption">Trend chart window: latest 6 months only.</p>
                     <div class="analytics-trend-chart">
-                        <svg class="analytics-line-svg" viewBox="0 0 640 240" preserveAspectRatio="none" role="img" aria-label="Sales and expenses trend chart">
+                        <svg class="analytics-line-svg" viewBox="0 0 640 240" preserveAspectRatio="none" role="img" aria-label="Monthly sales and expenses in Philippine pesos, using the same scale">
                             <defs>
                                 <linearGradient id="trendSalesGrad" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stop-color="#2366dd" stop-opacity="0.18" />
@@ -206,6 +211,7 @@
             </div>
         </div>
 
+        {% include "base/includes/analytics_tax_breakdown.html" %}
         </div> <!-- End Tab 1 -->
 
         <!-- Tab 2: Predictive Forecasting -->
@@ -218,6 +224,7 @@
                         </div>
                         <p class="dashboard-panel-hint">Mathematical forecast for the upcoming period based on your historical financial data.</p>
                         <p class="analytics-predictive-period" id="analyticsPredictivePeriod">Next period: --</p>
+                        <p class="analytics-timeframe-caption" id="analyticsPredictiveHistory" hidden></p>
                         <div class="analytics-predictive-grid" aria-label="Predictive analytics forecast summary">
                             <div class="analytics-predictive-item">
                                 <span class="analytics-predictive-label">Projected Sales</span>
@@ -261,7 +268,7 @@
                                         <th>Projected Sales</th>
                                         <th>Projected Expenses</th>
                                         <th>Projected Tax</th>
-                                        <th>Projected Net Value</th>
+                                        <th scope="col">Net Value<span class="visually-hidden">: calculated sales minus expenses for matching periods, not a separate SARIMA forecast</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="predictiveForecastTableBody">
@@ -280,7 +287,7 @@
                     <article class="dashboard-card dashboard-fade-up analytics-forecast-projection-card" style="--delay: 0.38s;">
                         <div class="dashboard-card-head analytics-forecast-projection-head">
                             <div>
-                                <h2>Forecast Projection Graph</h2>
+                                <h2 id="analyticsForecastProjectionTitle">Projection Graph</h2>
                                 <p class="dashboard-section-hint mb-0" id="analyticsForecastProjectionHint">All projected values are shown in separate scaled lanes for clearer comparison.</p>
                             </div>
                         </div>
@@ -342,6 +349,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/analytics_trend_tooltip.js' %}?v=1"></script>
+<script src="{% static 'js/analytics_tax_breakdown.js' %}?v=1"></script>
+<script src="{% static 'js/forecast_periods.js' %}?v=8"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -390,6 +400,7 @@
         const analyticsForecastLine = document.getElementById("analyticsForecastLine");
 
         const analyticsPredictivePeriod = document.getElementById("analyticsPredictivePeriod");
+        const analyticsPredictiveHistory = document.getElementById("analyticsPredictiveHistory");
         const analyticsPredictiveSalesValue = document.getElementById("analyticsPredictiveSalesValue");
         const analyticsPredictiveExpensesValue = document.getElementById("analyticsPredictiveExpensesValue");
         const analyticsPredictiveTaxValue = document.getElementById("analyticsPredictiveTaxValue");
@@ -896,6 +907,8 @@
 
         const setAnalyticsLoadingState = (isLoading) => {
             isLoadingAnalytics = Boolean(isLoading);
+            if (isLoadingAnalytics) window.SafeBooksTrendTooltip?.clear(document.querySelector(".analytics-trend-chart svg"));
+            if (isLoadingAnalytics) window.SafeBooksTaxBreakdown?.state(document.getElementById("analyticsTaxBreakdown"), "Loading tax breakdown…");
 
             if (analyticsDataPanels) {
                 analyticsDataPanels.setAttribute("aria-busy", String(isLoadingAnalytics));
@@ -953,12 +966,12 @@
             const endLabel = formatTrendEdgeLabel(rows[rows.length - 1]);
 
             if (startLabel && endLabel && startLabel !== endLabel) {
-                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${startLabel} to ${endLabel} (latest 6 months).`;
+                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${startLabel} to ${endLabel}.`;
                 return;
             }
 
             if (endLabel) {
-                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${endLabel} (latest 6 months).`;
+                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${endLabel}.`;
                 return;
             }
 
@@ -1152,14 +1165,14 @@
             }
         };
 
-        const getXYPoints = (values, width, height, padding) => {
+        const getXYPoints = (values, width, height, padding, scale = null) => {
             const safeValues = Array.isArray(values) ? values.map((value) => Number(value || 0)) : [];
             if (!safeValues.length) {
                 return [];
             }
 
-            const minValue = Math.min(...safeValues, 0);
-            const maxValue = Math.max(...safeValues, 1);
+            const minValue = scale ? scale.min : Math.min(...safeValues, 0);
+            const maxValue = scale ? scale.max : Math.max(...safeValues, 1);
             const plotWidth = width - padding.left - padding.right;
             const plotHeight = height - padding.top - padding.bottom;
             const xStep = safeValues.length > 1 ? plotWidth / (safeValues.length - 1) : 0;
@@ -1341,8 +1354,13 @@
                 bottom: 34,
             };
 
-            const salesPoints = getXYPoints(salesValues, width, height, padding);
-            const expensePoints = getXYPoints(expenseValues, width, height, padding);
+            const pesoScale = {
+                min: Math.min(0, ...salesValues, ...expenseValues),
+                max: Math.max(1, ...salesValues, ...expenseValues),
+            };
+            const salesPoints = getXYPoints(salesValues, width, height, padding, pesoScale);
+            const expensePoints = getXYPoints(expenseValues, width, height, padding, pesoScale);
+            window.SafeBooksTrendTooltip?.render(analyticsSalesLine.closest("svg"), rows, salesPoints, expensePoints);
 
             analyticsSalesLine.setAttribute("d", getBezierPath(salesPoints));
             analyticsExpensesLine.setAttribute("d", getBezierPath(expensePoints));
@@ -1361,8 +1379,14 @@
             animatePolyline(analyticsSalesLine, { duration: 760, delay: 0 });
             animatePolyline(analyticsExpensesLine, { duration: 760, delay: 80 });
 
+            analyticsMonthLabels.style.setProperty("--trend-month-count", String(rows.length || 6));
+            // Match labels to the SVG's exact x coordinates, including plot padding.
+            // Inline positioning also overrides a cached equal-column stylesheet.
+            analyticsMonthLabels.style.display = "block";
+            analyticsMonthLabels.style.position = "relative";
+            analyticsMonthLabels.style.height = "1.2rem";
             analyticsMonthLabels.innerHTML = rows
-                .map((row) => `<span>${escapeHtml(row.month_label || row.month || "-")}</span>`)
+                .map((row, index) => `<span style="position:absolute;left:${salesPoints[index].x / width * 100}%;transform:translateX(-50%)">${escapeHtml(row.month_label || row.month || "-")}</span>`)
                 .join("");
         };
 
@@ -1398,9 +1422,29 @@
             animatePolyline(analyticsPredictiveLine, { duration: 640, delay: 0 });
         };
 
+        const formatForecastHistory = (forecast) => {
+            const source = forecast && typeof forecast === "object" ? forecast : {};
+            const formatPeriod = (value) => {
+                const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(value || ""));
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return match ? `${months[Number(match[2]) - 1]} ${match[1]}` : "";
+            };
+            const start = formatPeriod(source.history_start);
+            const end = formatPeriod(source.history_end);
+            const cutoff = /^\d{4}$/.test(String(source.history_cutoff_year || ""))
+                ? String(source.history_cutoff_year) : "";
+            if (!start || !end) return cutoff ? `No history through ${cutoff}.` : "";
+            return `History: ${start} to ${end}`;
+        };
+
         const applyPredictiveForecast = (forecast) => {
             const safeForecast = forecast && typeof forecast === "object" ? forecast : {};
+            if (analyticsPredictiveHistory) {
+                analyticsPredictiveHistory.textContent = formatForecastHistory(safeForecast);
+                analyticsPredictiveHistory.hidden = !analyticsPredictiveHistory.textContent;
+            }
             const hasForecast = Boolean(safeForecast.has_forecast);
+            const hasPeriodRows = Array.isArray(safeForecast.future_projections) && safeForecast.future_projections.length > 0;
             const nextPeriodLabel = String(safeForecast.next_period_label || "").trim();
             const frequencyLabel = String(safeForecast.frequency_label || "").trim();
             const periodHasFrequency = /\bQ\d\b/.test(nextPeriodLabel) || /Annual/i.test(nextPeriodLabel);
@@ -1413,26 +1457,31 @@
             }
 
             if (analyticsPredictiveSalesValue) {
-                analyticsPredictiveSalesValue.textContent = hasForecast
+                analyticsPredictiveSalesValue.textContent = hasForecast || hasPeriodRows
                     ? formatProjectionCurrency(safeForecast, "expected_sales")
                     : "PHP --";
             }
             if (analyticsPredictiveExpensesValue) {
-                analyticsPredictiveExpensesValue.textContent = hasForecast
+                analyticsPredictiveExpensesValue.textContent = hasForecast || hasPeriodRows
                     ? formatProjectionCurrency(safeForecast, "expected_expenses")
                     : "PHP --";
             }
             if (analyticsPredictiveTaxValue) {
-                analyticsPredictiveTaxValue.textContent = hasForecast
+                analyticsPredictiveTaxValue.textContent = hasForecast || hasPeriodRows
                     ? formatProjectionCurrency(safeForecast, "expected_tax")
                     : "PHP --";
             }
 
             const forecastCardNote = (category, valueKey) => {
+                const period = String(safeForecast[`${category}_period_label`] || "");
                 if (projectionHasValue(safeForecast, valueKey)) {
-                    return getProjectionMethodLabel(safeForecast, category, valueKey);
+                    return period || getProjectionMethodLabel(safeForecast, category, valueKey);
                 }
-                return String(safeForecast[`${category}_readiness_note`] || "Needs historical data");
+                const note = String(safeForecast[`${category}_readiness_note`] || "Needs historical data");
+                const shortNote = /missing|irregular|coverage|align/i.test(note) ? "Review record periods"
+                    : /unsupported/i.test(note) ? "Unsupported frequency"
+                    : note.length > 50 ? "Needs more history" : note;
+                return period ? `${period} · ${shortNote}` : shortNote;
             };
             if (analyticsPredictiveSalesNote) {
                 analyticsPredictiveSalesNote.textContent = forecastCardNote("sales", "expected_sales");
@@ -1446,8 +1495,9 @@
 
             if (analyticsPredictivePlaceholder) {
                 analyticsPredictivePlaceholder.textContent = hasForecast
-                    ? "SARIMA projection based on complete, regularly spaced transaction history."
-                    : "Historical movement shown. SARIMA starts after the required history is complete.";
+                    ? ((safeForecast.sparkline || []).filter(value => value != null).length < 2
+                        ? "One forecast period available." : "SARIMA forecast")
+                    : "More complete history is needed.";
             }
 
             renderPredictiveSparkline(safeForecast.sparkline || []);
@@ -1455,7 +1505,54 @@
 
         const predictiveForecastTableBody = document.getElementById("predictiveForecastTableBody");
 
-        const renderPredictiveForecastReport = (futureProjections) => {
+        const formatForecastCell = (projection, category) => {
+            const periodParts = value => {
+                const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(value || ""));
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return match ? {year: match[1], month: months[Number(match[2]) - 1]} : null;
+            };
+            const entries = projection.forecast_cells?.[category] || [{model: projection, frequency: ""}];
+            const values = entries.map(({model, frequency, comparison = false}) => {
+                const key = `expected_${category}`;
+                const valid = projectionHasValue(model, key);
+                const value = category === "net" && !valid && projectionCannotForecast(model, key)
+                    ? "Cannot calculate" : formatProjectionCurrency(model, key);
+                const note = category === "net" ? model.net_readiness_note : model[`${category}_readiness_note`];
+                const coverage = model.coverage_start && model.coverage_end
+                    ? `${model.coverage_start} to ${model.coverage_end}` : "";
+                const basis = category === "net" && valid && model.net_sales_basis != null && model.net_expenses_basis != null
+                    ? `Sales ${formatCurrency(model.net_sales_basis)} minus expenses ${formatCurrency(model.net_expenses_basis)}` : "";
+                const start = periodParts(model.coverage_start);
+                const end = periodParts(model.coverage_end);
+                const basisPeriod = start && end ? (model.coverage_start === model.coverage_end
+                    ? `${end.month} ${end.year}` : start.year === end.year
+                        ? `${start.month} to ${end.month} ${end.year}`
+                        : `${start.month} ${start.year} to ${end.month} ${end.year}`) : coverage;
+                const visibleBasis = basis ? `<small class="analytics-forecast-basis"><span>${escapeHtml(basisPeriod)}</span><span>${escapeHtml(formatCurrency(model.net_sales_basis))} − ${escapeHtml(formatCurrency(model.net_expenses_basis))}</span></small>` : "";
+                const comparisonNote = comparison ? "Combined quarter total includes monthly-derived amounts and native quarterly predictions; do not add it to the monthly values" : "";
+                const details = [frequency, coverage, basis, comparisonNote, model[`${category}_method`], note].filter(Boolean).join(". ");
+                const interval = comparison ? "Quarter total · Includes monthly"
+                    : frequency === "quarterly" ? "Quarterly" : frequency === "monthly" ? "Monthly" : "";
+                const missing = category === "net" && !valid ? /^(Sales|Expenses) \((monthly|quarterly)\):/.exec(String(note || "")) : null;
+                const issue = missing ? `Incomplete ${missing[2]} ${missing[1].toLowerCase()}`
+                    : category === "net" && valid ? "Calculated"
+                    : !valid && /Negative SARIMA prediction/.test(note || "") ? "Negative prediction"
+                    : !valid && /Non-finite SARIMA prediction/.test(note || "") ? "Invalid prediction"
+                    : "";
+                const label = [interval, issue].filter(Boolean).join(" · ");
+                const color = category === "net" ? (valid
+                    ? (Number(model[key]) > 0 ? "text-success" : Number(model[key]) < 0 ? "text-danger" : "text-muted")
+                    : "text-muted") : "";
+                return `<span class="analytics-forecast-cell-value ${comparison ? "analytics-forecast-cell-comparison" : ""} ${color}" title="${escapeHtml(details)}"
+                    aria-label="${escapeHtml([value, label, coverage, basis, comparisonNote, note].filter(Boolean).join(". "))}">
+                    ${escapeHtml(value)}${label ? `<small class="analytics-forecast-interval">${escapeHtml(label)}</small>` : ""}${visibleBasis}
+                </span>`;
+            }).join("");
+            return `<span class="analytics-forecast-cell-values">${values}</span>`;
+        };
+
+
+        const renderPredictiveForecastReport = (futureProjections, emptyMessage = "Needs historical data to compute forecasts.") => {
             if (!predictiveForecastTableBody) {
                 return;
             }
@@ -1464,7 +1561,7 @@
             if (!safeProjections.length) {
                 predictiveForecastTableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">Needs historical data to compute forecasts.</td>
+                        <td colspan="5" class="text-center text-muted py-4">${escapeHtml(emptyMessage)}</td>
                     </tr>
                 `;
                 return;
@@ -1473,30 +1570,21 @@
             predictiveForecastTableBody.innerHTML = safeProjections
                 .map((proj) => {
                     const period = String(proj.period_label || "-");
-                    const sales = formatProjectionCurrency(proj, "expected_sales");
-                    const expenses = formatProjectionCurrency(proj, "expected_expenses");
-                    const tax = formatProjectionCurrency(proj, "expected_tax");
-                    const net = formatProjectionCurrency(proj, "expected_net");
-
-                    const netNum = Number(proj.expected_net || 0);
-                    const netClass = projectionHasValue(proj, "expected_net")
-                        ? (netNum > 0 ? "text-success" : (netNum < 0 ? "text-danger" : "text-muted"))
-                        : "text-muted";
 
                     return `
                         <tr>
                             <td><strong>${escapeHtml(period)}</strong></td>
-                            <td>${escapeHtml(sales)}</td>
-                            <td>${escapeHtml(expenses)}</td>
-                            <td>${escapeHtml(tax)}</td>
-                            <td><strong class="${netClass}">${escapeHtml(net)}</strong></td>
+                            <td>${formatForecastCell(proj, "sales")}</td>
+                            <td>${formatForecastCell(proj, "expenses")}</td>
+                            <td>${formatForecastCell(proj, "tax")}</td>
+                            <td>${formatForecastCell(proj, "net")}</td>
                         </tr>
                     `;
                 })
                 .join("");
         };
 
-        const renderForecastProjectionChart = (futureProjections) => {
+        const renderForecastProjectionChart = (futureProjections, frequencySeries = []) => {
             if (
                 !analyticsForecastProjectionGrid
                 || !analyticsForecastProjectionBridges
@@ -1549,6 +1637,7 @@
                 analyticsForecastProjectionBridges.innerHTML = "";
                 analyticsForecastProjectionDots.innerHTML = "";
                 analyticsForecastProjectionLabels.innerHTML = "";
+                if (typeof window !== "undefined") window.SafeBooksForecastPeriods?.alignLabels?.(analyticsForecastProjectionLabels, null, []);
                 if (analyticsForecastProjectionTooltip) {
                     analyticsForecastProjectionTooltip.hidden = true;
                 }
@@ -1573,6 +1662,8 @@
             const laneCount = series.length;
             const laneHeight = (height - padding.top - padding.bottom - laneGap * (laneCount - 1)) / laneCount;
             const chartWidth = width - padding.left - padding.right;
+            const periodKey = row => String(row.coverage_end || row.period_label || "");
+            const timeline = new Map(rows.map((row, index) => [periodKey(row), index]));
             const xForIndex = (index) => {
                 if (rows.length <= 1) {
                     return padding.left + chartWidth / 2;
@@ -1583,36 +1674,27 @@
             const plottedSeries = series.map((item, laneIndex) => {
                 const laneTop = padding.top + laneIndex * (laneHeight + laneGap);
                 const laneBottom = laneTop + laneHeight;
-                const rawValues = rows.map((row) => {
-                    if (!projectionHasValue(row, item.key) || projectionCannotForecast(row, item.key)) {
-                        return null;
-                    }
-
-                    const value = Number(row[item.key]);
-                    return Number.isFinite(value) ? value : null;
-                });
-                let firstIndex = -1;
-                let lastIndex = -1;
-                rawValues.forEach((value, index) => {
-                    if (!Number.isFinite(value)) {
-                        return;
-                    }
-                    if (firstIndex === -1) {
-                        firstIndex = index;
-                    }
-                    lastIndex = index;
-                });
-
-                const points = rawValues
-                    .map((value, index) => {
-                        if (!Number.isFinite(value)) {
-                            return null;
-                        }
-
+                const plotTop = laneTop + 22;
+                const plotHeight = laneBottom - plotTop;
+                const descriptor = Array.isArray(frequencySeries) ? frequencySeries.find(lane => lane?.category === item.className) : null;
+                const laneRows = descriptor ? (Array.isArray(descriptor.rows) ? descriptor.rows : []) : rows;
+                const frequency = descriptor ? descriptor.frequency : rows[0]?.frequency || "";
+                const frequencyLabel = frequency === "monthly" ? "Monthly" : frequency === "quarterly" ? "Quarterly" : "";
+                const points = laneRows
+                    .map((row, sequenceIndex) => {
+                        if (!projectionHasValue(row, item.key) || projectionCannotForecast(row, item.key)) return null;
+                        const value = Number(row[item.key]);
+                        const index = timeline.get(periodKey(row));
+                        if (!Number.isFinite(value) || index == null) return null;
+                        const end = /^(\d{4})-(\d{2})$/.exec(String(row.coverage_end || ""));
                         return {
                             index,
+                            sequenceIndex,
+                            monthIndex: end ? Number(end[1]) * 12 + Number(end[2]) : null,
                             value,
-                            period: String(rows[index].period_label || "-"),
+                            period: String(row.period_label || "-"),
+                            coverage: row.coverage_start && row.coverage_end
+                                ? `${row.coverage_start} to ${row.coverage_end}` : "",
                         };
                     })
                     .filter(Boolean);
@@ -1623,29 +1705,27 @@
                 const minValue = rawMin < 0 ? rawMin - rawRange * 0.08 : 0;
                 const maxValue = rawMax + rawRange * 0.08;
                 const valueRange = maxValue - minValue || 1;
-                const yForValue = (value) => laneTop + ((maxValue - value) / valueRange) * laneHeight;
-                const filledValues = firstIndex === -1 ? [] : fillSeriesGaps(rawValues);
-                const bridgePoints = firstIndex === -1 ? [] : filledValues
-                    .map((value, index) => {
-                        if (index < firstIndex || index > lastIndex) {
-                            return null;
-                        }
-                        if (!Number.isFinite(value)) {
-                            return null;
-                        }
-                        return {
-                            index,
-                            value,
-                        };
-                    })
-                    .filter(Boolean);
+                const yForValue = (value) => plotTop + ((maxValue - value) / valueRange) * plotHeight;
+                const segments = [];
+                points.forEach((point) => {
+                    const last = segments[segments.length - 1];
+                    const previous = last?.[last.length - 1];
+                    const interval = frequency === "quarterly" ? 3 : 1;
+                    const gap = previous && previous.monthIndex != null && point.monthIndex != null
+                        && point.monthIndex - previous.monthIndex !== interval;
+                    if (!previous || previous.sequenceIndex + 1 !== point.sequenceIndex || gap) segments.push([point]);
+                    else last.push(point);
+                });
 
                 return {
                     ...item,
+                    frequencyLabel,
                     laneTop,
                     laneBottom,
+                    plotTop,
                     points,
-                    bridgePoints,
+                    segments,
+                    bridgePoints: [],
                     minValue,
                     maxValue,
                     midValue: minValue + valueRange / 2,
@@ -1660,7 +1740,7 @@
 
             analyticsForecastProjectionEmpty.hidden = true;
             if (analyticsForecastProjectionHint) {
-                analyticsForecastProjectionHint.textContent = "Sales, expenses, tax, and net value are shown together with separate scales.";
+                analyticsForecastProjectionHint.textContent = "Each lane keeps its labelled record frequency and peso scale. Net Value is calculated from matching Sales and Expenses.";
             }
 
             // Draw card background rects, timeline vertical lines, category headers, and scales per lane
@@ -1673,7 +1753,7 @@
             }).join("");
 
             const gridAndLabelMarkup = plottedSeries.map((item) => {
-                const laneCenter = item.laneTop + laneHeight / 2;
+                const laneCenter = (item.plotTop + item.laneBottom) / 2;
                 const topLabel = formatCompactCurrency(item.maxValue);
                 const midLabel = formatCompactCurrency(item.midValue);
                 const bottomLabel = formatCompactCurrency(item.minValue);
@@ -1683,15 +1763,23 @@
                 const categoryColor = item.className === "sales" ? "#2563d8" :
                                       item.className === "expenses" ? "#e4872a" :
                                       item.className === "tax" ? "#805ad5" : "#14945b";
-                const categoryMarkup = `<text class="analytics-forecast-lane-label ${item.className}" fill="${categoryColor}" x="${padding.left + 12}" y="${textY.toFixed(2)}" text-anchor="start">${escapeHtml(item.label)}</text>`;
+                const laneLabel = [item.label, item.className === "net" ? "Calculated" : "", item.frequencyLabel].filter(Boolean).join(" · ");
+                const categoryMarkup = `<text class="analytics-forecast-lane-label ${item.className}" fill="${categoryColor}" x="${padding.left + 12}" y="${textY.toFixed(2)}" text-anchor="start">${escapeHtml(laneLabel)}</text>`;
+
+                if (!item.points.length) {
+                    const message = item.className === "net" ? "Incomplete Sales or Expenses" : "No forecast available";
+                    return `<rect class="analytics-forecast-lane-bg" fill="#f4f8ff" stroke="#eef4ff" stroke-width="1" x="${rectX}" y="${item.laneTop.toFixed(2)}" width="${rectWidth}" height="${laneHeight.toFixed(2)}" rx="8" ry="8"></rect>
+                        ${categoryMarkup}
+                        <text class="analytics-forecast-grid-label analytics-forecast-lane-empty ${item.className}" fill="#6c85b0" x="${(padding.left + chartWidth / 2).toFixed(2)}" y="${(laneCenter + 8).toFixed(2)}" text-anchor="middle">${escapeHtml(message)}</text>`;
+                }
 
                 return `
                     <rect class="analytics-forecast-lane-bg" fill="#f4f8ff" stroke="#eef4ff" stroke-width="1" x="${rectX}" y="${item.laneTop.toFixed(2)}" width="${rectWidth}" height="${laneHeight.toFixed(2)}" rx="8" ry="8"></rect>
                     ${categoryMarkup}
-                    <line class="analytics-forecast-grid-line" stroke="#dce7fa" stroke-width="1" x1="${padding.left}" y1="${item.laneTop.toFixed(2)}" x2="${width - padding.right}" y2="${item.laneTop.toFixed(2)}"></line>
+                    <line class="analytics-forecast-grid-line" stroke="#dce7fa" stroke-width="1" x1="${padding.left}" y1="${item.plotTop.toFixed(2)}" x2="${width - padding.right}" y2="${item.plotTop.toFixed(2)}"></line>
                     <line class="analytics-forecast-grid-line" stroke="#dce7fa" stroke-width="1" x1="${padding.left}" y1="${laneCenter.toFixed(2)}" x2="${width - padding.right}" y2="${laneCenter.toFixed(2)}"></line>
                     <line class="analytics-forecast-grid-line baseline" stroke="#cad8f1" stroke-width="1" x1="${padding.left}" y1="${item.laneBottom.toFixed(2)}" x2="${width - padding.right}" y2="${item.laneBottom.toFixed(2)}"></line>
-                    <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(item.laneTop + 4).toFixed(2)}" text-anchor="end">${escapeHtml(topLabel)}</text>
+                    <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(item.plotTop + 4).toFixed(2)}" text-anchor="end">${escapeHtml(topLabel)}</text>
                     <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(laneCenter + 4).toFixed(2)}" text-anchor="end">${escapeHtml(midLabel)}</text>
                     <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(item.laneBottom + 4).toFixed(2)}" text-anchor="end">${escapeHtml(bottomLabel)}</text>
                 `;
@@ -1702,6 +1790,9 @@
             analyticsForecastProjectionLabels.innerHTML = rows
                 .map((row) => `<span title="${escapeHtml(String(row.period_label || "-"))}">${escapeHtml(String(row.period_label || "-"))}</span>`)
                 .join("");
+            if (typeof window !== "undefined") window.SafeBooksForecastPeriods?.alignLabels?.(
+                analyticsForecastProjectionLabels, analyticsForecastProjectionGrid.ownerSVGElement,
+                rows.map((_, index) => xForIndex(index) / width));
 
             // Render bridge segments (dashed paths)
             analyticsForecastProjectionBridges.innerHTML = plottedSeries
@@ -1721,31 +1812,21 @@
             // Render area gradient paths
             const areasContainer = document.getElementById("analyticsForecastProjectionAreas");
             if (areasContainer) {
-                areasContainer.innerHTML = plottedSeries
-                    .map((item) => {
-                        if (item.points.length < 2) {
-                            return "";
-                        }
-                        const pointsXY = item.points.map((p) => ({
-                            x: xForIndex(p.index),
-                            y: item.yForValue(p.value)
-                        }));
+                areasContainer.innerHTML = plottedSeries.flatMap((item) =>
+                    item.segments.filter(segment => segment.length >= 2).map((segment) => {
+                        const pointsXY = segment.map(p => ({x: xForIndex(p.index), y: item.yForValue(p.value)}));
                         const areaD = getAreaBezierPath(pointsXY, item.laneBottom);
                         const gradId = item.className === "sales" ? "salesGrad" :
-                                       item.className === "expenses" ? "expensesGrad" :
-                                       item.className === "tax" ? "taxGrad" : "netGrad";
+                            item.className === "expenses" ? "expensesGrad" :
+                            item.className === "tax" ? "taxGrad" : "netGrad";
                         return `<path class="analytics-forecast-projection-area ${item.className}" d="${areaD}" fill="url(#${gradId})"></path>`;
-                    })
-                    .join("");
+                    })).join("");
             }
 
             const dotMarkup = [];
             plottedSeries.forEach((item, seriesIndex) => {
-                const pointsXY = item.points.map((p) => ({
-                    x: xForIndex(p.index),
-                    y: item.yForValue(p.value)
-                }));
-                const lineD = getBezierPath(pointsXY);
+                const lineD = item.segments.map(segment => getBezierPath(
+                    segment.map(p => ({x: xForIndex(p.index), y: item.yForValue(p.value)})))).join(" ");
 
                 if (item.lineElement) {
                     item.lineElement.setAttribute("d", lineD);
@@ -1760,7 +1841,9 @@
                 item.points.forEach((point) => {
                     const cx = xForIndex(point.index).toFixed(2);
                     const cy = item.yForValue(point.value).toFixed(2);
-                    const title = `${point.period} ${item.label}: ${formatCurrency(point.value)}`;
+                    const periodDescription = point.coverage ? `${point.period} (${point.coverage})` : point.period;
+                    const valueLabel = [item.label, item.className === "net" ? "Calculated" : "", item.frequencyLabel].filter(Boolean).join(" · ");
+                    const title = `${periodDescription} ${valueLabel}: ${formatCurrency(point.value)}`;
                     dotMarkup.push(`
                         <circle
                             class="analytics-forecast-projection-dot ${item.className}"
@@ -1770,8 +1853,8 @@
                             tabindex="0"
                             role="img"
                             aria-label="${escapeHtml(title)}"
-                            data-tooltip-title="${escapeHtml(point.period)}"
-                            data-tooltip-label="${escapeHtml(item.label)}"
+                            data-tooltip-title="${escapeHtml(periodDescription)}"
+                            data-tooltip-label="${escapeHtml(valueLabel)}"
                             data-tooltip-value="${escapeHtml(formatCurrency(point.value))}"
                         >
                             <title>${escapeHtml(title)}</title>
@@ -1798,11 +1881,12 @@
                     const rect = shellRect();
                     const clientX = event.clientX || (target.getBoundingClientRect().left + target.getBoundingClientRect().width / 2);
                     const clientY = event.clientY || target.getBoundingClientRect().top;
-                    const left = Math.min(Math.max(clientX - rect.left + 12, 8), rect.width - 152);
-                    const top = Math.min(Math.max(clientY - rect.top - 64, 8), rect.height - 88);
+                    analyticsForecastProjectionTooltip.hidden = false;
+                    const tooltipRect = analyticsForecastProjectionTooltip.getBoundingClientRect();
+                    const left = Math.max(8, Math.min(clientX - rect.left + 12, rect.width - tooltipRect.width - 8));
+                    const top = Math.max(8, Math.min(clientY - rect.top - 64, rect.height - tooltipRect.height - 8));
                     analyticsForecastProjectionTooltip.style.left = `${left}px`;
                     analyticsForecastProjectionTooltip.style.top = `${top}px`;
-                    analyticsForecastProjectionTooltip.hidden = false;
                 };
                 const hideTooltip = () => {
                     analyticsForecastProjectionTooltip.hidden = true;
@@ -1839,7 +1923,30 @@
             analyticsRemarksDescription.textContent = description;
         };
 
+        const renderForecastView = (forecast) => {
+            applyPredictiveForecast(forecast);
+            const rows = Array.isArray(forecast.future_projections) ? forecast.future_projections : [];
+            renderPredictiveForecastReport(rows);
+            const chartRows = Array.isArray(forecast.chart_projections) ? forecast.chart_projections : rows;
+            renderForecastProjectionChart(chartRows, forecast.chart_series);
+            const chartTitle = document.getElementById("analyticsForecastProjectionTitle");
+            if (chartTitle) {
+                const frequency = String(forecast.graph_frequency_label || "");
+                chartTitle.textContent = "Projection Graph" + (frequency ? ` · ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}` : "");
+            }
+            if (analyticsForecastProjectionLabels) analyticsForecastProjectionLabels.style.gridTemplateColumns = `repeat(${chartRows.length || 1}, minmax(0, 1fr))`;
+            const sparkShell = document.getElementById("analyticsPredictiveLine")?.closest?.(".analytics-predictive-chart-shell");
+            if (sparkShell) sparkShell.classList.toggle("is-sparse", (forecast.sparkline || []).length < 2);
+        };
+        const showForecastPayload = (forecast) => {
+            renderForecastView(window.SafeBooksForecastPeriods
+                ? window.SafeBooksForecastPeriods.prepare(forecast) : forecast);
+        };
+
         const applyAnalyticsFallbackState = () => {
+            window.SafeBooksTaxBreakdown?.state(document.getElementById("analyticsTaxBreakdown"), "Tax breakdown unavailable. Please retry.");
+            const dashboardNotice = document.getElementById("analyticsDashboardEmptyNotice");
+            if (dashboardNotice) dashboardNotice.hidden = true;
             if (analyticsDataPanels) {
                 analyticsDataPanels.hidden = true;
             }
@@ -1882,24 +1989,24 @@
             }
             renderForecastSparkline([]);
 
-            applyPredictiveForecast({
-                has_forecast: false,
-            });
-            renderForecastProjectionChart([]);
+            showForecastPayload({has_forecast: false});
 
         };
 
 
 
         const applyAnalyticsPayload = (payload) => {
+            window.SafeBooksTaxBreakdown?.render(document.getElementById("analyticsTaxBreakdown"), payload);
             const hasData = Boolean(payload && payload.has_data);
+            const predictiveForecast = payload && payload.predictive_forecast ? payload.predictive_forecast : {};
+            const hasForecastContext = Boolean(predictiveForecast.has_forecast || predictiveForecast.history_start);
 
             if (!hasData) {
                 if (analyticsDataPanels) {
-                    analyticsDataPanels.hidden = true;
+                    analyticsDataPanels.hidden = !hasForecastContext;
                 }
                 if (analyticsEmptyState) {
-                    analyticsEmptyState.hidden = false;
+                    analyticsEmptyState.hidden = hasForecastContext;
                 }
             } else {
                 if (analyticsDataPanels) {
@@ -1910,6 +2017,14 @@
                 }
             }
 
+            const dashboardNotice = document.getElementById("analyticsDashboardEmptyNotice");
+            if (dashboardNotice) {
+                dashboardNotice.hidden = hasData || !hasForecastContext;
+                const year = String(analyticsYearFilter ? analyticsYearFilter.value : "");
+                dashboardNotice.textContent = /^\d{4}$/.test(year)
+                    ? `No financial activity to display for ${year}. Forecast history is shown separately.`
+                    : "No financial activity to display. Forecast history is shown separately.";
+            }
             const summary = payload && payload.summary ? payload.summary : {};
             const totalSalesValue = Number(summary.total_sales || 0);
             const totalExpensesValue = Number(summary.total_expenses || 0);
@@ -1942,13 +2057,7 @@
             }
             renderForecastSparkline(forecast.sparkline || []);
 
-            const predictiveForecast = payload && payload.predictive_forecast ? payload.predictive_forecast : {};
-            const forecastProjections = Array.isArray(predictiveForecast.future_projections)
-                ? predictiveForecast.future_projections
-                : [];
-            applyPredictiveForecast(predictiveForecast);
-            renderPredictiveForecastReport(forecastProjections);
-            renderForecastProjectionChart(forecastProjections);
+            showForecastPayload(predictiveForecast);
 
 
             const scope = payload && payload.scope ? payload.scope : {};

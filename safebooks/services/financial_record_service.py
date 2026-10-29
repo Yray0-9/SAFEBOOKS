@@ -70,7 +70,7 @@ def _audit_record(bookkeeper, client, record, action):
     }[action]
     record_bookkeeper_audit(
         bookkeeper, action,
-        f"{verb} a {frequency} record for {client.client_name} dated {record_date}.",
+        f"{verb} a financial record for {client.client_name} dated {record_date}.",
         target_model="FinancialRecord", target_id=record.id,
         metadata={"client_name": client.client_name, "client_id": client.id,
                   "record_date": record_date, "frequency": frequency},
@@ -187,7 +187,7 @@ def _normalize_amount(value):
 
 def _normalize_line_items(line_items):
     if not isinstance(line_items, list) or not line_items:
-        return [], ["At least one line item is required."]
+        return [], ["At least one record detail is required."]
     if len(line_items) > MAX_TRANSACTION_DETAILS:
         return [], ["An entry exceeds 20,000 transaction details. Split it into smaller entries; nothing was saved."]
 
@@ -196,30 +196,56 @@ def _normalize_line_items(line_items):
 
     for index, line_item in enumerate(line_items, start=1):
         if not isinstance(line_item, dict):
-            errors.append(f"Line item #{index} is invalid.")
+            errors.append(f"Record detail #{index} is invalid.")
             continue
 
         type_code = _normalize_text(line_item.get("type_code"))
+        detail_label = {"sales": "Sales", "expenses": "Expenses"}.get(type_code.lower(), f"Record detail #{index}")
         description = _normalize_text(line_item.get("description"))
+        remarks = None if line_item.get("remarks") is None else _normalize_text(line_item["remarks"])
+        coverage_frequency = line_item.get("coverage_frequency")
+        if coverage_frequency is not None and (
+            not isinstance(coverage_frequency, str) or coverage_frequency not in ALLOWED_FREQUENCIES
+        ):
+            errors.append(f"{detail_label}: Choose a valid covered period.")
+        if coverage_frequency is not None and type_code.lower() not in {"sales", "expenses"}:
+            errors.append(f"{detail_label}: Separate coverage is available for Sales and Expenses only.")
+        if line_item.get("remarks") is not None and not isinstance(line_item["remarks"], str):
+            errors.append(f"{detail_label}: Remarks must be text.")
         amount, amount_error = _normalize_amount(line_item.get("amount"))
+        worksheet_amounts = {}
+        for field_name, label in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS.items():
+            value = line_item.get(field_name)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                worksheet_amounts[field_name] = None
+                continue
+            worksheet_amount, worksheet_error = normalize_nonnegative_decimal(
+                value, label=label, maximum=decimal_field_max(FinancialRecordLine, field_name), raw_maximum=False,
+            )
+            worksheet_amounts[field_name] = worksheet_amount
+            if worksheet_error:
+                errors.append(f"{detail_label}: {worksheet_error}")
         client_line_id = _normalize_text(line_item.get("client_line_id") or line_item.get("line_id"))
         for text_error in model_text_errors(FinancialRecordLine, line_item, labels={"type_code": "Type/code"}):
-            errors.append(f"Line item #{index}: {text_error}")
+            errors.append(f"{detail_label}: {text_error}")
 
         if not type_code:
-            errors.append(f"Line item #{index} type/code is required.")
+            errors.append(f"{detail_label} type/code is required.")
         if not description:
-            errors.append(f"Line item #{index} description is required.")
+            errors.append(f"{detail_label} description is required.")
         if amount_error:
-            errors.append(f"Line item #{index}: {amount_error}")
+            errors.append(f"{detail_label}: {amount_error}")
         if type_code and description and amount is not None:
             cleaned_line_items.append(
                 {
                     "client_line_id": client_line_id,
                     "type_code": type_code,
                     "description": description,
+                    "remarks": remarks,
+                    "coverage_frequency": coverage_frequency,
                     "amount": amount,
                     "sort_order": index,
+                    **worksheet_amounts,
                 }
             )
 
@@ -239,11 +265,24 @@ def _resolve_period_from_entry_date(entry_date):
     return entry_date.month, entry_date.year
 
 
+def _validate_line_coverage(line_items, entry_date):
+    for line in line_items:
+        coverage = line.get("coverage_frequency")
+        if coverage == FinancialRecord.FREQUENCY_QUARTERLY and entry_date.month % 3:
+            end_month = ((entry_date.month - 1) // 3 + 1) * 3
+            end_label = date(entry_date.year, end_month, 1).strftime("%B %Y")
+            category = {"sales": "Sales", "expenses": "Expenses"}.get(line["type_code"].lower(), "Record detail")
+            return _write_error("invalid_coverage", f"{category}: For a whole quarter, set Record Date to {end_label}.")
+        if coverage == FinancialRecord.FREQUENCY_ANNUALLY and entry_date.month != 12:
+            return _write_error("invalid_coverage", "For a whole year, use December as the record month.")
+    return None
+
+
 def _serialize_client(client: Client) -> dict:
     # Financial/report access never grants access to stored account credentials.
     summary = serialize_client(client)
     return {key: summary[key] for key in (
-        "id", "client_name", "tin_number", "trade_name", "location", "permit_number",
+        "id", "client_name", "tin_number", "trade_name", "tax_registration", "location", "permit_number",
         "birthday", "email", "email_password", "orus_account", "orus_password",
         "custom_fields", "forecast_growth_percent",
     )}
@@ -254,7 +293,13 @@ def _serialize_line_item(line_item: FinancialRecordLine) -> dict:
         "id": line_item.id,
         "type_code": line_item.type_code,
         "description": line_item.description,
+        "remarks": line_item.remarks,
+        "coverage_frequency": line_item.coverage_frequency,
         "amount": str(line_item.amount),
+        **{
+            field_name: str(getattr(line_item, field_name)) if getattr(line_item, field_name) is not None else None
+            for field_name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS
+        },
     }
 
 
@@ -407,6 +452,7 @@ def list_financial_clients_for_bookkeeper(bookkeeper) -> dict:
                 "client_name": client.client_name,
                 "tin_number": client.tin_number,
                 "trade_name": client.trade_name,
+                "tax_registration": client.tax_registration,
                 "last_activity": last_activity,
                 "latest_record_updated_at": client.latest_record_updated_at.isoformat() if client.latest_record_updated_at else "",
                 "recent_activity_at": recent_activity_at.isoformat() if recent_activity_at else "",
@@ -530,7 +576,7 @@ def get_last_record_for_client_period(
             "errors": [year_error],
         }
 
-    frequency, frequency_error = _normalize_frequency(frequency_value)
+    frequency, frequency_error = (None, None) if frequency_value == "all" else _normalize_frequency(frequency_value)
     if frequency_error:
         return {
             "ok": False,
@@ -544,8 +590,8 @@ def get_last_record_for_client_period(
             bookkeeper=bookkeeper,
             client=client,
             entry_date__lt=period_start,
-            frequency=frequency,
         )
+        .filter(**({"frequency": frequency} if frequency is not None else {}))
         .order_by("-entry_date", "-id")
     )
     try:
@@ -645,6 +691,13 @@ def list_transactions_for_client_range(bookkeeper, client_id: int, date_from_val
                     "description": line_item.description,
                     "amount": str(amount_value.quantize(Decimal("0.01"))),
                     "notes": record_notes,
+                    "remarks": line_item.remarks,
+                    "coverage_frequency": line_item.coverage_frequency,
+                    "frequency": record.frequency,
+                    **{
+                        name: str(getattr(line_item, name)) if getattr(line_item, name) is not None else None
+                        for name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS
+                    },
                 }
             )
 
@@ -707,6 +760,10 @@ def create_record_for_client_period(bookkeeper, client_id: int, data: dict) -> d
             "errors": line_item_errors,
         }
 
+    coverage_error = _validate_line_coverage(line_items, entry_date)
+    if coverage_error:
+        return coverage_error
+
     for line_item in line_items:
         line_id = line_item.get("client_line_id") or f"line-{line_item['sort_order']}"
         line_item["client_line_id"] = line_id
@@ -730,8 +787,11 @@ def create_record_for_client_period(bookkeeper, client_id: int, data: dict) -> d
                 record=record,
                 type_code=line_item["type_code"],
                 description=line_item["description"],
+                remarks=line_item["remarks"],
+                coverage_frequency=line_item["coverage_frequency"],
                 amount=line_item["amount"],
                 sort_order=line_item["sort_order"],
+                **{name: line_item[name] for name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS},
             )
 
     from safebooks.services.client_service import check_and_promote_new_client
@@ -823,6 +883,34 @@ def update_record_for_client_period(bookkeeper, client_id: int, record_id: int, 
         frequency = record.frequency or FinancialRecord.FREQUENCY_MONTHLY
 
     if "line_items" in data:
+        # An older editor must not silently discard independent form remarks.
+        saved_lines = list(record.line_items.all())
+        submitted = data.get("line_items")
+        if any(line.coverage_frequency is not None for line in saved_lines) and isinstance(submitted, list):
+            saved_coverage = {str(line.id): line.coverage_frequency for line in saved_lines}
+            if any(isinstance(line, dict) and (
+                "coverage_frequency" not in line or (
+                    saved_coverage.get(str(line.get("client_line_id"))) is not None
+                    and line.get("coverage_frequency") is None
+                )
+            ) for line in submitted):
+                return _write_error("coverage_required", "Reload this entry before saving so each amount's covered period is kept. Your draft is unchanged.")
+        if any(line.remarks is not None for line in saved_lines) and isinstance(data["line_items"], list) and any(
+            isinstance(line, dict) and "remarks" not in line for line in data["line_items"]
+        ):
+            return _write_error("line_remarks_required", "Reload this entry before saving so its form remarks are kept. Your draft is unchanged.")
+        # Older editors must reload rather than erase worksheet values they never loaded.
+        has_saved_worksheet = any(
+            getattr(line, name) is not None
+            for line in saved_lines
+            for name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS
+        )
+        submitted_lines = data.get("line_items")
+        if has_saved_worksheet and isinstance(submitted_lines, list) and any(
+            isinstance(line, dict) and any(name not in line for name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS)
+            for line in submitted_lines
+        ):
+            return _write_error("worksheet_fields_required", "Reload this entry before saving so its worksheet amounts are kept. Your draft is unchanged.")
         line_items, line_item_errors = _normalize_line_items(data.get("line_items"))
         if line_item_errors:
             return {
@@ -840,9 +928,14 @@ def update_record_for_client_period(bookkeeper, client_id: int, record_id: int, 
                 "description": line_item.description,
                 "amount": line_item.amount,
                 "sort_order": line_item.sort_order,
+                "coverage_frequency": line_item.coverage_frequency,
             }
             for line_item in record.line_items.all()
         ]
+
+    coverage_error = _validate_line_coverage(line_items, entry_date)
+    if coverage_error:
+        return coverage_error
 
     if _sum_line_item_amounts(line_items) > MAX_MONEY_AMOUNT:
         return _write_error("invalid_total", f"Entry total must be {MAX_MONEY_AMOUNT} or less.")
@@ -875,8 +968,11 @@ def update_record_for_client_period(bookkeeper, client_id: int, record_id: int, 
                     record=record,
                     type_code=line_item["type_code"],
                     description=line_item["description"],
+                    remarks=line_item["remarks"],
+                    coverage_frequency=line_item["coverage_frequency"],
                     amount=line_item["amount"],
                     sort_order=line_item["sort_order"],
+                    **{name: line_item[name] for name in FinancialRecordLine.WORKSHEET_AMOUNT_LABELS},
                 )
 
     from safebooks.services.client_service import check_and_promote_new_client

@@ -4285,14 +4285,62 @@ select.financial-form-input {
 
 .safebooks-toast-container {
     z-index: 9999 !important;
+    max-width: 100%;
+    pointer-events: none;
+    max-height: calc(100vh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
 }
 
+.safebooks-toast-container:not(:empty) { pointer-events: auto; }
+
 .safebooks-toast {
+    width: min(24rem, calc(100vw - 2rem));
+    max-width: 100%;
+    pointer-events: auto;
     border: 1px solid #d5e4ff;
+    border-inline-start: 4px solid #2463d8;
     border-radius: 10px;
     background: #f5f9ff;
     color: #1f3f74;
     box-shadow: 0 14px 24px rgba(19, 60, 136, 0.16);
+    overflow-wrap: anywhere;
+    animation: safebooks-toast-enter 180ms ease-out;
+}
+
+@keyframes safebooks-toast-enter {
+    from { transform: translateY(-0.35rem); }
+    to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .safebooks-toast {
+        animation: none;
+        transition: none;
+    }
+}
+
+.safebooks-toast.success {
+    border-color: #bce5ce;
+    border-inline-start-color: #1a7c50;
+    background: #edfbf3;
+    color: #195c3a;
+}
+
+.safebooks-toast.warning {
+    border-color: #f0d69f;
+    border-inline-start-color: #ad6400;
+    background: #fff8e8;
+    color: #775000;
+}
+
+.safebooks-toast.danger {
+    border-color: #f1c2c2;
+    border-inline-start-color: #bd3232;
+    background: #fff1f1;
+    color: #922828;
 }
 
 .safebooks-toast .toast-body {
@@ -4302,6 +4350,7 @@ select.financial-form-input {
 
 .safebooks-toast.safebooks-toast-welcome {
     border-color: #c3ead4;
+    border-inline-start-color: #1a7c50;
     background: #edfbf3;
     color: #1f6b42;
     box-shadow: 0 14px 24px rgba(19, 106, 64, 0.16);
@@ -6810,6 +6859,7 @@ body.theme-dark .remark-closed-item .insight-dot {
 body.theme-dark .safebooks-toast {
     background: #101b2f;
     border-color: #2a3c5a;
+    border-inline-start-color: #87b5ff;
     color: #d7e6ff;
     box-shadow: 0 14px 24px rgba(2, 8, 20, 0.5);
 }
@@ -6818,6 +6868,28 @@ body.theme-dark .safebooks-toast.safebooks-toast-welcome {
     background: #152a22;
     border-color: #2d5b46;
     color: #bfead3;
+    border-inline-start-color: #72d9a5;
+}
+
+body.theme-dark .safebooks-toast.success {
+    background: #152a22;
+    border-color: #2d5b46;
+    border-inline-start-color: #72d9a5;
+    color: #bfead3;
+}
+
+body.theme-dark .safebooks-toast.warning {
+    background: #302719;
+    border-color: #6a522c;
+    border-inline-start-color: #f1bd62;
+    color: #ffe0a3;
+}
+
+body.theme-dark .safebooks-toast.danger {
+    background: #321e27;
+    border-color: #70404c;
+    border-inline-start-color: #f48b98;
+    color: #ffc7ce;
 }
 
 body.theme-dark .dashboard-search {

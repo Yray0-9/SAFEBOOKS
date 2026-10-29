@@ -86,10 +86,15 @@ def send_financial_record_created_email(record: FinancialRecord) -> dict:
     # Financial saves supply a prefetched, ordered snapshot before commit.
     line_items_qs = list(record.line_items.all())
     line_item_count = len(line_items_qs)
+    amount_lines = [item for item in line_items_qs if item.type_code.strip().lower() in {"sales", "expenses"}]
+    if any(item.coverage_frequency is not None for item in amount_lines):
+        coverages = {item.coverage_frequency or record.frequency for item in amount_lines}
+        frequency_label = _format_frequency(next(iter(coverages))) if len(coverages) == 1 else "Mixed"
 
     line_items_data = [
         {
             "description": item.description,
+            "coverage_label": _format_frequency(item.coverage_frequency) if item.coverage_frequency else "",
             "type_code": item.type_code,
             "amount": _format_money(item.amount),
         }

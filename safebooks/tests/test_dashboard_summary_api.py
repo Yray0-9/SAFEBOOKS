@@ -2,6 +2,7 @@ from safebooks.tests.session_helpers import bind_authenticated_session
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -12,6 +13,29 @@ from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
 
 
 class DashboardSummaryApiTests(TestCase):
+    def test_explicit_amount_coverage_controls_reminders_without_retagging_entry(self):
+        owner = self._create_bookkeeper("coverage-reminder")
+        ledger = self._create_client(bookkeeper=owner, tin_suffix="coverage-reminder", remarks=Client.REMARK_ACTIVE)
+        self._login_as(owner)
+        record = self._create_record(bookkeeper=owner, client=ledger, entry_date=date(2026, 3, 31), amount=Decimal("75000"))
+        line = record.line_items.get()
+        line.type_code = "Sales"
+        line.description = "Sales"
+        line.coverage_frequency = "quarterly"
+        line.save()
+        with patch("safebooks.services.dashboard_service.timezone.localdate", return_value=date(2026, 5, 1)):
+            response = self.client.get(reverse("api_dashboard_summary"))
+        self.assertEqual(response.status_code, 200, response.content)
+        row = next(item for item in response.json()["recent_client_activity"] if item["client_id"] == ledger.id)
+        self.assertEqual(row["status"], "updated")
+        record.refresh_from_db()
+        self.assertEqual(record.frequency, "monthly", "Reads must not rewrite the compatibility field")
+        FinancialRecordLine.objects.create(record=record, type_code="Expenses", description="Expenses", amount=0, coverage_frequency="monthly")
+        with patch("safebooks.services.dashboard_service.timezone.localdate", return_value=date(2026, 5, 1)):
+            response = self.client.get(reverse("api_dashboard_summary"))
+        row = next(item for item in response.json()["recent_client_activity"] if item["client_id"] == ledger.id)
+        self.assertEqual(row["status"], "needs-attention", "A monthly component keeps monthly reminders")
+
     def _create_bookkeeper(self, suffix: str) -> BookkeeperAccount:
         return BookkeeperAccount.objects.create(
             full_name=f"Bookkeeper {suffix}",

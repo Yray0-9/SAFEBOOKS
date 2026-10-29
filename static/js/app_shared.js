@@ -116,23 +116,39 @@
             .replace(/'/g, "&#39;");
     };
 
+    const activeToasts = new WeakMap();
     const showToast = (toastContainer, message, variantClass = "", options = {}) => {
         if (!toastContainer) {
             return;
         }
 
+        const text = String(message || "Action completed.");
+        const key = JSON.stringify([variantClass, text]);
+        let notifications = activeToasts.get(toastContainer);
+        if (!notifications) {
+            notifications = new Map();
+            activeToasts.set(toastContainer, notifications);
+        }
+        // Repeated validation clicks must not stack the same notice or restart its timer.
+        if (notifications.has(key)) return;
         const delay = Number.isFinite(options.delay) ? options.delay : 2800;
         const toastElement = document.createElement("div");
         toastElement.className = `toast safebooks-toast ${variantClass}`.trim();
         toastElement.setAttribute("role", "status");
         toastElement.setAttribute("aria-live", "polite");
         toastElement.setAttribute("aria-atomic", "true");
-        toastElement.innerHTML = `<div class="toast-body">${escapeHtml(message || "Action completed.")}</div>`;
+        toastElement.innerHTML = `<div class="toast-body">${escapeHtml(text)}</div>`;
+        notifications.set(key, toastElement);
+        const removeToast = () => {
+            notifications.delete(key);
+            toastElement.remove();
+        };
         toastContainer.appendChild(toastElement);
 
         if (window.bootstrap && window.bootstrap.Toast) {
             toastElement.addEventListener("hidden.bs.toast", () => {
-                toastElement.remove();
+                removeToast();
+                toastInstance.dispose();
             });
 
             const toastInstance = new window.bootstrap.Toast(toastElement, {
@@ -143,9 +159,9 @@
             return;
         }
 
-        window.setTimeout(() => {
-            toastElement.remove();
-        }, delay);
+        // Bootstrap's CSS hides .toast without .show, even if its JS failed.
+        toastElement.classList.add("show");
+        window.setTimeout(removeToast, delay);
     };
 
     const confirmLogout = async (options) => {

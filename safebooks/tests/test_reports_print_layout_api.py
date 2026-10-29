@@ -81,6 +81,46 @@ class ReportsPrintLayoutApiTests(TestCase):
 
         return record
 
+    def test_report_returns_each_lines_worksheet_values_without_writes(self):
+        owner = self._create_bookkeeper("worksheet")
+        client = self._create_client(bookkeeper=owner, suffix="worksheet")
+        self._login_as(owner)
+        record = self._create_record_with_lines(bookkeeper=owner, client=client, entry_date=date(2026, 3, 15), lines=[
+            ("Sales", "Sales", Decimal("75000")), ("Expenses", "Expenses", Decimal("5000")),
+            ("BIR Form 0619E", "TW", Decimal("500")), ("BIR Form 2551Q", "PQ", Decimal("2250")),
+        ])
+        first, second = list(record.line_items.order_by("sort_order"))[2:]
+        first.mict = Decimal("0")
+        first.income_payments_2307 = Decimal("9000")
+        first.tax_withheld = Decimal("180")
+        first.save()
+        second.cogs_cos = Decimal("12500")
+        second.save()
+        before = list(record.line_items.order_by("pk").values())
+        response = self.client.get(reverse("api_reports_print_layout"), {
+            "client_id": client.id, "date_from": "2026-01-01", "date_to": "2026-12-31",
+        })
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["summary"]["total_amount"], "82750.00")
+        rows = payload["rows"]
+        self.assertEqual(rows[2]["mict"], "0.00")
+        self.assertEqual(rows[2]["income_payments_2307"], "9000.00")
+        self.assertEqual(rows[2]["tax_withheld"], "180.00")
+        self.assertIsNone(rows[2]["cogs_cos"])
+        self.assertEqual(rows[3]["cogs_cos"], "12500.00")
+        self.assertIsNone(rows[3]["mict"])
+        self.assertEqual(list(record.line_items.order_by("pk").values()), before)
+        record.refresh_from_db()
+        self.assertEqual(record.total_amount, Decimal("82750"))
+        other = self._create_bookkeeper("worksheet-other")
+        self._login_as(other)
+        denied = self.client.get(reverse("api_reports_print_layout"), {
+            "client_id": client.id, "date_from": "2026-01-01", "date_to": "2026-12-31",
+        })
+        self.assertEqual(denied.status_code, 404)
+        self.assertNotIn("rows", denied.json())
+
     def test_reports_print_layout_requires_authentication(self):
         response = self.client.get(
             reverse("api_reports_print_layout"),
@@ -114,7 +154,7 @@ class ReportsPrintLayoutApiTests(TestCase):
             shared_script,
         )
 
-    def test_client_details_report_provides_current_specific_and_all_year_choices(self):
+    def test_report_moves_to_financial_entry_page_with_year_choices(self):
         owner = self._create_bookkeeper("year-filter")
         owner.client_details_password_required = False
         owner.save(update_fields=["client_details_password_required"])
@@ -124,6 +164,12 @@ class ReportsPrintLayoutApiTests(TestCase):
         response = self.client.get(reverse("client_details", args=[client.id]))
 
         self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="generateReportActionBtn"')
+        self.assertNotContains(response, 'id="formattedReportModal"')
+        response = self.client.get(reverse("financial_records_client"), {"client_id": client.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="generateReportActionBtn"')
+        self.assertContains(response, 'id="formattedReportModal"')
         self.assertContains(response, 'id="modalReportYearFilter"')
         self.assertContains(response, "(Current Year)")
         self.assertContains(response, "All Years")

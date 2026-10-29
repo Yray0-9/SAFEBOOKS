@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261027-2">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}">
 <link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.2">
 {% endblock %}
@@ -178,7 +179,15 @@
                             <label class="form-label client-form-label" for="addClientTradeName">Trade Name</label>
                             <input class="form-control client-form-input" id="addClientTradeName" name="trade_name" type="text" placeholder="Optional">
                         </div>
-                        <div class="col-md-6">
+                            <div class="col-md-6">
+                                <label class="form-label client-form-label" for="addClientTaxRegistration">Tax Registration</label>
+                                <select class="form-select client-form-input" id="addClientTaxRegistration" name="tax_registration">
+                                    <option value="">Not set</option>
+                                    <option value="vat">VAT</option>
+                                    <option value="non_vat">Non-VAT</option>
+                                </select>
+                            </div>
+                        <div class="col-12">
                             <label class="form-label client-form-label" for="addClientLocationSelect">Location</label>
                             <input id="addClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
@@ -333,7 +342,15 @@
                             <label class="form-label client-form-label" for="editClientTradeName">Trade Name</label>
                             <input class="form-control client-form-input" id="editClientTradeName" name="trade_name" type="text" placeholder="Optional">
                         </div>
-                        <div class="col-md-6">
+                            <div class="col-md-6">
+                                <label class="form-label client-form-label" for="editClientTaxRegistration">Tax Registration</label>
+                                <select class="form-select client-form-input" id="editClientTaxRegistration" name="tax_registration">
+                                    <option value="">Not set</option>
+                                    <option value="vat">VAT</option>
+                                    <option value="non_vat">Non-VAT</option>
+                                </select>
+                            </div>
+                        <div class="col-12">
                             <label class="form-label client-form-label" for="editClientLocationSelect">Location</label>
                             <input id="editClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
@@ -509,15 +526,13 @@
 </div>
 {% endblock %}
 
-{% block toast_container %}
-<div class="toast-container position-fixed bottom-0 end-0 p-3 safebooks-toast-container" id="uiToastContainer" aria-live="polite" aria-atomic="true"></div>
-{% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/reports_shared.js' %}?v=1.0.7"></script>
 {% if client_details_access_target %}
 {{ client_details_access_target|json_script:"clientDetailsAccessTarget" }}
 {% endif %}
+<script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -1180,6 +1195,7 @@
                 tin: formatTin(rawTin),
                 tinRaw: rawTin,
                 tradeName: client.trade_name || "",
+                taxRegistration: client.tax_registration || "",
                 location: client.location || "",
                 permitNumber: client.permit_number || "",
                 birthday: client.birthday || "",
@@ -1264,6 +1280,7 @@
                 tin: row.dataset.tin || "",
                 tinRaw: row.dataset.tinRaw || normalizeDigits(row.dataset.tin || ""),
                 tradeName: row.dataset.tradeName || "",
+                taxRegistration: row.dataset.taxRegistration || "",
                 location: row.dataset.location || "",
                 permitNumber: row.dataset.permitNumber || "",
                 birthday: row.dataset.birthday || "",
@@ -1284,6 +1301,7 @@
             row.dataset.tin = data.tin;
             row.dataset.tinRaw = data.tinRaw || normalizeDigits(data.tin);
             row.dataset.tradeName = data.tradeName;
+            row.dataset.taxRegistration = data.taxRegistration || "";
             row.dataset.location = data.location;
             row.dataset.permitNumber = data.permitNumber;
             row.dataset.birthday = data.birthday;
@@ -1298,7 +1316,7 @@
 
             const cells = row.querySelectorAll("td");
             if (cells[0]) {
-                cells[0].textContent = data.clientName;
+                cells[0].innerHTML = `<div class="client-registration-identity">${escapeHtml(data.clientName)}${window.SafeBooksClientRegistration.badge(data.taxRegistration)}</div>`;
             }
             if (cells[1]) {
                 cells[1].textContent = data.tin;
@@ -1313,7 +1331,7 @@
 
         const renderClientRowHtml = (data) => {
             return `
-                <td class="client-name-cell" data-label="Client">${escapeHtml(data.clientName)}</td>
+                <td class="client-name-cell" data-label="Client"><div class="client-registration-identity">${escapeHtml(data.clientName)}${window.SafeBooksClientRegistration.badge(data.taxRegistration)}</div></td>
                 <td class="client-tin-cell" data-label="TIN">${escapeHtml(data.tin)}</td>
                 <td class="client-trade-cell" data-label="Trade Name">${escapeHtml(data.tradeName)}</td>
                 <td data-label="Location">${escapeHtml(data.location)}</td>
@@ -1772,6 +1790,8 @@
             if (editClientTradeName) {
                 editClientTradeName.value = data.tradeName;
             }
+            const registrationSelect = document.getElementById("editClientTaxRegistration");
+            if (registrationSelect) registrationSelect.value = data.taxRegistration || "";
             if (editClientRemarks) {
                 editClientRemarks.value = data.remarks || "new";
             }
@@ -2382,6 +2402,7 @@
                     client_name: document.getElementById("addClientName") ? document.getElementById("addClientName").value.trim() : "",
                     tin_number: addClientTinInput ? normalizeDigits(addClientTinInput.value) : "",
                     trade_name: document.getElementById("addClientTradeName") ? document.getElementById("addClientTradeName").value.trim() : "",
+                    tax_registration: document.getElementById("addClientTaxRegistration").value,
                     location: addClientLocationInput ? addClientLocationInput.value.trim() : "",
                     permit_number: document.getElementById("addClientPermitNumber") ? document.getElementById("addClientPermitNumber").value.trim() : "",
                     birthday: document.getElementById("addClientBirthday") ? document.getElementById("addClientBirthday").value.trim() : "",
@@ -2448,6 +2469,7 @@
                     client_name: document.getElementById("editClientName") ? document.getElementById("editClientName").value.trim() : "",
                     tin_number: editClientTinInput ? normalizeDigits(editClientTinInput.value) : "",
                     trade_name: document.getElementById("editClientTradeName") ? document.getElementById("editClientTradeName").value.trim() : "",
+                    tax_registration: document.getElementById("editClientTaxRegistration").value,
                     location: editClientLocationInput ? editClientLocationInput.value.trim() : "",
                     permit_number: document.getElementById("editClientPermitNumber") ? document.getElementById("editClientPermitNumber").value.trim() : "",
                     birthday: document.getElementById("editClientBirthday") ? document.getElementById("editClientBirthday").value.trim() : "",
@@ -2768,7 +2790,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         if (normalize(urlParams.get("report_scope")) === "client") {
-            showToast("Reports are prepared from each client page. Open a client, then use Preview Report.");
+            showToast("Open Financial Records for a client, then choose Preview Report.");
         }
 
         const requestedRemarksFilter = normalize(urlParams.get("remark") || "all");

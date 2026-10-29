@@ -49,6 +49,91 @@ class ClientsApiTests(TestCase):
             "remarks": Client.REMARK_ACTIVE,
         }
 
+    def test_tax_registration_create_edit_and_safe_financial_summaries(self):
+        owner = self._create_bookkeeper("tax-registration")
+        self._login_as(owner)
+        for index, registration in enumerate(["vat", "non_vat", ""]):
+            data = self._client_payload(f"registration-{index}")
+            data["tax_registration"] = registration
+            response = self.client.post(reverse("api_clients"), json.dumps(data), content_type="application/json")
+            self.assertEqual(response.status_code, 201, response.content)
+            saved = response.json()["client"]
+            self.assertEqual(saved["tax_registration"], registration)
+            ledger = Client.objects.get(pk=saved["id"])
+            self.assertEqual(ledger.tax_registration, registration)
+            page = self.client.get(reverse("client_details", args=[ledger.id]))
+            self.assertContains(page, f'<option value="{registration}" selected>')
+            detail_url = reverse("api_client_detail", args=[ledger.id])
+            # Older editors omit this field; they must preserve its saved classification.
+            old_payload = self._client_payload(f"registration-{index}", tin=ledger.tin_number)
+            edited = self.client.put(detail_url, json.dumps(old_payload), content_type="application/json")
+            self.assertEqual(edited.status_code, 200, edited.content)
+            self.assertEqual(edited.json()["client"]["tax_registration"], registration)
+            for url, query in [
+                (reverse("api_clients"), {}),
+                (reverse("api_financial_record_clients"), {}),
+            ]:
+                result = self.client.get(url, query).json()
+                row = next(item for item in result["clients"] if item["id"] == ledger.id)
+                self.assertEqual(row["tax_registration"], registration)
+                self.assertFalse(row.get("email_password"))
+                self.assertFalse(row.get("orus_password"))
+                self.assertFalse(row.get("custom_fields"))
+            records = self.client.get(reverse("api_financial_records", args=[ledger.id]), {"month": 10, "year": 2026}).json()
+            self.assertEqual(records["client"]["tax_registration"], registration)
+            self.assertEqual(records["records"], [])
+            self.assertFalse(FinancialRecord.objects.filter(client=ledger).exists())
+            for registration_value in ["non_vat", "vat", ""]:
+                changed = self.client.put(detail_url, json.dumps({**old_payload, "tax_registration": registration_value}), content_type="application/json")
+                self.assertEqual(changed.status_code, 200, changed.content)
+                self.assertEqual(changed.json()["client"]["tax_registration"], registration_value)
+
+    def test_invalid_tax_registration_cannot_create_or_modify_a_client(self):
+        owner = self._create_bookkeeper("invalid-registration")
+        self._login_as(owner)
+        valid = self._client_payload("invalid-registration")
+        response = self.client.post(reverse("api_clients"), json.dumps({**valid, "tax_registration": "vat"}), content_type="application/json")
+        ledger = Client.objects.get(pk=response.json()["client"]["id"])
+        before = list(Client.objects.filter(pk=ledger.id).values())
+        for value in [None, True, False, 1, [], {}, "other", "VAT", "<script>", "x" * 17]:
+            with self.subTest(value=value):
+                invalid = {**valid, "tax_registration": value}
+                changed = self.client.put(reverse("api_client_detail", args=[ledger.id]), json.dumps(invalid), content_type="application/json")
+                self.assertEqual(changed.status_code, 400, changed.content)
+                self.assertEqual(list(Client.objects.filter(pk=ledger.id).values()), before)
+                added = self.client.post(reverse("api_clients"), json.dumps({**invalid, "tin_number": "987654321012"}), content_type="application/json")
+                self.assertEqual(added.status_code, 400, added.content)
+                self.assertEqual(Client.objects.filter(bookkeeper=owner).count(), 1)
+
+    def test_registration_stays_unknown_without_a_manual_choice_and_respects_access(self):
+        owner = self._create_bookkeeper("registration-owner")
+        other = self._create_bookkeeper("registration-other")
+        self._login_as(owner)
+        data = self._client_payload("registration-owner")
+        created = self.client.post(reverse("api_clients"), json.dumps(data), content_type="application/json").json()
+        ledger = Client.objects.get(pk=created["client"]["id"])
+        self.assertEqual(ledger.tax_registration, "")
+        period = Period.objects.create(client=ledger, year=2026, month=3)
+        record = FinancialRecord.objects.create(bookkeeper=owner, client=ledger, period=period, entry_date=date(2026, 3, 1), total_amount=500)
+        FinancialRecordLine.objects.create(record=record, type_code="BIR Form 2550Q", description="Quarterly VAT", amount=500)
+        rows_before = list(FinancialRecord.objects.values()), list(FinancialRecordLine.objects.values())
+        # A saved form never assigns VAT registration automatically.
+        result = self.client.get(reverse("api_financial_records", args=[ledger.id]), {"month": 3, "year": 2026}).json()
+        self.assertEqual(result["client"]["tax_registration"], "")
+        owner.client_details_password_required = True
+        owner.save(update_fields=["client_details_password_required"])
+        self._login_as(owner)
+        denied = self.client.put(reverse("api_client_detail", args=[ledger.id]), json.dumps({**data, "tax_registration": "vat"}), content_type="application/json")
+        self.assertEqual(denied.status_code, 403)
+        # Financial directory reads still expose this safe field without a full-profile grant.
+        self.assertEqual(self.client.get(reverse("api_financial_record_clients")).status_code, 200)
+        self._login_as(other)
+        denied = self.client.put(reverse("api_client_detail", args=[ledger.id]), json.dumps({**data, "tax_registration": "non_vat"}), content_type="application/json")
+        self.assertEqual(denied.status_code, 404)
+        ledger.refresh_from_db()
+        self.assertEqual(ledger.tax_registration, "")
+        self.assertEqual(rows_before, (list(FinancialRecord.objects.values()), list(FinancialRecordLine.objects.values())))
+
     def test_clients_api_requires_authentication(self):
         get_response = self.client.get(reverse("api_clients"), HTTP_ACCEPT="application/json")
         self.assertEqual(get_response.status_code, 401)

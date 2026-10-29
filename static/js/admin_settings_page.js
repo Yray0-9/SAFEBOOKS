@@ -18,7 +18,7 @@
 
         // Fallback UI toast if SafeBooksShared is not present
         const toast = document.createElement("div");
-        toast.className = `alert alert-${level === "success" ? "success" : "primary"} position-fixed bottom-0 end-0 m-3 shadow-lg`;
+        toast.className = `alert alert-${level === "success" ? "success" : "primary"} position-fixed top-0 end-0 m-3 shadow-lg`;
         toast.style.zIndex = "9999";
         toast.style.borderRadius = "12px";
         toast.style.fontSize = "0.88rem";

@@ -760,12 +760,16 @@
 
 .client-details-page .analytics-predictive-report-scroll {
     flex: 0 0 auto;
-    max-height: 232px;
+    max-height: 28rem;
 }
 
 .client-details-page .analytics-predictive-report-table th,
 .client-details-page .analytics-predictive-report-table td {
     white-space: normal;
+}
+
+.client-details-page .analytics-predictive-report-table td:first-child {
+    min-width: 7.5rem;
 }
 
 .client-details-page .analytics-predictive-report-table thead th {
@@ -870,135 +874,6 @@
 .client-details-empty-icon {
     display: block;
     font-size: 3rem;
-}
-
-#formattedReportModal .modal-content {
-    background: var(--card-bg, #ffffff);
-    border-radius: 14px;
-    border: 1px solid var(--border-color, #e2e8f0);
-    overflow: hidden;
-}
-
-#formattedReportModal .modal-header,
-#formattedReportModal .modal-footer {
-    background-color: var(--card-bg, #ffffff);
-    border-color: var(--border-color, #e2e8f0);
-}
-
-#formattedReportModal .modal-header {
-    padding: 1.25rem 1.5rem;
-}
-
-#formattedReportModal .modal-footer {
-    padding: 1rem 1.5rem;
-}
-
-#formattedReportModal .modal-title {
-    margin-bottom: 0.15rem;
-    color: var(--text-color, #1e293b);
-    font-size: 1.1rem;
-}
-
-.client-report-modal-subtitle {
-    font-size: 0.82rem;
-    font-weight: 500;
-}
-
-.client-report-modal-body {
-    padding: 1.5rem;
-    overflow-x: auto;
-    background-color: var(--body-bg, #f8fafc);
-}
-
-.client-report-year-bar {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-    max-width: 960px;
-    margin: 0 auto 1rem;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid #d9e5f7;
-    border-radius: 10px;
-    background: #ffffff;
-}
-
-.client-report-year-field {
-    flex: 0 0 210px;
-}
-
-.client-report-year-field label {
-    display: block;
-    margin-bottom: 0.3rem;
-    color: #36527d;
-    font-size: 0.78rem;
-    font-weight: 800;
-}
-
-.client-report-year-field .form-select {
-    min-height: 40px;
-    border-color: #cbd9ee;
-    color: #244675;
-    font-size: 0.84rem;
-    font-weight: 700;
-}
-
-.client-report-year-bar p {
-    margin: 0 0 0.48rem;
-    color: #60789e;
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-align: right;
-}
-
-.client-report-spinner {
-    width: 2.5rem;
-    height: 2.5rem;
-}
-
-.client-report-loading-text {
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.client-report-error-icon {
-    font-size: 3rem;
-}
-
-.client-report-error-text {
-    font-size: 0.95rem;
-}
-
-.client-report-wrapper {
-    padding: 0;
-    border: none;
-    background: none;
-}
-
-.client-report-sheet {
-    max-width: 960px;
-    margin: 0 auto;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
-}
-
-.client-report-modal-btn {
-    width: auto;
-    min-width: 100px;
-    padding: 0.5rem 1.25rem;
-}
-
-.client-report-modal-close {
-    box-shadow: none;
-}
-
-.client-report-print-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    width: auto;
-    min-width: 160px;
-    padding: 0.5rem 1.5rem;
 }
 
 @media (max-width: 1200px) {
@@ -1924,11 +1799,11 @@ body.theme-dark .client-details-toggle-btn:focus,
 
     body.client-details-page .analytics-month-labels {
         gap: 0.12rem;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(var(--trend-month-count, 6), minmax(0, 1fr));
     }
 
     body.client-details-page .analytics-month-labels span {
-        font-size: 0.62rem;
+        font-size: clamp(0.5rem, 2.5vw, 0.62rem);
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;

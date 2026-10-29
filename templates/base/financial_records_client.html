@@ -9,7 +9,9 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=1.1">
+<link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261027-2">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261026-quarter-column">
+<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=20261028-edit-period">
 {% endblock %}
 
 {% block skeleton %}
@@ -78,6 +80,7 @@
             <div class="financial-client-heading">
                 <span class="financial-context-label">Client</span>
                 <h2 class="financial-context-title" id="financialClientTitle">Selected Client</h2>
+                <div id="financialClientRegistration" hidden></div>
             </div>
         </div>
         <div class="financial-context-grid">
@@ -120,6 +123,9 @@
                 <i class="bi bi-person-vcard"></i>
                 <span>View Client Details</span>
             </button>
+            <button type="button" id="generateReportActionBtn" class="btn dashboard-action-btn outline financial-preview-report-btn" disabled>
+                <i class="bi bi-printer me-1"></i> Preview Report
+            </button>
             <button type="button" class="btn dashboard-action-btn primary financial-add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
                 <i class="bi bi-plus-lg"></i>
                 <span>Add Entry</span>
@@ -151,7 +157,6 @@
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Record Frequency</th>
                         <th>Amount</th>
                         <th>Transaction Details</th>
                         <th>Actions</th>
@@ -204,8 +209,62 @@
 {% endblock %}
 
 {% block after_layout %}
+    <!-- Formatted Report Modal -->
+    <div class="modal fade client-report-modal" id="formattedReportModal" tabindex="-1" aria-labelledby="formattedReportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="modal-title font-weight-bold" id="formattedReportModalLabel">Client Financial Report Preview</h5>
+                    </div>
+                    <button type="button" class="btn-close client-report-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body client-report-modal-body">
+                    <div class="client-report-year-bar">
+                        <div class="client-report-year-field">
+                            <label for="modalReportYearFilter">Report Year</label>
+                            <select id="modalReportYearFilter" class="form-select" disabled>
+                                <option value="">Loading years...</option>
+                            </select>
+                        </div>
+                        <p id="modalReportYearHint">The preview and printed report will use the selected bookkeeping year.</p>
+                    </div>
+                    <!-- Loading state -->
+                    <div id="modalReportLoading" class="text-center py-5">
+                        <div class="spinner-border text-primary client-report-spinner" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted client-report-loading-text">Generating report preview...</p>
+                    </div>
+                    <!-- Error state -->
+                    <div id="modalReportError" class="text-center py-5" hidden>
+                        <i class="bi bi-exclamation-octagon text-danger client-report-error-icon"></i>
+                        <p class="mt-3 text-danger font-weight-semibold client-report-error-text" id="modalReportErrorMsg"></p>
+                    </div>
+                    <!-- Report content -->
+                    <div class="reports-ledger-wrapper client-report-wrapper" id="modalReportWrapper" hidden>
+                        <div class="reports-ledger-sheet client-report-sheet" id="modalReportSheet">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn dashboard-action-btn outline client-report-modal-btn" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn dashboard-action-btn primary client-report-print-btn" id="modalPrintReportBtn" disabled>
+                        <i class="bi bi-printer"></i> Print / Save PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<datalist id="taxFormRemarksSuggestions">
+    <option value="Paid"></option>
+    <option value="Pending for payment"></option>
+</datalist>
+
 <div class="modal fade financial-manage-modal" id="addEntryModal" tabindex="-1" aria-labelledby="addEntryModalTitle" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content" id="addEntryForm" novalidate>
             <div class="modal-header">
                 <h2 class="modal-title h5" id="addEntryModalTitle">
@@ -219,21 +278,9 @@
                         <label class="form-label financial-form-label" for="addEntryDate">Record Date</label>
                         <input class="form-control financial-form-input" id="addEntryDate" name="date" type="date" required>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label financial-form-label" for="addEntryFrequency">Record Frequency</label>
-                        <select class="form-select financial-form-input" id="addEntryFrequency" name="frequency">
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="annually">Annually</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="addEntryFrequency" name="frequency" value="monthly">
                 </div>
-                <div class="row g-3 mt-2">
-                    <div class="col-12">
-                        <label class="form-label financial-form-label" for="addEntryNotes">Notes</label>
-                        <input class="form-control financial-form-input" id="addEntryNotes" name="notes" type="text" placeholder="Optional">
-                    </div>
-                </div>
+                <input type="hidden" id="addEntryNotes" name="notes" value="">
 
                 <div class="financial-entry-warning" id="addEntryDuplicateWarning" role="status" aria-live="polite" hidden>
                     <span class="financial-entry-warning-icon"><i class="bi bi-exclamation-triangle"></i></span>
@@ -246,7 +293,7 @@
                 <div class="financial-reuse-panel" role="note" aria-label="Reuse last period entry">
                     <div>
                         <h3 class="financial-reuse-title">Previous Entry</h3>
-                        <p class="financial-reuse-copy">Copy the latest entry with this record frequency.</p>
+                        <p class="financial-reuse-copy">Copy the previous entry and review its amounts.</p>
                     </div>
                     <button type="button" class="btn dashboard-action-btn outline financial-reuse-btn" id="useLastPeriodBtn">
                         <i class="bi bi-arrow-repeat"></i>
@@ -254,22 +301,45 @@
                     </button>
                 </div>
 
-                <section class="financial-line-items-section" aria-label="Transaction details">
+                <section class="financial-ready-amounts" aria-labelledby="addStandardAmountsTitle">
+                    <h3 class="financial-line-items-title" id="addStandardAmountsTitle">Sales and Expenses</h3>
+                    <div class="financial-ready-amounts-grid">
+                        <div>
+                            <label class="form-label financial-form-label" for="addSalesAmount">Sales</label>
+                            <div class="financial-ready-money-input">
+                                <span aria-hidden="true">&#8369;</span>
+                                <input type="number" class="form-control financial-form-input" id="addSalesAmount" min="0" step="0.01" inputmode="decimal" placeholder="Not recorded" aria-describedby="addStandardAmountsHint">
+                            </div>
+                            <label class="financial-coverage-label" for="addSalesCoverage">Covers</label>
+                            <select class="form-select financial-form-input financial-coverage-select" id="addSalesCoverage" aria-label="Sales covers"></select>
+                            <p class="financial-coverage-feedback" id="addSalesCoverageFeedback" role="status" hidden></p>
+                        </div>
+                        <div>
+                            <label class="form-label financial-form-label" for="addExpensesAmount">Expenses</label>
+                            <div class="financial-ready-money-input">
+                                <span aria-hidden="true">&#8369;</span>
+                                <input type="number" class="form-control financial-form-input" id="addExpensesAmount" min="0" step="0.01" inputmode="decimal" placeholder="Not recorded" aria-describedby="addStandardAmountsHint">
+                            </div>
+                            <label class="financial-coverage-label" for="addExpensesCoverage">Covers</label>
+                            <select class="form-select financial-form-input financial-coverage-select" id="addExpensesCoverage" aria-label="Expenses covers"></select>
+                            <p class="financial-coverage-feedback" id="addExpensesCoverageFeedback" role="status" hidden></p>
+                        </div>
+                    </div>
+                    <p class="financial-ready-amounts-hint" id="addStandardAmountsHint">Leave blank if not recorded. Enter 0 only for a confirmed zero.</p>
+                </section>
+
+                <section class="financial-line-items-section" aria-label="Tax forms and other details">
                     <div class="financial-line-items-head">
                         <div>
                             <h3 class="financial-line-items-title">
-                                Transaction Details
+                                Tax Forms and Other Details
                             </h3>
+                            <p class="financial-ready-amounts-hint">Choose a form and enter your description.</p>
                         </div>
                         <button type="button" class="btn dashboard-action-btn outline financial-add-line-item-btn" id="addLineItemBtn">
                             <i class="bi bi-plus-lg"></i>
                             <span>Add Detail</span>
                         </button>
-                    </div>
-                    <div class="financial-detail-starters" aria-label="Common transaction detail starters">
-                        <span class="financial-detail-starters-label">Common details</span>
-                        <button type="button" class="financial-detail-starter-btn" data-detail-template="sales" data-template-target="add">Sales</button>
-                        <button type="button" class="financial-detail-starter-btn" data-detail-template="expenses" data-template-target="add">Expenses</button>
                     </div>
                     <div class="table-responsive financial-line-items-table-wrap">
                         <table class="table align-middle financial-line-items-table mb-0">
@@ -277,7 +347,8 @@
                                 <tr>
                                     <th>Type / Code</th>
                                     <th>Description</th>
-                                    <th>Amount</th>
+                                    <th>Tax Due / Amount</th>
+                                    <th>Remarks</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -295,7 +366,7 @@
 </div>
 
 <div class="modal fade financial-manage-modal" id="editEntryModal" tabindex="-1" aria-labelledby="editEntryModalTitle" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content" id="editEntryForm" novalidate>
             <input type="hidden" id="editEntryId" name="entry_id">
             <input type="hidden" id="editEntryRevision" name="expected_revision">
@@ -312,21 +383,18 @@
                         <label class="form-label financial-form-label" for="editEntryDate">Record Date</label>
                         <input class="form-control financial-form-input" id="editEntryDate" name="date" type="date" required>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label financial-form-label" for="editEntryFrequency">Record Frequency</label>
-                        <select class="form-select financial-form-input" id="editEntryFrequency" name="frequency">
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="annually">Annually</option>
-                        </select>
+                    <input type="hidden" id="editEntryFrequency" name="frequency" value="monthly">
+                </div>
+                <div class="financial-entry-warning financial-period-change" id="editEntryPeriodChange" hidden>
+                    <div>
+                        <p id="editEntryPeriodChangeHelp" role="status">This moves the whole entry, including its amounts and tax forms. Use Add Entry to keep records in both months.</p>
+                        <div class="form-check">
+                            <input class="form-check-input" id="editEntryConfirmPeriodChange" type="checkbox" aria-describedby="editEntryPeriodChangeHelp" disabled>
+                            <label class="form-check-label" for="editEntryConfirmPeriodChange" id="editEntryPeriodChangeLabel"></label>
+                        </div>
                     </div>
                 </div>
-                <div class="row g-3 mt-2">
-                    <div class="col-12">
-                        <label class="form-label financial-form-label" for="editEntryNotes">Notes</label>
-                        <input class="form-control financial-form-input" id="editEntryNotes" name="notes" type="text" placeholder="Optional">
-                    </div>
-                </div>
+                <input type="hidden" id="editEntryNotes" name="notes" value="">
 
                 <div class="financial-entry-warning" id="editEntryDuplicateWarning" role="status" aria-live="polite" hidden>
                     <span class="financial-entry-warning-icon"><i class="bi bi-exclamation-triangle"></i></span>
@@ -336,22 +404,45 @@
                     </div>
                 </div>
 
-                <section class="financial-line-items-section" aria-label="Edit transaction details">
+                <section class="financial-ready-amounts" aria-labelledby="editStandardAmountsTitle">
+                    <h3 class="financial-line-items-title" id="editStandardAmountsTitle">Sales and Expenses</h3>
+                    <div class="financial-ready-amounts-grid">
+                        <div>
+                            <label class="form-label financial-form-label" for="editSalesAmount">Sales</label>
+                            <div class="financial-ready-money-input">
+                                <span aria-hidden="true">&#8369;</span>
+                                <input type="number" class="form-control financial-form-input" id="editSalesAmount" min="0" step="0.01" inputmode="decimal" placeholder="Not recorded" aria-describedby="editStandardAmountsHint">
+                            </div>
+                            <label class="financial-coverage-label" for="editSalesCoverage">Covers</label>
+                            <select class="form-select financial-form-input financial-coverage-select" id="editSalesCoverage" aria-label="Sales covers"></select>
+                            <p class="financial-coverage-feedback" id="editSalesCoverageFeedback" role="status" hidden></p>
+                        </div>
+                        <div>
+                            <label class="form-label financial-form-label" for="editExpensesAmount">Expenses</label>
+                            <div class="financial-ready-money-input">
+                                <span aria-hidden="true">&#8369;</span>
+                                <input type="number" class="form-control financial-form-input" id="editExpensesAmount" min="0" step="0.01" inputmode="decimal" placeholder="Not recorded" aria-describedby="editStandardAmountsHint">
+                            </div>
+                            <label class="financial-coverage-label" for="editExpensesCoverage">Covers</label>
+                            <select class="form-select financial-form-input financial-coverage-select" id="editExpensesCoverage" aria-label="Expenses covers"></select>
+                            <p class="financial-coverage-feedback" id="editExpensesCoverageFeedback" role="status" hidden></p>
+                        </div>
+                    </div>
+                    <p class="financial-ready-amounts-hint" id="editStandardAmountsHint">Leave blank if not recorded. Enter 0 only for a confirmed zero.</p>
+                </section>
+
+<section class="financial-line-items-section" aria-label="Edit tax forms and other details">
                     <div class="financial-line-items-head">
                         <div>
                             <h3 class="financial-line-items-title">
-                                Transaction Details
+                                Tax Forms and Other Details
                             </h3>
+                            <p class="financial-ready-amounts-hint">Choose a form and enter your description.</p>
                         </div>
                         <button type="button" class="btn dashboard-action-btn outline financial-add-line-item-btn" id="editAddLineItemBtn">
                             <i class="bi bi-plus-lg"></i>
                             <span>Add Detail</span>
                         </button>
-                    </div>
-                    <div class="financial-detail-starters" aria-label="Common transaction detail starters">
-                        <span class="financial-detail-starters-label">Common details</span>
-                        <button type="button" class="financial-detail-starter-btn" data-detail-template="sales" data-template-target="edit">Sales</button>
-                        <button type="button" class="financial-detail-starter-btn" data-detail-template="expenses" data-template-target="edit">Expenses</button>
                     </div>
                     <div class="table-responsive financial-line-items-table-wrap">
                         <table class="table align-middle financial-line-items-table mb-0">
@@ -359,7 +450,8 @@
                                 <tr>
                                     <th>Type / Code</th>
                                     <th>Description</th>
-                                    <th>Amount</th>
+                                    <th>Tax Due / Amount</th>
+                                    <th>Remarks</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -399,11 +491,11 @@
 
 {% endblock %}
 
-{% block toast_container %}
-<div class="toast-container position-fixed bottom-0 end-0 p-3 safebooks-toast-container" id="uiToastContainer" aria-live="polite" aria-atomic="true"></div>
-{% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/reports_shared.js' %}?v=20261026-quarter-spacing"></script>
+<script src="{% static 'js/financial_coverage.js' %}?v=20261028-period-choices"></script>
+<script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -507,18 +599,6 @@
             { code: "BIR Form 2553", desc: "Percentage Tax Payable Under Special Laws" }
         ];
 
-        const COMMON_DETAIL_TEMPLATES = {
-            sales: {
-                type_code: "SALES",
-                description: "",
-                amount: "",
-            },
-            expenses: {
-                type_code: "EXPENSES",
-                description: "",
-                amount: "",
-            },
-        };
 
         const body = document.body;
         const sidebarToggle = document.getElementById("sidebarToggle");
@@ -579,6 +659,7 @@
         const financialClientTin = document.getElementById("financialClientTin");
         const financialClientTradeName = document.getElementById("financialClientTradeName");
         const openClientAnalyticsButton = document.getElementById("openClientAnalyticsButton");
+        const financialPreviewReportButton = document.getElementById("generateReportActionBtn");
         const financialAnalyticsNavLink = document.getElementById("financialAnalyticsNavLink");
         const financialAddEntryButton = document.querySelector(".financial-add-entry-btn");
         const uiToastContainer = document.getElementById("uiToastContainer");
@@ -612,6 +693,7 @@
         const editEntryModal = editEntryModalElement && window.bootstrap ? new window.bootstrap.Modal(editEntryModalElement) : null;
         const deleteEntryModal = deleteEntryModalElement && window.bootstrap ? new window.bootstrap.Modal(deleteEntryModalElement) : null;
 
+        const REPORTS_PRINT_LAYOUT_API_URL = "{% url 'api_reports_print_layout' %}";
         const CLIENTS_API_URL = "{% url 'api_clients' %}";
         const FINANCIAL_RECORDS_CLIENT_TEMPLATE_URL = "{% url 'api_financial_records' client_id=999999 %}";
         const FINANCIAL_RECORDS_DETAIL_TEMPLATE_URL = "{% url 'api_financial_record_detail' client_id=999999 record_id=888888 %}";
@@ -718,6 +800,10 @@
             }
             if (financialAddEntryButton) {
                 financialAddEntryButton.disabled = isRecordsLoading || !hasValidClientId();
+            }
+
+            if (financialPreviewReportButton) {
+                financialPreviewReportButton.disabled = isRecordsLoading || !hasValidClientId();
             }
 
             setReuseButtonState(isReuseLoading);
@@ -831,6 +917,13 @@
             return getEntryLineItems(entry).reduce((total, lineItem) => total + parseAmount(lineItem.amount), 0);
         };
 
+        const entryCoverageLabel = (entry) => {
+            const amounts = (entry?.line_items || []).filter((line) => getReadyAmountKey(line.type_code));
+            if (!amounts.length) return "";
+            const frequencies = new Set(amounts.map((line) => line.coverage_frequency || entry.frequency || "monthly"));
+            return frequencies.size > 1 ? "Mixed coverage" : formatFrequencyLabel([...frequencies][0] || entry?.frequency);
+        };
+
         const getPayloadTotal = (payload) => {
             const items = payload && Array.isArray(payload.line_items) ? payload.line_items : [];
             return items.reduce((total, item) => total + parseAmount(item.amount), 0);
@@ -852,7 +945,7 @@
         const showFinancialSaveSummary = (mode, payload, result = {}) => {
             if (!financialSaveSummary || !financialSaveSummaryTitle || !financialSaveSummaryMeta) return;
 
-            const frequency = formatFrequencyLabel(payload && payload.frequency);
+            const frequency = entryCoverageLabel(payload);
             const lineItems = payload && Array.isArray(payload.line_items) ? payload.line_items : [];
             const itemCountLabel = `${lineItems.length} ${lineItems.length === 1 ? "transaction detail" : "transaction details"}`;
             const totalLabel = formatCurrency(getPayloadTotal(payload));
@@ -861,7 +954,7 @@
 
             financialSaveSummaryTitle.textContent = mode === "edit" ? "Entry updated" : "Entry saved";
             financialSaveSummaryMeta.textContent = [
-                `${dateLabel} \u2022 ${frequency} \u2022 ${itemCountLabel} \u2022 ${totalLabel}`,
+                [dateLabel, frequency, itemCountLabel, totalLabel].filter(Boolean).join(" \u2022 "),
                 notificationLabel,
             ].filter(Boolean).join(" ");
             financialSaveSummary.hidden = false;
@@ -924,15 +1017,42 @@
             rows.forEach((row) => {
                 const removeButton = row.querySelector("[data-line-action='remove']");
                 if (removeButton) {
-                    removeButton.disabled = rows.length <= 1;
+                    removeButton.disabled = rows.length <= 1 && (!getReadyAmountsMode(tbodyElement) || isBlankLineItemRow(row));
                 }
             });
+        };
+
+        const WORKSHEET_AMOUNT_FIELDS = [
+            ["mict", "MICT"],
+            ["cogs_cos", "COGS / COS"],
+            ["income_payments_2307", "Income payments (2307)"],
+            ["tax_withheld", "Tax withheld"],
+        ];
+        const hasWorksheetAmounts = (lineItem) => WORKSHEET_AMOUNT_FIELDS.some(([name]) => lineItem[name] !== null && lineItem[name] !== undefined && String(lineItem[name]).trim() !== "");
+        const worksheetRowFor = (row) => row.nextElementSibling && row.nextElementSibling.classList.contains("financial-worksheet-row") ? row.nextElementSibling : null;
+        const collectWorksheetAmounts = (row) => {
+            const worksheetRow = worksheetRowFor(row);
+            return Object.fromEntries(WORKSHEET_AMOUNT_FIELDS.map(([name]) => {
+                const input = worksheetRow && worksheetRow.querySelector(`[data-worksheet-field="${name}"]`);
+                return [name, input && input.value.trim() !== "" ? input.value.trim() : null];
+            }));
+        };
+
+        const suggestLineDescription = (input, suggestion) => {
+            // Only replace an empty field or our own untouched suggestion, never a saved/user label.
+            if (!input.value.trim() || input.value === input.dataset.automaticDescription) {
+                input.value = suggestion;
+                input.dataset.automaticDescription = suggestion;
+            }
+            input.readOnly = false;
         };
 
         const createLineItemRow = (lineItem = {}) => {
             const row = document.createElement("tr");
             row.className = "financial-line-item-row is-entering";
-            row.dataset.lineItemId = String(lineItem.id || ++lineItemCounter);
+            row.dataset.lineItemId = String(lineItem.id || `new-${++lineItemCounter}`);
+            row.dataset.coverageFrequency = lineItem.coverage_frequency || "";
+            row.dataset.remarksIsLegacy = lineItem.id && lineItem.remarks == null ? "true" : "false";
 
             const safeDescription = escapeHtml(lineItem.description || "");
             const safeAmount = Number.isFinite(Number.parseFloat(lineItem.amount)) ? escapeHtml(String(lineItem.amount)) : "";
@@ -956,12 +1076,19 @@
                     </div>
                 </td>
                 <td data-label="Description">
-                    <input type="text" class="form-control financial-form-input financial-line-description-input" aria-label="Transaction description" placeholder="Description" value="${safeDescription}" required>
+                    <input type="text" class="form-control financial-form-input financial-line-description-input" aria-label="Transaction description" placeholder="Description" value="${safeDescription}" maxlength="255" required>
                 </td>
-                <td data-label="Amount">
+                <td data-label="Tax Due / Amount">
                     <div class="financial-line-amount-wrap">
                         <input type="number" class="form-control financial-form-input financial-line-amount-input" aria-label="Transaction amount" min="0" step="0.01" placeholder="0.00" value="${safeAmount}" required>
                     </div>
+                    <label class="financial-coverage-label financial-detail-coverage" hidden>Covers
+                        <select class="form-select financial-form-input financial-line-coverage-select" aria-label="Detail amount covers"></select>
+                        <span class="financial-coverage-feedback" role="status" hidden></span>
+                    </label>
+                </td>
+                <td data-label="Remarks">
+                    <input type="text" class="form-control financial-form-input financial-line-remarks-input" aria-label="Tax form remarks" list="taxFormRemarksSuggestions" placeholder="Paid or Pending for payment" value="${escapeHtml(lineItem.remarks || "")}" maxlength="255">
                 </td>
                 <td>
                     <button type="button" class="btn financial-line-remove-btn" data-line-action="remove" aria-label="Remove transaction detail">
@@ -975,6 +1102,14 @@
             const customCodeInput = row.querySelector(".financial-line-code-custom-input");
             const descriptionInput = row.querySelector(".financial-line-description-input");
 
+            const markFormRemarksEdited = () => {
+                // A deliberately cleared remark is different from an unchanged legacy entry remark.
+                row.dataset.remarksIsLegacy = "false";
+            };
+            const remarksInput = row.querySelector(".financial-line-remarks-input");
+            remarksInput.addEventListener("input", markFormRemarksEdited);
+            remarksInput.addEventListener("change", markFormRemarksEdited);
+
             const rawTypeCode = (lineItem.type_code || lineItem.typeCode || "").trim();
             if (rawTypeCode) {
                 const isStandard = BIR_FORMS_LIST.some(form => form.code.toLowerCase() === rawTypeCode.toLowerCase());
@@ -984,7 +1119,7 @@
                     codeSelect.hidden = false;
                     customWrapper.hidden = true;
                     customCodeInput.required = false;
-                    descriptionInput.readOnly = true;
+                    descriptionInput.readOnly = false;
                 } else {
                     codeSelect.value = "Others";
                     codeSelect.hidden = true;
@@ -1008,26 +1143,27 @@
                     customWrapper.hidden = false;
                     customCodeInput.required = true;
                     customCodeInput.value = "";
-                    descriptionInput.value = "";
-                    descriptionInput.readOnly = false;
+                    suggestLineDescription(descriptionInput, "");
                     customCodeInput.focus();
                 } else if (selectedValue) {
                     codeSelect.hidden = false;
                     customWrapper.hidden = true;
                     customCodeInput.required = false;
                     customCodeInput.value = "";
-                    const matchedForm = BIR_FORMS_LIST.find(form => form.code === selectedValue);
-                    descriptionInput.value = matchedForm ? matchedForm.desc : "";
-                    descriptionInput.readOnly = true;
+                    // Tax descriptions are entered by the bookkeeper, never copied from the form title.
+                    suggestLineDescription(descriptionInput, "");
                 } else {
                     codeSelect.hidden = false;
                     customWrapper.hidden = true;
                     customCodeInput.required = false;
                     customCodeInput.value = "";
-                    descriptionInput.value = "";
-                    descriptionInput.readOnly = false;
+                    suggestLineDescription(descriptionInput, "");
                 }
 
+            });
+
+            descriptionInput.addEventListener("input", () => {
+                delete descriptionInput.dataset.automaticDescription;
             });
 
             customCodeInput.addEventListener("input", () => {
@@ -1053,9 +1189,139 @@
                 return;
             }
             const row = createLineItemRow(lineItem);
+            row.dataset.sourceOrder = String(lineItem._sourceOrder ?? "");
             tbodyElement.appendChild(row);
+            const rowCoverage = row.querySelector(".financial-line-coverage-select");
+            rowCoverage.dataset.savedFrequency = getReadyAmountsMode(tbodyElement) === "edit" && lineItem.id ? lineItem.coverage_frequency || "" : "";
+            rowCoverage.dataset.legacyFrequency = lineItem.id && lineItem.coverage_frequency == null ? currentEntryFrequency(getReadyAmountsMode(tbodyElement)) : "";
+            refreshCoverageSelect(rowCoverage, lineItem.coverage_frequency || "", getReadyAmountsMode(tbodyElement));
+            const inheritedRemarks = document.getElementById(`${getReadyAmountsMode(tbodyElement)}EntryNotes`)?.value || "";
+            if (row.dataset.remarksIsLegacy === "true" && inheritedRemarks && isListedTaxForm(lineItem.type_code)) {
+                // Display legacy fallback on its form, while leaving its saved null untouched.
+                row.querySelector(".financial-line-remarks-input").value = inheritedRemarks;
+                row.dataset.legacyRemarkValue = inheritedRemarks.trim();
+            }
+            const worksheetRow = document.createElement("tr");
+            worksheetRow.className = "financial-worksheet-row";
+            worksheetRow.innerHTML = `<td colspan="5"><details class="financial-worksheet-fields" ${hasWorksheetAmounts(lineItem) ? "open" : ""}>
+                <summary>Other worksheet amounts <span>Enter when applicable</span></summary>
+                <p class="financial-ready-amounts-hint">Supporting information only. These amounts are not added to totals.</p>
+                <div class="financial-worksheet-grid">${WORKSHEET_AMOUNT_FIELDS.map(([name, label]) => `
+                    <label>${label}<input type="number" class="form-control financial-form-input" data-worksheet-field="${name}" inputmode="decimal" min="0" step="0.01" placeholder="Not recorded" value="${escapeHtml(lineItem[name] == null ? "" : String(lineItem[name]))}"></label>
+                `).join("")}</div>
+            </details></td>`;
+            tbodyElement.appendChild(worksheetRow);
+            if (getReadyAmountsMode(tbodyElement)) {
+                row.querySelector("option[value='Others']").textContent = "Other (custom type)";
+                row.querySelector(".financial-line-code-custom-input").placeholder = "Custom type or code";
+                syncLineItemRequirements(row);
+            }
             updateLineItemRemoveButtons(tbodyElement);
+            return row;
         };
+
+        const getReadyAmountKey = (typeCode) => {
+            const code = String(typeCode || "").trim().toLowerCase();
+            return code === "sales" || code === "expenses" ? code : "";
+        };
+
+        const isListedTaxForm = (code) => {
+            const key = (value) => String(value || "").trim().toLowerCase().replace(/^bir\s*form\s*/, "");
+            return Boolean(code) && BIR_FORMS_LIST.some((form) => key(form.code) === key(code));
+        };
+
+        const getReadyAmountsMode = (body) => body === addLineItemsBody ? "add" : body === editLineItemsBody ? "edit" : "";
+        const getReadyAmountInput = (key, mode = "add") => document.getElementById(`${mode}${key === "sales" ? "Sales" : "Expenses"}Amount`);
+
+        const getReadyCoverageInput = (key, mode = "add") => document.getElementById(`${mode}${key === "sales" ? "Sales" : "Expenses"}Coverage`);
+        const currentEntryFrequency = (mode) => document.getElementById(`${mode}EntryFrequency`)?.value || "monthly";
+        const updateCoverageFeedback = (select, date, hasAmount, feedback) => {
+            const message = hasAmount ? window.SafeBooksCoverage.validate(select.value || null, date) : "";
+            select.setCustomValidity(message);
+            select.setAttribute("aria-invalid", message ? "true" : "false");
+            if (feedback) {
+                feedback.textContent = message;
+                feedback.hidden = !message;
+                if (feedback.id) select.setAttribute("aria-describedby", feedback.id);
+            }
+        };
+        const refreshCoverageSelect = (select, value, mode) => {
+            if (!select) return;
+            const date = document.getElementById(`${mode}EntryDate`)?.value || "";
+            select.innerHTML = window.SafeBooksCoverage.options(date, select.dataset.legacyFrequency || "", escapeHtml, select.dataset.savedFrequency || "", value);
+            select.value = value;
+            const key = select === getReadyCoverageInput("sales", mode) ? "sales" : select === getReadyCoverageInput("expenses", mode) ? "expenses" : "";
+            const row = key ? null : select.closest(".financial-line-item-row");
+            const amount = key ? getReadyAmountInput(key, mode)?.value : row?.querySelector(".financial-line-amount-input")?.value;
+            const feedback = key ? document.getElementById(`${select.id}Feedback`) : row?.querySelector(".financial-coverage-feedback");
+            updateCoverageFeedback(select, date, Boolean(String(amount || "").trim()), feedback);
+        };
+        const refreshCoverageChoices = (mode) => {
+            ["sales", "expenses"].forEach((key) => {
+                const input = getReadyAmountInput(key, mode);
+                const select = getReadyCoverageInput(key, mode);
+                refreshCoverageSelect(select, select.value, mode);
+                select.required = input.value.trim() !== "" && !select.dataset.legacyFrequency;
+            });
+            const body = mode === "edit" ? editLineItemsBody : addLineItemsBody;
+            getLineItemRows(body).forEach((row) => {
+                const select = row.querySelector(".financial-line-coverage-select");
+                refreshCoverageSelect(select, select.value, mode);
+                syncLineItemRequirements(row);
+            });
+        };
+
+        const resetReadyAddAmounts = (lineItems, mode = "add") => {
+            const assigned = new Set();
+            ["sales", "expenses"].forEach((key) => {
+                const input = getReadyAmountInput(key, mode);
+                input.value = "";
+                input.dataset.lineItemId = `new-${++lineItemCounter}`;
+                input.dataset.typeCode = key.toUpperCase();
+                input.dataset.description = key === "sales" ? "Sales" : "Expenses";
+                input.dataset.sourceOrder = "";
+                input.dataset.lineRemarks = "";
+                input.dataset.remarksIsLegacy = "true";
+                const coverage = getReadyCoverageInput(key, mode);
+                coverage.dataset.legacyFrequency = "";
+                coverage.dataset.savedFrequency = "";
+                refreshCoverageSelect(coverage, "", mode);
+            });
+            return lineItems.filter((lineItem) => {
+                const key = getReadyAmountKey(lineItem.type_code || lineItem.typeCode);
+                if (!key || assigned.has(key) || hasWorksheetAmounts(lineItem)) return true;
+                const input = getReadyAmountInput(key, mode);
+                input.value = String(lineItem.amount ?? "");
+                input.dataset.lineItemId = String(lineItem.id || input.dataset.lineItemId);
+                input.dataset.typeCode = String(lineItem.type_code || lineItem.typeCode);
+                input.dataset.description = String(lineItem.description || input.dataset.description);
+                input.dataset.sourceOrder = String(lineItem._sourceOrder ?? "");
+                input.dataset.lineRemarks = String(lineItem.remarks ?? "");
+                input.dataset.remarksIsLegacy = lineItem.remarks == null ? "true" : "false";
+                const coverage = getReadyCoverageInput(key, mode);
+                coverage.dataset.savedFrequency = mode === "edit" && lineItem.id ? lineItem.coverage_frequency || "" : "";
+                coverage.dataset.legacyFrequency = lineItem.id && lineItem.coverage_frequency == null ? currentEntryFrequency(mode) : "";
+                refreshCoverageSelect(coverage, lineItem.coverage_frequency || "", mode);
+                assigned.add(key);
+                return false;
+            });
+        };
+
+        const collectReadyAddAmounts = (mode = "add") => ["sales", "expenses"].flatMap((key) => {
+            const input = getReadyAmountInput(key, mode);
+            const amount = input.value.trim();
+            if (amount === "") return [];
+            return [{
+                client_line_id: input.dataset.lineItemId,
+                type_code: input.dataset.typeCode,
+                description: input.dataset.description,
+                amount,
+                coverage_frequency: getReadyCoverageInput(key, mode).value || null,
+                remarks: input.dataset.remarksIsLegacy === "true" ? null : input.dataset.lineRemarks,
+                ...Object.fromEntries(WORKSHEET_AMOUNT_FIELDS.map(([name]) => [name, null])),
+                _sourceOrder: input.dataset.sourceOrder,
+            }];
+        });
 
         const resetLineItemsBody = (tbodyElement, lineItems = []) => {
             if (!tbodyElement) {
@@ -1063,7 +1329,10 @@
             }
 
             tbodyElement.innerHTML = "";
-            const itemsToRender = Array.isArray(lineItems) && lineItems.length ? lineItems : [{}];
+            const sourceItems = (Array.isArray(lineItems) ? lineItems : []).map((line, index) => ({ ...line, _sourceOrder: index }));
+            const mode = getReadyAmountsMode(tbodyElement);
+            const detailItems = mode ? resetReadyAddAmounts(sourceItems, mode) : sourceItems;
+            const itemsToRender = detailItems.length ? detailItems : [{}];
             itemsToRender.forEach((lineItem) => addLineItemRow(tbodyElement, lineItem));
         };
 
@@ -1076,42 +1345,42 @@
             const customCodeInput = rowElement.querySelector(".financial-line-code-custom-input");
             const descriptionInput = rowElement.querySelector(".financial-line-description-input");
             const amountInput = rowElement.querySelector(".financial-line-amount-input");
+            const remarksInput = rowElement.querySelector(".financial-line-remarks-input");
             return !String(codeSelect && codeSelect.value ? codeSelect.value : "").trim()
                 && !String(customCodeInput && customCodeInput.value ? customCodeInput.value : "").trim()
                 && !String(descriptionInput && descriptionInput.value ? descriptionInput.value : "").trim()
-                && !String(amountInput && amountInput.value ? amountInput.value : "").trim();
+                && !String(amountInput && amountInput.value ? amountInput.value : "").trim()
+                && !String(remarksInput && remarksInput.value ? remarksInput.value : "").trim()
+                && Object.values(collectWorksheetAmounts(rowElement)).every((value) => value === null);
         };
 
-        const addCommonDetailTemplate = (tbodyElement, templateKey) => {
-            if (!tbodyElement) {
-                return;
+        const syncLineItemRequirements = (row) => {
+            if (!row) return;
+            const codeSelect = row.querySelector(".financial-line-code-select");
+            const customInput = row.querySelector(".financial-line-code-custom-input");
+            const descriptionInput = row.querySelector(".financial-line-description-input");
+            const amountInput = row.querySelector(".financial-line-amount-input");
+            const code = codeSelect.value === "Others" ? customInput.value : codeSelect.value;
+            const isTaxForm = isListedTaxForm(code);
+            // Keep saved non-form descriptions internally; only form descriptions are editable.
+            row.classList.toggle("financial-non-tax-detail-row", !isTaxForm);
+            if (!isTaxForm && code) suggestLineDescription(descriptionInput, code);
+            const coverageSelect = row.querySelector(".financial-line-coverage-select");
+            if (coverageSelect) {
+                const isReadyCategory = Boolean(getReadyAmountKey(code));
+                coverageSelect.closest(".financial-detail-coverage").hidden = !isReadyCategory;
+                coverageSelect.required = isReadyCategory && !coverageSelect.dataset.legacyFrequency;
+                if (!isReadyCategory) {
+                    coverageSelect.value = "";
+                    row.dataset.coverageFrequency = "";
+                }
             }
-
-            const template = COMMON_DETAIL_TEMPLATES[templateKey];
-            if (!template) {
-                return;
-            }
-
-            const rows = getLineItemRows(tbodyElement);
-            const shouldReplaceBlankRow = rows.length === 1 && isBlankLineItemRow(rows[0]);
-            if (shouldReplaceBlankRow) {
-                resetLineItemsBody(tbodyElement, [template]);
-            } else {
-                addLineItemRow(tbodyElement, template);
-            }
-
-            const insertedRows = getLineItemRows(tbodyElement);
-            const latestRow = insertedRows[insertedRows.length - 1];
-            const amountInput = latestRow ? latestRow.querySelector(".financial-line-amount-input") : null;
-            if (amountInput && typeof amountInput.focus === "function") {
-                amountInput.focus();
-            }
-
-            if (tbodyElement === editLineItemsBody) {
-                editEntryFormDirty = true;
-            } else {
-                addEntryFormDirty = true;
-            }
+            const hasDetail = !isBlankLineItemRow(row);
+            codeSelect.required = hasDetail;
+            customInput.required = hasDetail && codeSelect.value === "Others";
+            descriptionInput.required = hasDetail && isTaxForm;
+            amountInput.required = hasDetail;
+            if (row.parentElement) updateLineItemRemoveButtons(row.parentElement);
         };
 
         const removeLineItemRow = (tbodyElement, rowElement) => {
@@ -1120,23 +1389,32 @@
             }
 
             const rows = getLineItemRows(tbodyElement);
-            if (rows.length <= 1) {
+            if (rows.length <= 1 && !getReadyAmountsMode(tbodyElement)) {
                 return;
             }
 
+            if (tbodyElement === editLineItemsBody) editEntryFormDirty = true;
+            if (tbodyElement === addLineItemsBody) addEntryFormDirty = true;
             rowElement.classList.add("is-removing");
+            const removeButton = rowElement.querySelector("[data-line-action='remove']");
+            if (removeButton) removeButton.disabled = true;
+            const worksheetRow = worksheetRowFor(rowElement);
             window.setTimeout(() => {
+                if (worksheetRow) worksheetRow.remove();
                 rowElement.remove();
+                if (!getLineItemRows(tbodyElement).length) addLineItemRow(tbodyElement);
                 updateLineItemRemoveButtons(tbodyElement);
             }, lineItemAnimationMs);
         };
 
-                const collectLineItems = (tbodyElement) => {
+        const collectLineItems = (tbodyElement) => {
             if (!tbodyElement) {
                 return [];
             }
 
-            return getLineItemRows(tbodyElement).map((row) => {
+            const mode = getReadyAmountsMode(tbodyElement);
+            const detailRows = getLineItemRows(tbodyElement).filter((row) => !mode || !isBlankLineItemRow(row));
+            const details = detailRows.map((row) => {
                 const codeSelect = row.querySelector(".financial-line-code-select");
                 const customCodeInput = row.querySelector(".financial-line-code-custom-input");
                 let typeCode = "";
@@ -1149,14 +1427,28 @@
                 }
                 const descriptionInput = row.querySelector(".financial-line-description-input");
                 const amountInput = row.querySelector(".financial-line-amount-input");
+                const remarksValue = (row.querySelector(".financial-line-remarks-input")?.value || "").trim();
 
                 return {
                     client_line_id: row.dataset.lineItemId,
                     type_code: typeCode,
                     description: descriptionInput ? descriptionInput.value.trim() : "",
+                    // Read the actual value even if autofill or a suggestion skipped the input event.
+                    remarks: row.dataset.remarksIsLegacy === "true" && remarksValue === (row.dataset.legacyRemarkValue || "")
+                        ? null : remarksValue || "",
                     amount: amountInput ? amountInput.value.trim() : "",
+                    coverage_frequency: row.querySelector(".financial-line-coverage-select")?.value || row.dataset.coverageFrequency || null,
+                    ...collectWorksheetAmounts(row),
+                    _sourceOrder: row.dataset.sourceOrder,
                 };
             });
+            const collected = mode ? [...collectReadyAddAmounts(mode), ...details] : details;
+            if (mode === "edit") {
+                // Ready fields must not reorder saved lines or merge duplicate entries.
+                const order = (line) => line._sourceOrder == null || line._sourceOrder === "" ? Infinity : Number(line._sourceOrder);
+                collected.sort((left, right) => order(left) - order(right));
+            }
+            return collected.map(({ _sourceOrder, ...line }) => line);
         };
 
         const buildBreakdownByType = (entries) => {
@@ -1224,11 +1516,15 @@
                 .map((lineItem) => {
                     const safeTypeCode = escapeHtml(toDisplayText(lineItem.type_code));
                     const safeDescription = escapeHtml(toDisplayText(lineItem.description));
+                    const formRemarks = lineItem.remarks == null && isListedTaxForm(lineItem.type_code) ? entry.notes : lineItem.remarks;
+                    const worksheetValues = WORKSHEET_AMOUNT_FIELDS
+                        .filter(([name]) => lineItem[name] !== null && lineItem[name] !== undefined && String(lineItem[name]).trim() !== "")
+                        .map(([name, label]) => `<span>${label}: <strong>${formatCurrency(parseAmount(lineItem[name]))}</strong></span>`).join("");
                     return `
                         <tr>
                             <td data-label="Type / Code">${safeTypeCode}</td>
-                            <td data-label="Description">${safeDescription}</td>
-                            <td data-label="Amount">${formatCurrency(parseAmount(lineItem.amount))}</td>
+                            <td data-label="Description">${safeDescription}${formRemarks ? `<div class="financial-worksheet-values">Remarks: ${escapeHtml(formRemarks)}</div>` : ""}${worksheetValues ? `<div class="financial-worksheet-values">${worksheetValues}</div>` : ""}</td>
+                            <td data-label="Amount">${formatCurrency(parseAmount(lineItem.amount))}${getReadyAmountKey(lineItem.type_code) ? `<div class="financial-worksheet-values">${escapeHtml(window.SafeBooksCoverage.label(lineItem.coverage_frequency || entry.frequency || "monthly", entry.date, lineItem.coverage_frequency == null))}</div>` : ""}</td>
                         </tr>
                     `;
                 })
@@ -1287,6 +1583,11 @@
             if (financialClientTradeName) {
                 financialClientTradeName.textContent = displayTradeName;
             }
+            const registration = document.getElementById("financialClientRegistration");
+            if (registration) {
+                registration.hidden = clientContext.taxRegistration == null;
+                registration.innerHTML = clientContext.taxRegistration == null ? "" : window.SafeBooksClientRegistration.badge(clientContext.taxRegistration);
+            }
             syncAnalyticsLinks();
         };
 
@@ -1296,7 +1597,7 @@
             if (financialTableBody) {
                 financialTableBody.setAttribute("aria-busy", String(isRecordsLoading));
                 if (isRecordsLoading) {
-                    financialTableBody.innerHTML = `<tr class="financial-loading-row"><td colspan="5" class="text-center py-4">${escapeHtml(message)}</td></tr>`;
+                    financialTableBody.innerHTML = `<tr class="financial-loading-row"><td colspan="4" class="text-center py-4">${escapeHtml(message)}</td></tr>`;
                 }
             }
 
@@ -1322,6 +1623,9 @@
 
             if (financialAddEntryButton) {
                 financialAddEntryButton.disabled = isRecordsLoading || !hasValidClientId();
+            }
+            if (financialPreviewReportButton) {
+                financialPreviewReportButton.disabled = isRecordsLoading || !hasValidClientId();
             }
         };
 
@@ -1475,8 +1779,6 @@
                 const lineItemCount = getEntryLineItems(entry).length;
                 const isExpanded = expandedEntryIds.has(entry.id);
                 const safeDate = escapeHtml(toDisplayText(entry.date));
-                const safeFrequency = escapeHtml(formatFrequencyLabel(entry.frequency));
-                const safeNotes = escapeHtml(toDisplayText(entry.notes));
 
                 row.className = "financial-entry-row";
                 row.dataset.entryId = String(entry.id);
@@ -1489,7 +1791,6 @@
                     <td data-label="Date">
                         <div>${safeDate}</div>
                     </td>
-                    <td data-label="Frequency">${safeFrequency}</td>
                     <td data-label="Amount"><strong class="financial-entry-total">${formatCurrency(totalAmount)}</strong></td>
                     <td data-label="Transactions"><span class="financial-line-item-count">${lineItemCount} ${lineItemCount === 1 ? "Detail" : "Details"}</span></td>
                     <td class="financial-entry-actions-cell">
@@ -1505,15 +1806,13 @@
                 detailsRow.id = `entryDetails-${entry.id}`;
                 detailsRow.setAttribute("aria-hidden", String(!isExpanded));
                 detailsRow.innerHTML = `
-                    <td colspan="5">
+                    <td colspan="4">
                         <div class="financial-entry-details-shell${isExpanded ? " is-open" : ""}">
                             <div class="financial-entry-details-head">
                                 <h3>Transaction Details</h3>
                                 <span class="dashboard-tag">${lineItemCount}</span>
                             </div>
                             ${renderEntryDetailsTable(entry)}
-                            <p class="financial-entry-notes"><span>Notes:</span> ${safeNotes}</p>
-                            <p class="financial-entry-notes"><span>Record Frequency:</span> ${safeFrequency}</p>
                         </div>
                     </td>
                 `;
@@ -1542,6 +1841,7 @@
         };
 
         const populateEditForm = (entry) => {
+            resetEditPeriodChange();
             document.getElementById("editEntryRevision").value = String(entry.revision || "");
             document.getElementById("editEntryStatus").hidden = true;
             const editEntryId = document.getElementById("editEntryId");
@@ -1554,6 +1854,7 @@
             }
             if (editEntryDate) {
                 editEntryDate.value = entry.date || "";
+                editEntryDate.dataset.originalDate = entry.date || "";
             }
             if (editEntryNotes) {
                 editEntryNotes.value = entry.notes || "";
@@ -1563,7 +1864,40 @@
             }
 
             resetLineItemsBody(editLineItemsBody, getEntryLineItems(entry));
+            refreshCoverageChoices("edit");
+            syncEditPeriodChange();
+            const modalBody = editEntryModalElement && editEntryModalElement.querySelector(".modal-body");
+            if (modalBody) modalBody.scrollTop = 0;
             updateDuplicateEntryWarning("edit");
+        };
+
+        const resetEditPeriodChange = () => {
+            const confirmation = document.getElementById("editEntryConfirmPeriodChange");
+            confirmation.checked = false;
+            confirmation.required = false;
+            confirmation.disabled = true;
+            confirmation.dataset.confirmationKey = "";
+            document.getElementById("editEntryPeriodChange").hidden = true;
+            delete document.getElementById("editEntryDate").dataset.originalDate;
+        };
+
+        const syncEditPeriodChange = () => {
+            const dateInput = document.getElementById("editEntryDate");
+            const originalDate = dateInput.dataset.originalDate || "";
+            const original = parseIsoDateParts(originalDate);
+            const target = parseIsoDateParts(dateInput.value);
+            const isMove = Boolean(original && target && (original.month !== target.month || original.year !== target.year));
+            const confirmation = document.getElementById("editEntryConfirmPeriodChange");
+            const confirmationKey = isMove ? `${originalDate.slice(0, 7)}:${dateInput.value.slice(0, 7)}` : "";
+            if (confirmation.dataset.confirmationKey !== confirmationKey) confirmation.checked = false;
+            confirmation.dataset.confirmationKey = confirmationKey;
+            confirmation.disabled = !isMove;
+            confirmation.required = isMove;
+            document.getElementById("editEntryPeriodChange").hidden = !isMove;
+            if (isMove) {
+                document.getElementById("editEntryPeriodChangeLabel").textContent = `Move this entry from ${getSourcePeriodLabel(originalDate)} to ${getSourcePeriodLabel(dateInput.value)}`;
+            }
+            return isMove;
         };
 
         const buildPayloadFromForm = (formType) => {
@@ -1642,10 +1976,10 @@
                     return false;
                 }
 
-                const entryFrequency = normalizeFrequencyValue(entry && entry.frequency);
+                const entryFrequencies = new Set(getEntryLineItems(entry).map((line) => line.coverage_frequency || entry.frequency || "monthly"));
                 return entryDate.year === parsedDate.year
                     && entryDate.month === parsedDate.month
-                    && entryFrequency === normalizedFrequency;
+                    && entryFrequencies.has(normalizedFrequency);
             }) || null;
         };
 
@@ -1663,11 +1997,9 @@
             const excludedEntryId = isEdit
                 ? Number.parseInt(editEntryIdInput && editEntryIdInput.value ? editEntryIdInput.value : "", 10)
                 : null;
-            const duplicateRecord = findRecordForSamePeriodAndFrequency(
-                dateInput.value,
-                frequencyInput.value,
-                excludedEntryId
-            );
+            const currentLines = collectLineItems(isEdit ? editLineItemsBody : addLineItemsBody);
+            const coverages = new Set(currentLines.map((line) => line.coverage_frequency || frequencyInput.value));
+            const duplicateRecord = [...coverages].some((coverage) => findRecordForSamePeriodAndFrequency(dateInput.value, coverage, excludedEntryId));
 
             if (!duplicateRecord) {
                 warningElement.hidden = true;
@@ -1677,7 +2009,7 @@
             const parsedDate = parseIsoDateParts(dateInput.value);
             const monthLabel = parsedDate ? (MONTH_NAMES[parsedDate.month] || "this period") : "this period";
             const periodLabel = parsedDate ? `${monthLabel} ${parsedDate.year}` : "this period";
-            warningTextElement.textContent = `A ${formatFrequencyLabel(frequencyInput.value).toLowerCase()} record already exists for ${periodLabel}. Save only if this is intentional.`;
+            warningTextElement.textContent = `A record with matching coverage already exists for ${periodLabel}. Save only if this is intentional.`;
             warningElement.hidden = false;
         };
 
@@ -1763,7 +2095,7 @@
 
         const updateReusePanelForFrequency = (frequencyValue) => {
             const normalized = normalizeFrequencyValue(frequencyValue);
-            const hasPrior = activePriorFrequencies.has(normalized);
+            const hasPrior = activePriorFrequencies.size > 0;
             setReusePanelVisibility(hasPrior);
         };
 
@@ -1808,7 +2140,7 @@
             const params = new URLSearchParams();
             params.set("month", String(activeMonth));
             params.set("year", String(activeYear));
-            params.set("frequency", frequencyValue);
+            params.set("frequency", "all");
 
             try {
                 const response = await fetch(`${buildLastRecordApiUrl(activeClientId)}?${params.toString()}`, {
@@ -1847,7 +2179,13 @@
                     addEntryDate.value = buildDateForActivePeriod(record.date);
                 }
 
-                resetLineItemsBody(addLineItemsBody, Array.isArray(record.line_items) ? record.line_items : []);
+                const copiedLines = (Array.isArray(record.line_items) ? record.line_items : []).map((line) => ({
+                    ...line,
+                    coverage_frequency: line.coverage_frequency || (getReadyAmountKey(line.type_code) ? record.frequency || "monthly" : null),
+                }));
+                resetLineItemsBody(addLineItemsBody, copiedLines);
+                refreshCoverageChoices("add");
+                addEntryFormDirty = true;
                 updateDuplicateEntryWarning("add");
                 showToast(`Loaded last period entry from ${getSourcePeriodLabel(record.date)}.`);
             } catch (error) {
@@ -1881,31 +2219,54 @@
                 const typeCode = String(lineItem.type_code || "").trim();
                 const description = String(lineItem.description || "").trim();
                 const amountText = String(lineItem.amount ?? "").trim();
+                const category = typeCode.toLowerCase();
+                const detailLabel = category === "sales" ? "Sales" : category === "expenses" ? "Expenses" : `Record detail #${lineNumber}`;
 
                 if (!typeCode) {
-                    return `Line item #${lineNumber} type/code is required.`;
+                    return `${detailLabel} type/code is required.`;
                 }
                 if (!description) {
-                    return `Line item #${lineNumber} description is required.`;
+                    return `${detailLabel} description is required.`;
                 }
                 if (!amountText) {
-                    return `Line item #${lineNumber}: Amount is required.`;
+                    return `${detailLabel}: Amount is required.`;
                 }
 
                 const amountValue = Number(amountText);
                 const decimalNumberPattern = /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
                 if (!decimalNumberPattern.test(amountText) || !Number.isFinite(amountValue)) {
-                    return `Line item #${lineNumber}: Amount must be a valid number.`;
+                    return `${detailLabel}: Amount must be a valid number.`;
                 }
                 if (amountValue < 0) {
-                    return `Line item #${lineNumber}: Amount cannot be negative.`;
+                    return `${detailLabel}: Amount cannot be negative.`;
                 }
 
+                const coverageFrequency = lineItem.coverage_frequency == null ? null : lineItem.coverage_frequency;
+                const coverageError = window.SafeBooksCoverage.validate(coverageFrequency, dateValue);
+                if (coverageError) return `${detailLabel}: ${coverageError}`;
+                const worksheetAmounts = {};
+                for (const [name, label] of WORKSHEET_AMOUNT_FIELDS) {
+                    const rawValue = lineItem[name];
+                    if (rawValue === null || rawValue === undefined || (typeof rawValue === "string" && !rawValue.trim())) {
+                        worksheetAmounts[name] = null;
+                        continue;
+                    }
+                    if (!["string", "number"].includes(typeof rawValue)) return `${detailLabel}: ${label} must be a valid number.`;
+                    const text = String(rawValue).trim();
+                    if (!decimalNumberPattern.test(text) || !Number.isFinite(Number(text)) || Number(text) < 0) return `${detailLabel}: ${label} must be a non-negative number.`;
+                    worksheetAmounts[name] = text;
+                }
+                if (lineItem.remarks != null && (typeof lineItem.remarks !== "string" || lineItem.remarks.length > 255)) {
+                    return `${detailLabel}: Remarks must be text of 255 characters or fewer.`;
+                }
                 normalizedLineItems.push({
                     type_code: typeCode,
                     description,
+                    remarks: lineItem.remarks == null ? null : String(lineItem.remarks).trim(),
                     amount: amountText,
+                    coverage_frequency: coverageFrequency,
                     client_line_id: lineItem.client_line_id || "",
+                    ...worksheetAmounts,
                 });
             }
 
@@ -1943,6 +2304,28 @@
             showToast(message);
         };
 
+        const confirmSavedFormRemarks = (formType, payload, result) => {
+            const submitted = payload.line_items || [];
+            const saved = result.record && result.record.line_items;
+            const hasExplicitRemarks = submitted.some((line) => typeof line.remarks === "string");
+            if (!hasExplicitRemarks || (Array.isArray(saved) && saved.length === submitted.length
+                && submitted.every((line, index) => typeof line.remarks !== "string" || (saved[index] && saved[index].remarks === line.remarks)))) {
+                return true;
+            }
+            showMutationFailure(formType, "The entry was saved, but its form remarks were not confirmed. Your draft is kept. Reload and review the entry before trying again.");
+            return false;
+        };
+
+        const confirmSavedCoverage = (formType, payload, result) => {
+            const submitted = payload.line_items || [];
+            if (!submitted.some((line) => line.coverage_frequency != null)) return true;
+            const saved = result.record && result.record.line_items;
+            if (Array.isArray(saved) && saved.length === submitted.length && submitted.every((line, index) =>
+                line.coverage_frequency == null || saved[index]?.coverage_frequency === line.coverage_frequency)) return true;
+            showMutationFailure(formType, "The entry was saved, but its covered periods were not confirmed. Your draft is kept. Reload and review the entry before trying again.");
+            return false;
+        };
+
         const resolveClientIdFromTin = async () => {
             if (hasValidClientId() || !clientContext.tin) {
                 return;
@@ -1978,6 +2361,7 @@
             activeClientId = Number.parseInt(matchedClient.id || "", 10);
             clientContext.name = matchedClient.client_name || clientContext.name;
             clientContext.tin = matchedClient.tin_number || clientContext.tin;
+            clientContext.taxRegistration = matchedClient.tax_registration || "";
             clientContext.tradeName = matchedClient.trade_name || clientContext.tradeName;
         };
 
@@ -2054,6 +2438,7 @@
                 }
                 clientContext.name = resultClient.client_name || clientContext.name;
                 clientContext.tin = resultClient.tin_number || clientContext.tin;
+                clientContext.taxRegistration = resultClient.tax_registration || "";
                 clientContext.tradeName = resultClient.trade_name || clientContext.tradeName;
 
                 const period = result.period || {};
@@ -2131,24 +2516,26 @@
 
         if (addLineItemBtn && addLineItemsBody) {
             addLineItemBtn.addEventListener("click", () => {
-                addLineItemRow(addLineItemsBody);
+                const row = addLineItemRow(addLineItemsBody);
+                row.querySelector(".financial-line-code-select").focus();
             });
         }
 
         if (editAddLineItemBtn && editLineItemsBody) {
             editAddLineItemBtn.addEventListener("click", () => {
-                addLineItemRow(editLineItemsBody);
+                const row = addLineItemRow(editLineItemsBody);
+                row.querySelector(".financial-line-code-select").focus();
             });
         }
 
-        document.querySelectorAll("[data-detail-template]").forEach((buttonElement) => {
-            buttonElement.addEventListener("click", () => {
-                const target = String(buttonElement.dataset.templateTarget || "add").trim().toLowerCase();
-                const tbodyElement = target === "edit" ? editLineItemsBody : addLineItemsBody;
-                addCommonDetailTemplate(tbodyElement, buttonElement.dataset.detailTemplate);
-            });
+        [addLineItemsBody, editLineItemsBody].filter(Boolean).forEach((body) => {
+            ["input", "change"].forEach((eventName) => body.addEventListener(eventName, (event) => {
+                const worksheetRow = event.target.closest(".financial-worksheet-row");
+                syncLineItemRequirements(worksheetRow ? worksheetRow.previousElementSibling : event.target.closest(".financial-line-item-row"));
+                refreshCoverageChoices(getReadyAmountsMode(body));
+                updateDuplicateEntryWarning(getReadyAmountsMode(body));
+            }));
         });
-
         if (addLineItemsBody) {
             addLineItemsBody.addEventListener("click", (event) => {
                 handleLineItemClick(addLineItemsBody, event);
@@ -2163,21 +2550,28 @@
             });
         }
 
+        ["add", "edit"].forEach((mode) => {
+            ["sales", "expenses"].forEach((key) => {
+                getReadyAmountInput(key, mode).addEventListener("input", () => { refreshCoverageChoices(mode); updateDuplicateEntryWarning(mode); });
+                getReadyCoverageInput(key, mode).addEventListener("change", () => { refreshCoverageChoices(mode); updateDuplicateEntryWarning(mode); });
+            });
+        });
+
         const addEntryDateInput = document.getElementById("addEntryDate");
         if (addEntryDateInput) {
-            addEntryDateInput.addEventListener("input", () => updateDuplicateEntryWarning("add"));
-            addEntryDateInput.addEventListener("change", () => updateDuplicateEntryWarning("add"));
+            addEntryDateInput.addEventListener("input", () => { refreshCoverageChoices("add"); updateDuplicateEntryWarning("add"); });
+            addEntryDateInput.addEventListener("change", () => { refreshCoverageChoices("add"); updateDuplicateEntryWarning("add"); });
         }
 
         const editEntryFrequencySelect = document.getElementById("editEntryFrequency");
         if (editEntryFrequencySelect) {
-            editEntryFrequencySelect.addEventListener("change", () => updateDuplicateEntryWarning("edit"));
+            editEntryFrequencySelect.addEventListener("change", () => { refreshCoverageChoices("edit"); updateDuplicateEntryWarning("edit"); });
         }
 
         const editEntryDateInput = document.getElementById("editEntryDate");
         if (editEntryDateInput) {
-            editEntryDateInput.addEventListener("input", () => updateDuplicateEntryWarning("edit"));
-            editEntryDateInput.addEventListener("change", () => updateDuplicateEntryWarning("edit"));
+            editEntryDateInput.addEventListener("input", () => { refreshCoverageChoices("edit"); syncEditPeriodChange(); updateDuplicateEntryWarning("edit"); });
+            editEntryDateInput.addEventListener("change", () => { refreshCoverageChoices("edit"); syncEditPeriodChange(); updateDuplicateEntryWarning("edit"); });
         }
 
         if (editLineItemsBody) {
@@ -2193,12 +2587,14 @@
         if (addEntryModalElement) {
             addEntryModalElement.addEventListener("show.bs.modal", () => {
                 syncAddEntryDateToActivePeriod();
+                refreshCoverageChoices("add");
                 const addEntryFrequency = document.getElementById("addEntryFrequency");
                 if (addEntryFrequency && !String(addEntryFrequency.value || "").trim()) {
                     addEntryFrequency.value = "monthly";
                 }
                 updateReusePanelForFrequency(addEntryFrequency ? addEntryFrequency.value : "monthly");
                 updateDuplicateEntryWarning("add");
+                addEntryModalElement.querySelector(".modal-body").scrollTop = 0;
             });
 
             addEntryModalElement.addEventListener("hidden.bs.modal", () => {
@@ -2232,6 +2628,7 @@
                 }
                 document.getElementById("editEntryRevision").value = "";
                 document.getElementById("editEntryStatus").hidden = true;
+                resetEditPeriodChange();
             });
         }
 
@@ -2370,6 +2767,7 @@
                     return;
                 }
 
+                refreshCoverageChoices("add");
                 if (!addEntryForm.checkValidity()) {
                     addEntryForm.reportValidity();
                     return;
@@ -2414,6 +2812,7 @@
                         return;
                     }
 
+                    if (!confirmSavedFormRemarks("add", payload, result) || !confirmSavedCoverage("add", payload, result)) return;
                     addEntryFormDirty = false;
                     isAddSubmitting = false;
                     if (addEntryModal) {
@@ -2443,6 +2842,12 @@
                     return;
                 }
 
+                refreshCoverageChoices("edit");
+                if (syncEditPeriodChange() && !document.getElementById("editEntryConfirmPeriodChange").checked) {
+                    document.getElementById("editEntryConfirmPeriodChange").focus();
+                    editEntryForm.reportValidity();
+                    return;
+                }
                 if (!editEntryForm.checkValidity()) {
                     editEntryForm.reportValidity();
                     return;
@@ -2494,6 +2899,7 @@
                         return;
                     }
 
+                    if (!confirmSavedFormRemarks("edit", payload, result) || !confirmSavedCoverage("edit", payload, result)) return;
                     editEntryFormDirty = false;
                     isEditSubmitting = false;
                     if (editEntryModal) {
@@ -2715,7 +3121,486 @@
         updateClientContext(clientContext.name, clientContext.tin, clientContext.tradeName);
         renderEntriesTable();
 
+        // Modal report generation state and logic
+        const modalReportLoading = document.getElementById("modalReportLoading");
+        const modalReportError = document.getElementById("modalReportError");
+        const modalReportErrorMsg = document.getElementById("modalReportErrorMsg");
+        const modalReportWrapper = document.getElementById("modalReportWrapper");
+        const modalReportSheet = document.getElementById("modalReportSheet");
+        const modalPrintReportBtn = document.getElementById("modalPrintReportBtn");
+        const modalReportYearFilter = document.getElementById("modalReportYearFilter");
+        const modalReportYearHint = document.getElementById("modalReportYearHint");
+
+        let reportClientProfile = {};
+        let modalLatestReport = null;
+        let modalReportSourcePayload = null;
+        let modalReportRequestToken = 0;
+        let modalReportAbortController = null;
+
+        const classifyModalReportLine = (typeCode, description) => {
+            const code = String(typeCode || "").trim().toLowerCase();
+            if (/^bir form\b/.test(code) || /^\d{4}[a-z]{0,2}$/.test(code) || /^(tax|taxes|vat|withholding|wht)$/.test(code)) return "tax";
+            if (code === "sales") return "sales";
+            if (code === "expenses") return "expenses";
+            const text = `${typeCode || ""} ${description || ""}`.toLowerCase();
+            if (/(expense|cost|payment|purchase)/.test(text)) {
+                return "expenses";
+            }
+            if (/(tax|bir|1701|2551|percentage|income return|return)/.test(text)) {
+                return "tax";
+            }
+            return "sales";
+        };
+
+        const getModalReportRowYear = (row) => {
+            const match = String(row && row.entry_date || "").trim().match(/^(\d{4})-\d{2}-\d{2}$/);
+            return match ? match[1] : "";
+        };
+
+        const populateModalReportYearOptions = (payload) => {
+            if (!modalReportYearFilter) return;
+
+            const currentYear = String(new Date().getFullYear());
+            const transactionRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+            const recordedYears = Array.from(new Set(
+                payload && Array.isArray(payload.available_years)
+                    ? payload.available_years.map(String)
+                    : transactionRows.map(getModalReportRowYear).filter(Boolean)
+            )).sort((left, right) => Number(right) - Number(left));
+
+            modalReportYearFilter.replaceChildren();
+
+            const yearOptions = Array.from(new Set([currentYear, ...recordedYears]));
+            yearOptions.forEach((year) => {
+                const option = document.createElement("option");
+                option.value = year;
+                option.textContent = year === currentYear ? `${year} (Current Year)` : year;
+                modalReportYearFilter.appendChild(option);
+            });
+
+            const allYearsOption = document.createElement("option");
+            allYearsOption.value = "all";
+            allYearsOption.textContent = "All Years";
+            modalReportYearFilter.appendChild(allYearsOption);
+            modalReportYearFilter.value = currentYear;
+            modalReportYearFilter.disabled = false;
+        };
+
+        const getSelectedModalReportYear = () => {
+            const selectedValue = String(modalReportYearFilter && modalReportYearFilter.value || "").trim();
+            if (selectedValue === "all" || /^\d{4}$/.test(selectedValue)) {
+                return selectedValue;
+            }
+            return String(new Date().getFullYear());
+        };
+
+        const buildModalReportData = (payload, yearFilter) => {
+            const selectedYear = yearFilter === "all" || /^\d{4}$/.test(String(yearFilter || ""))
+                ? String(yearFilter)
+                : String(new Date().getFullYear());
+            const dateRangeLabel = selectedYear === "all" ? "All Years" : selectedYear;
+
+            return {
+                reportType: "financial_summary",
+                reportLabel: "Financial Summary Report",
+                dateRangeLabel,
+                generatedAt: new Date().toISOString(),
+                yearFilter: selectedYear,
+                clientId: activeClientId,
+                scopeLabel: reportClientProfile.client_name,
+                ...window.SafeBooksReportsShared.buildWorksheetTable(payload && payload.rows, {
+                    yearFilter: selectedYear, classifyLine: classifyModalReportLine,
+                }),
+            };
+        };
+
+        const buildModalLedgerSheetHtml = (report) => {
+            if (!window.SafeBooksReportsShared || typeof window.SafeBooksReportsShared.buildReportSheetHtml !== "function") {
+                return "";
+            }
+
+            const clientName = reportClientProfile.client_name;
+            const clientTin = formatTin(reportClientProfile.tin_number);
+            const tradeName = reportClientProfile.trade_name;
+            const location = reportClientProfile.location;
+            const permitNumber = reportClientProfile.permit_number;
+            const birthday = reportClientProfile.birthday;
+            const email = reportClientProfile.email;
+            const reportTypeLabel = "Financial Summary Report";
+            const generatedLabel = new Intl.DateTimeFormat("en-PH", {
+                year: "numeric", month: "short", day: "numeric",
+                hour: "2-digit", minute: "2-digit"
+            }).format(new Date());
+            const dateRangeLabel = report.dateRangeLabel || "All recorded entries";
+
+            const columns = report.columns.map((c) => c.label.toUpperCase());
+            const rows = report.rows.map((r) => {
+                return report.columns.map((c) => r[c.key]);
+            });
+
+            return window.SafeBooksReportsShared.buildReportSheetHtml({
+                reportTitle: "SafeBooks Client Report Sheet",
+                printedBy: "{{ current_user_name|default:'Bookkeeper User'|escapejs }}",
+                meta: {
+                    reportTypeLabel,
+                    dateRangeLabel,
+                    generatedLabel,
+                },
+                client: {
+                    clientName,
+                    tin: clientTin,
+                    tradeName,
+                    location,
+                    permitNumber,
+                    birthday,
+                    email,
+                },
+                table: {
+                    layout: report.layout,
+                    preserveColumnOrder: report.preserveColumnOrder,
+                    totalColumns: report.totalColumns,
+                    rowKinds: report.rowKinds,
+                    columns,
+                    rows,
+                    minRows: 14,
+                },
+                rowHint: rows.length
+                    ? ""
+                    : report.yearFilter === "all"
+                        ? "No transactions were found for this client."
+                        : `No transactions were recorded for ${report.yearFilter}.`,
+            });
+        };
+
+        const renderModalReportForSelectedYear = () => {
+            if (!modalReportSourcePayload || !modalReportSheet) return;
+
+            const selectedYear = getSelectedModalReportYear();
+            modalLatestReport = buildModalReportData(modalReportSourcePayload, selectedYear);
+            modalReportSheet.innerHTML = buildModalLedgerSheetHtml(modalLatestReport);
+
+            if (modalReportYearHint) {
+                modalReportYearHint.textContent = selectedYear === "all"
+                    ? "Preview and print include transactions from all recorded years."
+                    : `Preview and print include only ${selectedYear} transactions.`;
+            }
+        };
+
+        const printModalLedgerLayout = () => {
+            if (!modalLatestReport) return;
+            const sheetMarkup = String(modalReportSheet.innerHTML || "").trim();
+            if (!sheetMarkup) return;
+
+            const reportLabel = "Financial Summary Report";
+            const documentMarkup = `
+                <!doctype html>
+                <html lang="en">
+                    <head>
+                        <meta charset="utf-8">
+                        <title>${reportLabel} - Print</title>
+                        <style>
+                            @page {
+                                size: A4 landscape;
+                                margin: 10mm;
+                            }
+                            * {
+                                box-sizing: border-box;
+                            }
+                            html, body {
+                                margin: 0;
+                                padding: 0;
+                                background: #ffffff;
+                                color: #1f3f74;
+                                font-family: Arial, "Helvetica Neue", sans-serif;
+                            }
+                            .reports-print-root {
+                                width: 100%;
+                            }
+                            .reports-ledger-sheet {
+                                border: 1px solid #c7d8f6;
+                                padding: 8px;
+                                width: 100%;
+                            }
+                            .reports-ledger-heading {
+                                display: flex;
+                                align-items: baseline;
+                                justify-content: space-between;
+                                gap: 16px;
+                            }
+                            .reports-ledger-title {
+                                margin: 0;
+                                color: #183365;
+                                font-size: 13px;
+                                font-weight: 700;
+                                text-transform: uppercase;
+                                letter-spacing: 0.04em;
+                            }
+                            .reports-ledger-printed-by {
+                                margin: 0;
+                                color: #607ca9;
+                                font-size: 10px;
+                                font-weight: 700;
+                                text-align: right;
+                                white-space: nowrap;
+                            }
+                            .reports-ledger-meta-row {
+                                margin: 6px 0;
+                            }
+                            .reports-ledger-meta-pill {
+                                display: inline-block;
+                                border: 1px solid #d8e4f8;
+                                border-radius: 999px;
+                                padding: 2px 8px;
+                                margin-right: 4px;
+                                margin-bottom: 4px;
+                                background: #f8fbff;
+                                color: #3f5e92;
+                                font-size: 10px;
+                                font-weight: 700;
+                            }
+                            .reports-ledger-client-table,
+                            .reports-ledger-grid-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                table-layout: fixed;
+                            }
+                            .reports-ledger-client-table th,
+                            .reports-ledger-client-table td,
+                            .reports-ledger-grid-table th,
+                            .reports-ledger-grid-table td {
+                                border: 1px solid #ccd9f0;
+                                padding: 4px 6px;
+                                color: #1f3f74;
+                                font-size: 10px;
+                            }
+                            .reports-ledger-client-table th,
+                            .reports-ledger-grid-table th {
+                                background: #f7fafe;
+                                color: #4d6896;
+                                text-transform: uppercase;
+                                letter-spacing: 0.04em;
+                                font-weight: 700;
+                            }
+                            .reports-worksheet-table th, .reports-worksheet-table td {
+                                font-size: 8.5px;
+                                padding: 4px 3px;
+                                overflow-wrap: anywhere;
+                            }
+                            .reports-worksheet-table th:nth-child(2), .reports-worksheet-table td:nth-child(2) { width: 13%; }
+                            .reports-worksheet-table th:nth-child(4), .reports-worksheet-table td:nth-child(4) { width: 4%; text-align: center; white-space: nowrap; }
+                            .reports-worksheet-table td:nth-child(n+5):nth-child(-n+12) { text-align: right; }
+                            .reports-worksheet-table tbody td { background: transparent; }
+                            .reports-worksheet-month-row td { break-after: avoid; }
+                            .reports-worksheet-quarter-gap { break-after: avoid; }
+                            .reports-ledger-grid-table thead { display: table-header-group; }
+                            .reports-ledger-grid-table tr { break-inside: avoid; }
+                            .reports-ledger-grid-wrap {
+                                margin-top: 8px;
+                            }
+                            .reports-ledger-grid-table td {
+                                height: 24px;
+                                font-weight: 700;
+                            }
+                            .reports-ledger-note {
+                                margin-top: 6px;
+                                color: #607ca9;
+                                font-size: 10px;
+                                font-weight: 700;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <main class="reports-print-root">${sheetMarkup}</main>
+                    </body>
+                </html>
+            `;
+
+            const existingFrame = document.getElementById("reportsPrintFrame");
+            if (existingFrame) {
+                existingFrame.remove();
+            }
+
+            const printFrame = document.createElement("iframe");
+            printFrame.id = "reportsPrintFrame";
+            printFrame.setAttribute("title", "Reports Print Layout");
+            printFrame.setAttribute("aria-hidden", "true");
+            printFrame.style.position = "fixed";
+            printFrame.style.right = "0";
+            printFrame.style.bottom = "0";
+            printFrame.style.width = "0";
+            printFrame.style.height = "0";
+            printFrame.style.border = "0";
+            printFrame.style.opacity = "0";
+            printFrame.style.pointerEvents = "none";
+            document.body.appendChild(printFrame);
+
+            const frameWindow = printFrame.contentWindow;
+            const frameDocument = frameWindow ? frameWindow.document : null;
+            if (!frameDocument) {
+                showToast("Print preview could not be prepared.", "warning");
+                printFrame.remove();
+                return;
+            }
+
+            try {
+                frameDocument.open();
+                frameDocument.write(documentMarkup);
+                frameDocument.close();
+            } catch (error) {
+                showToast("Print preview could not be prepared.", "warning");
+                printFrame.remove();
+                return;
+            }
+
+            const triggerPrint = () => {
+                frameWindow.focus();
+                frameWindow.print();
+                window.setTimeout(() => {
+                    printFrame.remove();
+                }, 800);
+            };
+
+            if (frameDocument.readyState === "complete") {
+                window.setTimeout(triggerPrint, 60);
+            } else {
+                printFrame.addEventListener("load", () => {
+                    window.setTimeout(triggerPrint, 60);
+                }, { once: true });
+            }
+        };
+
+        const fetchModalReportPayload = async (params, signal) => {
+            const response = await fetch(`${REPORTS_PRINT_LAYOUT_API_URL}?${params.toString()}`, {
+                method: "GET", headers: { "Accept": "application/json" },
+                credentials: "same-origin", signal,
+            });
+            if (response.status === 401) {
+                const nextPath = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.assign(`{% url 'login' %}?next=${nextPath}`);
+                throw new Error("Authentication required.");
+            }
+            const result = await shared.parseJsonSafe(response);
+            if (!response.ok || !result || !result.ok) {
+                throw new Error(result && result.message ? result.message : "Unable to generate report data.");
+            }
+            return result;
+        };
+
+        const loadModalReport = async (refreshYears = true) => {
+            const requestToken = ++modalReportRequestToken;
+            if (modalReportAbortController) modalReportAbortController.abort();
+            modalReportAbortController = new AbortController();
+            const signal = modalReportAbortController.signal;
+            modalLatestReport = null;
+            modalReportSourcePayload = null;
+            if (modalReportLoading) modalReportLoading.hidden = false;
+            if (modalReportError) modalReportError.hidden = true;
+            if (modalReportWrapper) modalReportWrapper.hidden = true;
+            if (modalPrintReportBtn) modalPrintReportBtn.disabled = true;
+            if (refreshYears && modalReportYearFilter) {
+                modalReportYearFilter.disabled = true;
+                modalReportYearFilter.replaceChildren();
+                const loadingOption = document.createElement("option");
+                loadingOption.value = "";
+                loadingOption.textContent = "Loading years...";
+                modalReportYearFilter.appendChild(loadingOption);
+            }
+            if (modalReportYearHint) {
+                modalReportYearHint.textContent = refreshYears ? "Loading the available bookkeeping years..." : "Loading the selected bookkeeping year...";
+            }
+
+            try {
+                const params = new URLSearchParams();
+                params.set("client_id", String(activeClientId));
+                if (refreshYears) {
+                    params.set("years_only", "1");
+                    const years = await fetchModalReportPayload(params, signal);
+                    if (requestToken !== modalReportRequestToken) return;
+                    populateModalReportYearOptions(years);
+                    params.delete("years_only");
+                }
+                const selectedYear = getSelectedModalReportYear();
+                params.set("date_from", selectedYear === "all" ? "2000-01-01" : `${selectedYear}-01-01`);
+                params.set("date_to", selectedYear === "all" ? "2100-12-31" : `${selectedYear}-12-31`);
+                const result = await fetchModalReportPayload(params, signal);
+                if (requestToken !== modalReportRequestToken) return;
+                reportClientProfile = result.client || {};
+                modalReportSourcePayload = result;
+                renderModalReportForSelectedYear();
+                if (modalReportLoading) modalReportLoading.hidden = true;
+                if (modalReportWrapper) modalReportWrapper.hidden = false;
+                if (modalPrintReportBtn) modalPrintReportBtn.disabled = false;
+            } catch (err) {
+                if (err.name === "AbortError" || requestToken !== modalReportRequestToken) return;
+                if (modalReportLoading) modalReportLoading.hidden = true;
+                if (modalReportError) modalReportError.hidden = false;
+                if (modalReportErrorMsg) modalReportErrorMsg.textContent = err.message || "Failed to prepare report preview.";
+                if (modalReportYearHint) modalReportYearHint.textContent = "Preview not loaded. Retry or choose another available year before printing.";
+            }
+        };
+
+        const showReportModal = () => {
+            const modalEl = document.getElementById("formattedReportModal");
+            if (modalEl) {
+                const reportModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                if (!hasValidClientId() || isRecordsLoading) return;
+                reportModal.show(document.getElementById("generateReportActionBtn"));
+                loadModalReport();
+            }
+        };
+
+        const setupModalReportEvents = () => {
+            const modalEl = document.getElementById("formattedReportModal");
+            const generateReportActionBtn = document.getElementById("generateReportActionBtn");
+            if (generateReportActionBtn) {
+                generateReportActionBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    showReportModal();
+                });
+            }
+
+            if (modalPrintReportBtn) {
+                modalPrintReportBtn.addEventListener("click", () => {
+                    printModalLedgerLayout();
+                });
+            }
+
+            if (modalReportYearFilter) {
+                modalReportYearFilter.addEventListener("change", () => {
+                    loadModalReport(false);
+                });
+            }
+
+            if (modalEl) {
+                modalEl.addEventListener("hidden.bs.modal", () => {
+                    ++modalReportRequestToken;
+                    if (modalReportAbortController) modalReportAbortController.abort();
+                    modalLatestReport = null;
+                    if (modalPrintReportBtn) modalPrintReportBtn.disabled = true;
+                    if (modalReportLoading) modalReportLoading.hidden = true;
+                    if (modalReportError) modalReportError.hidden = true;
+
+                    window.setTimeout(() => {
+                        if (document.querySelector(".modal.show")) {
+                            return;
+                        }
+
+                        document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
+                        document.body.classList.remove("modal-open");
+                        document.body.style.removeProperty("overflow");
+                        document.body.style.removeProperty("padding-right");
+                        if (generateReportActionBtn && !generateReportActionBtn.disabled) {
+                            generateReportActionBtn.focus();
+                        }
+                    }, 50);
+                });
+            }
+        };
+
+        // End report preview events
+
         const initializePage = async () => {
+            setupModalReportEvents();
             try {
                 await resolveClientIdFromTin();
             } catch (error) {

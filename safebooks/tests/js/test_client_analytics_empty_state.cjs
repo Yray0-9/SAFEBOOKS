@@ -13,19 +13,23 @@ const flow = extract("        const updateAnalyticsEmptyMessage =", "        con
 const payload = hasData => ({ok: true, has_data: hasData, summary: {total_sales: hasData ? 125 : 0}, monthly_trend: [], client_workflow: {}});
 const makePage = () => {
     const page = {
+        forecasts: [], graphTitle: {},
         CLIENT_ID: 7, ANALYTICS_SUMMARY_API_URL: "/api/analytics/summary/", URLSearchParams, AbortController,
         analyticsEmptyMessage: {}, analyticsEmptyState: {hidden: true}, analyticsDataPanels: {hidden: true},
+        dashboardNotice: {hidden: true},
         analyticsScopeHint: {}, analyticsYearFilter: {value: "2024", disabled: false}, analyticsHorizonFilter: {value: "3"},
         analyticsTotalSalesValue: {}, analyticsTotalExpensesValue: {}, analyticsTotalTaxValue: {}, analyticsNetValueValue: {},
+        analyticsForecastProjectionLabels: {style: {}},
         currentClientProfile: {client_name: "Synthetic Client", tin_number: ""},
         analyticsRequestToken: 0, analyticsAbortController: null,
         formatCurrency: value => `PHP ${value}`, formatTin: value => value,
-        renderTrend() {}, applyTimeframeCaptions() {}, applyPredictiveForecast() {},
+        renderTrend() {}, applyTimeframeCaptions() {}, applyPredictiveForecast(value) { page.forecasts.push(value); },
         renderPredictiveForecastReport() {}, renderForecastProjectionChart() {},
         applyClientWorkflowStatus() {}, setClientWorkflowUnavailable() {},
         setAnalyticsLoadingState: loading => { page.loading = loading; if (loading) page.analyticsEmptyState.hidden = true; },
         error: {hidden: true}, requests: [], toasts: [], redirects: [],
-        document: {getElementById: () => page.error},
+        document: {getElementById: id => id === "analyticsForecastProjectionTitle" ? page.graphTitle
+            : id === "analyticsDashboardEmptyNotice" ? page.dashboardNotice : id === "analyticsPredictiveLine" ? null : page.error},
         window: {location: {pathname: "/clients/7/", search: "", assign: url => page.redirects.push(url)}},
         showToast: (message, type) => page.toasts.push({message, type}),
         shared: {parseJsonSafe: async response => response.payload},
@@ -36,6 +40,7 @@ const makePage = () => {
         },
     };
     vm.createContext(page);
+    vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../../../static/js/forecast_periods.js'), 'utf8'), page);
     vm.runInContext(flow + "\nthis.load = loadAnalyticsSummaryFromApi; this.apply = applyAnalyticsPayload;", page);
     return page;
 };
@@ -49,9 +54,21 @@ const makePage = () => {
     assert.equal(page.analyticsEmptyState.hidden, false);
     assert.equal(page.analyticsDataPanels.hidden, true);
     assert(page.analyticsEmptyMessage.textContent.includes("for 2024"));
-    assert(page.analyticsEmptyMessage.textContent.includes("Choose All Time or another year"));
+    assert(page.analyticsEmptyMessage.textContent.includes("Choose another year"));
+    assert(!page.analyticsEmptyMessage.textContent.includes("All Time"));
     assert(!page.analyticsEmptyMessage.textContent.includes("no saved records"));
     assert.equal(page.analyticsYearFilter.disabled, false);
+
+    page.apply({...payload(false), predictive_forecast: {history_start: "2024-01", history_end: "2025-12", has_forecast: true}});
+    assert.equal(page.analyticsDataPanels.hidden, false, "Earlier forecast history must remain accessible in an empty selected year");
+    assert.equal(page.analyticsEmptyState.hidden, true);
+    assert.equal(page.dashboardNotice.hidden, false);
+    assert(page.dashboardNotice.textContent.includes("2024"));
+    page.apply({...payload(false), predictive_forecast: {history_start: "2023-01", has_forecast: false}});
+    assert.equal(page.analyticsDataPanels.hidden, false, "Insufficient earlier history must still show its readiness explanation");
+    page.apply(payload(false));
+    assert.equal(page.analyticsDataPanels.hidden, true);
+    assert.equal(page.dashboardNotice.hidden, true);
 
     page.analyticsYearFilter.value = "all";
     page.reply = async () => ({status: 200, ok: true, payload: payload(true)});
@@ -124,5 +141,26 @@ const makePage = () => {
     missingMessage.analyticsEmptyMessage = null;
     missingMessage.apply(payload(false));
     assert.equal(missingMessage.analyticsEmptyState.hidden, false);
+    const periods = makePage();
+    periods.reply = async () => ({status: 200, ok: true, payload: {...payload(true), predictive_forecast: {
+        frequency_forecasts: [
+            {frequency: 'monthly', future_projections: [{period_label: 'Nov 2026', expected_sales: 100, frequency: 'monthly', coverage_end: '2026-11'}]},
+            {frequency: 'quarterly', future_projections: [{period_label: 'Q4 2026', expected_expenses: 100, expected_net: 200, frequency: 'quarterly', coverage_end: '2026-12'}]},
+        ],
+    }}});
+    await periods.load();
+    assert.equal(periods.forecasts.at(-1).future_projections.length, 2);
+    assert.equal(periods.forecasts.at(-1).future_projections[1].forecast_cells.net[0].model.expected_net, 200);
+    assert.equal(periods.forecasts.at(-1).expected_sales, 100);
+    assert.equal(periods.forecasts.at(-1).expected_expenses, 100);
+    assert.equal(periods.graphTitle.textContent, 'Projection Graph');
+    assert.equal(periods.forecasts.at(-1).chart_series.find(lane => lane.category === 'sales').frequency, 'monthly');
+    assert.equal(periods.forecasts.at(-1).chart_series.find(lane => lane.category === 'expenses').frequency, 'quarterly');
+    periods.reply = async () => ({status: 503, ok: false, payload: {ok: false, message: 'Unavailable'}});
+    await periods.load();
+    assert.equal(periods.forecasts.at(-1).expected_sales, undefined, 'A failed load must clear the previous forecast');
+    assert.equal(periods.forecasts.at(-1).expected_expenses, undefined);
+    assert.equal(periods.graphTitle.textContent, 'Projection Graph');
+    assert.equal(periods.error.hidden, false);
     console.log("Client analytics empty-state tests passed: year scope, All Time, zero totals, recovery, failures, stale responses and unchanged controls.");
 })().catch(error => {console.error(error); process.exitCode = 1;});

@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db.models import Count, Max, OuterRef, Q, Subquery
 from django.utils import timezone
 
-from safebooks.models import Client, FinancialRecord, Period
+from safebooks.models import Client, FinancialRecord, FinancialRecordLine, Period
 
 
 MONTH_NUMBER_TO_NAME = dict(Period.MONTH_CHOICES)
@@ -165,6 +165,7 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
             last_period_month=Subquery(latest_record_for_client.values("period__month")[:1]),
             last_period_year=Subquery(latest_record_for_client.values("period__year")[:1]),
             last_frequency=Subquery(latest_record_for_client.values("frequency")[:1]),
+            last_record_id=Subquery(latest_record_for_client.values("id")[:1]),
             last_deadline_date=Subquery(latest_record_for_client.values("deadline_date")[:1]),
             latest_record_updated_at=Max(
                 "financial_records__updated_at",
@@ -173,7 +174,23 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
         )
         .order_by("-created_at", "-id")
     )
+    # Lightweight distinct coverage metadata, never one line-history query per client.
+    coverage_by_record = {}
+    latest_ids = {client.last_record_id for client in clients if client.last_record_id}
+    for record_id, coverage in (
+        FinancialRecordLine.objects.filter(record_id__in=latest_ids, record__bookkeeper=bookkeeper)
+        .filter(Q(type_code__iexact="sales") | Q(type_code__iexact="expenses"))
+        .order_by().values_list("record_id", "coverage_frequency").distinct()
+    ):
+        coverage_by_record.setdefault(record_id, set()).add(coverage)
     for client in clients:
+        coverages = coverage_by_record.get(client.last_record_id, set())
+        if any(coverage is not None for coverage in coverages):
+            # A monthly component remains due monthly; all-quarterly amounts do not.
+            client.last_frequency = min(
+                (coverage or client.last_frequency or "monthly" for coverage in coverages),
+                key=lambda coverage: FREQUENCY_INTERVALS.get(coverage, 1),
+            )
         client.remarks = resolve_client_remarks(client, today=today)
 
     recent_client_activity = [

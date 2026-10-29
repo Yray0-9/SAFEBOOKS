@@ -1,0 +1,16 @@
+<article class="dashboard-card analytics-tax-card mt-3" id="analyticsTaxBreakdown" aria-labelledby="analyticsTaxBreakdownTitle">
+    <div class="dashboard-card-head"><h2 id="analyticsTaxBreakdownTitle">Recorded Tax Breakdown</h2></div>
+    <p class="dashboard-section-hint" data-tax-caption></p>
+    <p data-tax-status role="status">Loading tax breakdown…</p>
+    <div class="analytics-tax-content" data-tax-content hidden>
+        <div class="analytics-tax-ring" data-tax-ring role="img">
+            <div class="analytics-tax-center"><span>Total tax</span><strong data-tax-total></strong></div>
+        </div>
+        <div class="analytics-tax-table-wrap" tabindex="0" role="region" aria-label="Recorded tax amounts by form">
+            <table class="table analytics-tax-table">
+                <thead><tr><th scope="col">Type / Code</th><th scope="col">Amount</th><th scope="col">Share</th></tr></thead>
+                <tbody data-tax-rows></tbody>
+            </table>
+        </div>
+    </div>
+</article>

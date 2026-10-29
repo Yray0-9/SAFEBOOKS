@@ -4,6 +4,7 @@ from .user_model import BookkeeperAccount
 
 
 class Client(models.Model):
+    TAX_REGISTRATION_CHOICES = [("", "Not set"), ("vat", "VAT"), ("non_vat", "Non-VAT")]
     REMARK_NEW = "new"
     REMARK_ACTIVE = "active"
     REMARK_SEPARATED = "separated"
@@ -25,6 +26,7 @@ class Client(models.Model):
     client_name = models.CharField(max_length=160)
     tin_number = models.CharField(max_length=40, unique=True)
     trade_name = models.CharField(max_length=180, blank=True, default="")
+    tax_registration = models.CharField(max_length=16, choices=TAX_REGISTRATION_CHOICES, blank=True, default="")
     location = models.CharField(max_length=180)
     permit_number = models.CharField(max_length=80, blank=True, default="")
     birthday = models.DateField(null=True, blank=True)

@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261027-2">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}">
 <link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.1">
 <link rel="stylesheet" href="{% static 'css/financial_records.css' %}?v=1.2">
@@ -138,11 +139,9 @@
 </section>
 {% endblock %}
 
-{% block toast_container %}
-<div class="toast-container position-fixed bottom-0 end-0 p-3 safebooks-toast-container" id="uiToastContainer" aria-live="polite" aria-atomic="true"></div>
-{% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -690,7 +689,7 @@
                 }
 
                 row.innerHTML = `
-                    <td class="client-name-cell" data-label="Client">${escapeHtml(client.client_name || "")}</td>
+                    <td class="client-name-cell" data-label="Client"><div class="client-registration-identity">${escapeHtml(client.client_name || "")}${window.SafeBooksClientRegistration.badge(client.tax_registration)}</div></td>
                     <td class="client-tin-cell" data-label="TIN">${escapeHtml(formatTin(client.tin_number))}</td>
                     <td class="client-trade-cell" data-label="Trade Name">${escapeHtml(client.trade_name || "")}</td>
                     <td class="financial-last-activity-cell" data-label="Last Activity">

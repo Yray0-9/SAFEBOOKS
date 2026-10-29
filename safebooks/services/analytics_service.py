@@ -8,11 +8,15 @@ from decimal import Decimal
 import re
 
 from django.db.models import Count, F, Max, Window
-from django.db.models.functions import RowNumber
+from django.db.models.functions import Coalesce, RowNumber
 from django.utils import timezone
 
 from safebooks.models import Client, FinancialRecord, FinancialRecordLine
-from safebooks.services.forecasting_service import build_sarima_forecast, requires_sarima_fit
+from safebooks.services.forecasting_service import (
+    build_sarima_forecast, requires_sarima_fit, FORECAST_READY_STATUSES, rejected_prediction_note,
+)
+from safebooks.services.forecast_period_service import build_frequency_forecasts
+from safebooks.services.tax_form_frequency_service import standard_tax_form_frequency
 from safebooks.services.workload_limits import (
     MAX_RECORDS, MAX_TRANSACTION_DETAILS, MAX_FORECAST_SERIES, MAX_FORECAST_OBSERVATIONS,
     MAX_FORECAST_DISTINCT_FITS, MAX_FORECAST_FIT_OBSERVATIONS,
@@ -252,6 +256,13 @@ def _contains_tax_form_code(raw_text: str, form_code: str) -> bool:
 
 
 def _infer_tax_line_frequency(type_code: str, description: str) -> str | None:
+    recognized, frequency = standard_tax_form_frequency(type_code)
+    if recognized:
+        # Form metadata wins over editable wording. Known ambiguous forms use
+        # the saved parent fallback rather than acquiring a schedule from text.
+        return frequency
+
+    # Preserve the legacy inference path for custom/unlisted tax details.
     raw_text = f"{type_code or ''} {description or ''}".lower()
     searchable_text = _normalize_search_text(raw_text)
 
@@ -273,6 +284,8 @@ def _infer_tax_line_frequency(type_code: str, description: str) -> str | None:
 
 
 def _resolve_line_forecast_frequency(line: FinancialRecordLine, category: str) -> str:
+    if category in {"sales", "expenses"} and getattr(line, "coverage_frequency", None):
+        return line.coverage_frequency
     if category == "tax":
         inferred_frequency = _infer_tax_line_frequency(line.type_code, line.description)
         if inferred_frequency:
@@ -566,11 +579,13 @@ def _build_client_workflow_status(client: Client | None, bookkeeper, reference_d
     if client is None:
         return None
 
-    scoped = FinancialRecord.objects.filter(bookkeeper=bookkeeper, client=client)
+    scoped = FinancialRecord.objects.filter(bookkeeper=bookkeeper, client=client).annotate(
+        workflow_frequency=Coalesce("line_items__coverage_frequency", "frequency"),
+    )
     # Workflow needs frequency/period counts and the latest date, not every raw
     # record. This keeps a narrow analytics year usable with a large older history.
     groups = bounded_list(
-        scoped.values("frequency", "period_id", "period__year", "period__month")
+        scoped.values("workflow_frequency", "period_id", "period__year", "period__month")
         .annotate(
             workflow_entry_count=Count("id", distinct=True),
             workflow_detail_count=Count("line_items"),
@@ -578,17 +593,19 @@ def _build_client_workflow_status(client: Client | None, bookkeeper, reference_d
         ).order_by("-period__year", "-period__month", "-workflow_entry_date"),
         MAX_RECORDS, "workflow periods",
     )
-    # Find latest IDs on record rows only, not once per joined detail row.
-    # RowNumber preserves date/ID tie-breaking even after a backdated insert.
+    for item in groups:
+        item["frequency"] = item["workflow_frequency"]
+    # One latest entry per period/coverage, without a correlated query per detail.
+    # Joined duplicates share an entry ID; RowNumber retains date/ID tie-breaking.
     latest_rows = bounded_list(
         scoped.filter(period_id__in={item["period_id"] for item in groups})
         .annotate(workflow_rank=Window(
-            expression=RowNumber(), partition_by=[F("period_id"), F("frequency")],
+            expression=RowNumber(), partition_by=[F("period_id"), F("workflow_frequency")],
             order_by=[F("entry_date").desc(), F("id").desc()],
-        )).filter(workflow_rank=1).order_by().values("period_id", "frequency", "id"),
+        )).filter(workflow_rank=1).order_by().values("period_id", "workflow_frequency", "id"),
         MAX_RECORDS, "workflow periods",
     )
-    latest_ids = {(item["period_id"], item["frequency"]): item["id"] for item in latest_rows}
+    latest_ids = {(item["period_id"], item["workflow_frequency"]): item["id"] for item in latest_rows}
     groups.sort(key=lambda item: (
         item["period__year"], item["period__month"], item["workflow_entry_date"],
         latest_ids.get((item["period_id"], item["frequency"]), 0),
@@ -757,9 +774,10 @@ def _project_group_value(
     period_key = (target_year, target_month)
     if period_key not in model["scheduled_periods"]:
         return False, None, False
-    if model["status"] != "forecast":
+    if model["status"] not in FORECAST_READY_STATUSES:
         return True, None, True
-    return True, model["forecast_by_period"].get(period_key), False
+    value = model["forecast_by_period"].get(period_key)
+    return True, value, value is None
 
 
 def _money_or_none(value: Decimal | None) -> float | None:
@@ -768,7 +786,7 @@ def _money_or_none(value: Decimal | None) -> float | None:
     return _to_money_number(value.quantize(Decimal("0.01")))
 
 
-def _forecast_readiness_note(models: list[dict]) -> str:
+def _forecast_readiness_note(models: list[dict], period: tuple[int, int] | None = None) -> str:
     if not models:
         return "Not scheduled this period"
 
@@ -776,13 +794,16 @@ def _forecast_readiness_note(models: list[dict]) -> str:
     for model in models:
         status = model.get("status")
         frequency = str(model.get("frequency") or "record").lower()
-        if status == "forecast":
+        if period is not None and rejected_prediction_note(model, period):
+            unavailable_notes.append(rejected_prediction_note(model, period))
+            continue
+        if status in FORECAST_READY_STATUSES and (period is None or period in model['forecast_by_period']):
             continue
         if status == "insufficient_history":
             available = int(model.get("observation_count") or 0)
             required = int(model.get("minimum_observations") or 0)
             unavailable_notes.append(
-                f"{available} of {required} {frequency} records"
+                f"{available} of {required} {frequency} periods"
             )
         elif status == "irregular_history":
             unavailable_notes.append(f"Review missing {frequency} periods")
@@ -952,6 +973,14 @@ def _build_predictive_forecast(
         frequencies.add(frequency)
         limited_data_used = limited_data_used or model["uses_limited_data"]
 
+    frequency_forecasts = build_frequency_forecasts(
+        models_by_category=models_by_category, grouped_totals=grouped_totals,
+        projection_slots=projection_slots, readiness=_forecast_readiness_note,
+    )
+    monthly_net = {
+        row['coverage_end']: row for section in frequency_forecasts if section['frequency'] == 'monthly'
+        for row in section['future_projections']
+    }
     future_projections: list[dict] = []
     for target_year, target_month, target_label in projection_slots:
         category_totals: dict[str, Decimal] = {}
@@ -1001,18 +1030,14 @@ def _build_predictive_forecast(
             category_has_values[category] = has_value
             category_limited_data[category] = uses_limited_data
             category_unreliable[category] = has_unreliable_projection
-            category_readiness_notes[category] = _forecast_readiness_note(scheduled_models)
+            category_readiness_notes[category] = _forecast_readiness_note(scheduled_models, (target_year, target_month))
 
-        expenses_required = category_applicability["expenses"]
-        net_has_value = (
-            category_has_values["sales"]
-            and (not expenses_required or category_has_values["expenses"])
-        )
-        net_unreliable = (
-            category_unreliable["sales"]
-            or (expenses_required and category_unreliable["expenses"])
-        )
-        projected_net = category_totals["sales"] - category_totals["expenses"]
+        # Compatibility rows retain category fields but never compare different
+        # coverage lengths. The separate period views carry aligned quarterly net.
+        aligned = monthly_net.get('%04d-%02d' % (target_year, target_month))
+        aligned_net = aligned.get('expected_net') if aligned else None
+        net_has_value = aligned_net is not None
+        net_unreliable = not net_has_value
 
         future_projections.append({
             "period_label": target_label,
@@ -1036,7 +1061,8 @@ def _build_predictive_forecast(
             "tax_readiness_note": category_readiness_notes["tax"],
             "expected_net_applicable": net_has_value,
             "expected_net_unreliable": net_unreliable,
-            "expected_net": _money_or_none(projected_net if net_has_value else None),
+            "expected_net": aligned_net,
+            "net_readiness_note": aligned.get('net_readiness_note', '') if aligned else 'Use the quarterly comparison',
         })
 
     first_projection = future_projections[0] if future_projections else {}
@@ -1097,7 +1123,21 @@ def _build_predictive_forecast(
         "expected_net": first_projection.get("expected_net"),
         "basis": basis,
         "future_projections": future_projections,
+        "frequency_forecasts": frequency_forecasts,
         "sparkline": [_to_money_number(value) for value in sparkline_values],
+    }
+
+
+def get_analytics_year_options(bookkeeper, client_id: int | None = None) -> dict:
+    """Read lightweight, owner-scoped period years without loading records/lines."""
+    current_year = timezone.localdate().year
+    records = FinancialRecord.objects.filter(bookkeeper=bookkeeper, client__bookkeeper=bookkeeper)
+    if client_id is not None:
+        records = records.filter(client_id=client_id)
+    recorded_years = records.order_by().values_list("period__year", flat=True).distinct()
+    return {
+        "analytics_years": sorted({current_year, *recorded_years}, reverse=True),
+        "analytics_current_year": current_year,
     }
 
 
@@ -1145,34 +1185,48 @@ def get_analytics_summary_for_bookkeeper(
                 "errors": ["Client not found."],
             }
 
-    month_slots = _recent_month_slots(today, count=6)
+    recent_slots = _recent_month_slots(today, count=6)
+    # An explicit year is a calendar-year view, not today's rolling window.
+    month_slots = (
+        [(int(year_filter), month, MONTH_SHORT_NAMES[month]) for month in range(1, 13)]
+        if year_filter and year_filter.isdigit() else recent_slots
+    )
     slot_keys = [(year, month) for year, month, _ in month_slots]
+    recent_net_totals = {(year, month): Decimal("0.00") for year, month, _ in recent_slots}
 
     base_lines_query = FinancialRecordLine.objects.filter(
         record__bookkeeper=bookkeeper,
+        record__client__bookkeeper=bookkeeper,
     )
     if scope_client is not None:
         base_lines_query = base_lines_query.filter(record__client=scope_client)
         
-    if year_filter and year_filter.isdigit():
-        base_lines_query = base_lines_query.filter(record__period__year=int(year_filter))
+    selected_year = int(year_filter) if year_filter and year_filter.isdigit() else None
+    if selected_year is not None:
+        # Train on earlier years too, but never use later-year observations to
+        # forecast an earlier selection. Descriptive totals stay year-specific.
+        base_lines_query = base_lines_query.filter(record__period__year__lte=selected_year)
 
-    record_scope = FinancialRecord.objects.filter(bookkeeper=bookkeeper)
+    record_scope = FinancialRecord.objects.filter(bookkeeper=bookkeeper, client__bookkeeper=bookkeeper)
     if scope_client is not None:
         record_scope = record_scope.filter(client=scope_client)
-    if year_filter and year_filter.isdigit():
-        record_scope = record_scope.filter(period__year=int(year_filter))
+    if selected_year is not None:
+        record_scope = record_scope.filter(period__year__lte=selected_year)
     try:
         bounded_list(record_scope.values_list("pk", flat=True), MAX_RECORDS, "records")
-        all_lines = bounded_list(
+        history_lines = bounded_list(
             base_lines_query.select_related("record", "record__period").defer("record__notes"),
             MAX_TRANSACTION_DETAILS, "transaction details",
         )
-        if len({line.record_id for line in all_lines}) > MAX_RECORDS:
+        if len({line.record_id for line in history_lines}) > MAX_RECORDS:
             raise WorkloadLimitExceeded("This request exceeds 5,000 records. Select one client or a narrower year range. No partial results were returned.")
     except WorkloadLimitExceeded as error:
         return limit_response(error)
 
+    all_lines = (
+        [line for line in history_lines if line.record.period.year == selected_year]
+        if selected_year is not None else history_lines
+    )
     recent_lines = [line for line in all_lines if (line.record.period.year, line.record.period.month) in slot_keys]
 
     monthly_totals = {key: _empty_bucket() for key in slot_keys}
@@ -1183,11 +1237,25 @@ def get_analytics_summary_for_bookkeeper(
     client_sales_totals: dict[int, Decimal] = defaultdict(lambda: Decimal("0.00"))
     type_label_map: dict[str, str] = {}
     type_category_map: dict[str, str] = {}
+    tax_type_totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0.00"))
+    tax_type_labels: dict[str, str] = {}
 
     for line in all_lines:
         amount = line.amount or Decimal("0.00")
         category = _classify_line_item(line.type_code, line.description)
         grand_totals[category] += amount
+        if category == "tax":
+            tax_key = _normalize_type_code_key(line.type_code) or "other-tax"
+            tax_type_totals[tax_key] += amount
+            tax_type_labels.setdefault(tax_key, _normalize_type_code_label(line.type_code) or "Other tax")
+        # Keep the existing legacy forecast's six-month input independent of
+        # the chart window. SARIMA uses the separately bounded history below.
+        period_key = (line.record.period.year, line.record.period.month)
+        if period_key in recent_net_totals:
+            if category == "sales":
+                recent_net_totals[period_key] += amount
+            elif category == "expenses":
+                recent_net_totals[period_key] -= amount
 
         if category == "sales":
             client_sales_totals[line.record.client_id] += amount
@@ -1231,11 +1299,9 @@ def get_analytics_summary_for_bookkeeper(
     type_columns = [label for _, label in type_pairs]
 
     monthly_trend = []
-    monthly_net_values: list[Decimal] = []
     for year, month, month_label in month_slots:
         totals = monthly_totals[(year, month)]
         net_value = monthly_net_totals[(year, month)]
-        monthly_net_values.append(net_value)
 
         type_breakdown = {
             label: _to_money_number(monthly_type_totals[(year, month)].get(type_key, Decimal("0.00")))
@@ -1285,11 +1351,17 @@ def get_analytics_summary_for_bookkeeper(
     has_data = any(value > 0 for value in summary.values())
 
     remarks_insight = _build_remarks_insight(scope_client, all_clients)
-    forecast = _build_forecast_from_monthly_net(monthly_net_values if has_data else [])
+    forecast = _build_forecast_from_monthly_net(list(recent_net_totals.values()) if has_data else [])
     try:
         predictive_forecast = _build_predictive_forecast(
-            lines=all_lines, forecast_horizon=horizon, reference_date=today,
+            lines=history_lines, forecast_horizon=horizon, reference_date=today,
         )
+        history_periods = {(line.record.period.year, line.record.period.month) for line in history_lines}
+        predictive_forecast.update({
+            "history_start": "%04d-%02d" % min(history_periods) if history_periods else None,
+            "history_end": "%04d-%02d" % max(history_periods) if history_periods else None,
+            "history_cutoff_year": selected_year,
+        })
         client_workflow = _build_client_workflow_status(scope_client, bookkeeper, today)
     except WorkloadLimitExceeded as error:
         return limit_response(error)
@@ -1307,6 +1379,11 @@ def get_analytics_summary_for_bookkeeper(
         "type_columns": type_columns,
         "has_data": has_data,
         "summary": summary,
+        "tax_breakdown": [
+            {"type_code": tax_type_labels[key], "amount": _to_money_number(amount)}
+            for key, amount in sorted(tax_type_totals.items(), key=lambda item: (-item[1], tax_type_labels[item[0]].lower()))
+        ],
+        "tax_breakdown_year": selected_year,
         "client_workflow": client_workflow,
         "monthly_trend": monthly_trend,
         "remarks_insight": remarks_insight,
