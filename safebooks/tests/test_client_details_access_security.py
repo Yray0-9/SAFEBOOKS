@@ -49,6 +49,32 @@ class ClientDetailsAccessSecurityTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_new_account_defaults_to_unlocked_and_can_opt_in(self):
+        account = BookkeeperAccount.objects.create(
+            full_name="Opt In Tester", username="opt_in_tester", email="opt-in@example.test",
+            password_hash=make_password("SafeBooks#123"), status=BookkeeperAccount.STATUS_APPROVED,
+        )
+        account.refresh_from_db()
+        self.assertFalse(account.client_details_password_required)
+        self._login_as(account)
+        client = self._create_client(account)
+        self.assertEqual(self.client.get(reverse("client_details", args=[client.id])).status_code, 200)
+        settings = self.client.get(reverse("settings"))
+        self.assertContains(settings, 'data-client-details-lock-enabled="false"')
+        endpoint = reverse("api_security_client_details_access_preference")
+        for password in ("", "Incorrect#123"):
+            response = self.client.post(endpoint, data=json.dumps({"enabled": True, "current_password": password}), content_type="application/json")
+            self.assertEqual(response.status_code, 400)
+            account.refresh_from_db()
+            self.assertFalse(account.client_details_password_required)
+        response = self.client.post(endpoint, data=json.dumps({"enabled": True, "current_password": "SafeBooks#123"}), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        account.refresh_from_db()
+        self.assertTrue(account.client_details_password_required)
+        self.assertContains(self.client.get(reverse("settings")), 'data-client-details-lock-enabled="true"')
+        locked = self.client.get(reverse("client_details", args=[client.id]))
+        self.assertEqual(locked.status_code, 302)
+
     def test_client_details_page_exposes_edit_client_details_modal(self):
         account = self._create_bookkeeper(lock_enabled=False)
         self._login_as(account)

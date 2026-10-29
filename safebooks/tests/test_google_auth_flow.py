@@ -47,6 +47,7 @@ class GoogleAuthFlowTests(TestCase):
         self.assertEqual(account.google_sub, "google-sub-123")
         self.assertTrue(account.email_verified)
         self.assertEqual(account.status, BookkeeperAccount.STATUS_PENDING)
+        self.assertFalse(account.client_details_password_required)
         self.assertTrue(check_password("SafeBooks#123", account.password_hash))
 
         session = self.client.session

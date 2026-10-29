@@ -29,6 +29,7 @@ class AuthApiTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(register_response.status_code, 201)
+        self.assertFalse(BookkeeperAccount.objects.get(username="login_success").client_details_password_required)
 
         login_response = self.client.post(
             reverse("api_login"),
