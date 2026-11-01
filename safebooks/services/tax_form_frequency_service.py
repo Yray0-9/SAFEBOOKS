@@ -45,6 +45,20 @@ TAX_FORM_FREQUENCIES = {
 }
 
 
+def standard_tax_form_frequency_pattern(frequency: str) -> str:
+    """Exact, case-insensitive database lookup pattern from the same metadata.
+
+    Used for grouped schedule reads, without loading financial histories or
+    inspecting editable descriptions. Keep formatting tolerance identical to
+    standard_tax_form_frequency, including the complete version suffix.
+    """
+    forms = [
+        r"[\s-]*".join(re.escape(character) for character in code)
+        for code, schedule in TAX_FORM_FREQUENCIES.items() if schedule == frequency
+    ]
+    return r"^\s*(?:bir\s*form\s*)?[\s-]*(?:" + "|".join(forms) + r")[\s-]*$"
+
+
 def standard_tax_form_frequency(type_code: str) -> tuple[bool, str | None]:
     """Return (recognized, frequency); never search an editable description.
 

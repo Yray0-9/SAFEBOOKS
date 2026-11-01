@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/animations.css' %}">
     <link rel="stylesheet" href="{% static 'css/skeleton.css' %}">
+    <link rel="stylesheet" href="{% static 'css/bookkeeper_verification.css' %}?v=20261031-ui">
 </head>
 <body class="auth-page skeleton-active">
     <div class="skeleton-overlay auth-skeleton" id="pageSkeleton" aria-hidden="true">
@@ -83,6 +84,40 @@
                                 <strong>Status:</strong> Pending admin approval. You will get access as soon as your account is approved.
                             </div>
 
+                            <form id="verificationProofForm" class="verification-proof" aria-labelledby="verificationProofHeading" action="{% url 'api_bookkeeper_proof' %}" method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="verification-proof-heading">
+                                    <h3 id="verificationProofHeading">Proof of bookkeeping</h3>
+                                    <span id="verificationProofStatus" class="verification-proof-status">{% if verification_proof %}Submitted{% else %}Not submitted{% endif %}</span>
+                                </div>
+                                <p class="verification-proof-copy">Business permit, TESDA certificate, or another document showing your bookkeeping qualifications or experience.</p>
+                                <div class="mb-3">
+                                    <label for="verificationDocumentType" class="form-label auth-form-label">Document type</label>
+                                    <select id="verificationDocumentType" name="document_type" class="form-select auth-input" required>
+                                        <option value="">Choose document type</option>
+                                        <option value="business_permit">Business Permit</option>
+                                        <option value="tesda_certificate">TESDA Certificate</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div id="verificationOtherDocument" class="mb-3" hidden>
+                                    <label for="verificationDocumentName" class="form-label auth-form-label">Document name</label>
+                                    <input type="text" id="verificationDocumentName" name="document_name" class="form-control auth-input" maxlength="120" disabled>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="verificationProofFile" class="form-label auth-form-label">Choose document</label>
+                                    <input type="file" id="verificationProofFile" name="document" class="form-control auth-input" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" aria-describedby="verificationFileHint verificationSubmissionNotice" required>
+                                    <p id="verificationFileHint" class="verification-file-hint">One JPG, PNG or PDF, up to 5 MB.</p>
+                                </div>
+                                <div class="verification-proof-actions">
+                                    <button type="submit" id="verificationSubmitProof" class="btn auth-submit-btn" aria-describedby="verificationSubmissionNotice" disabled>Submit proof</button>
+                                    <button type="button" id="verificationClearSelection" class="btn verification-clear-selection" hidden>Clear selection</button>
+                                </div>
+                                <p id="verificationSubmissionNotice" class="verification-file-hint" role="status">{% if verification_proof %}Your proof is awaiting admin review. A new submission replaces it.{% else %}No document has been uploaded.{% endif %}</p>
+                                <a id="verificationSavedDocument" class="d-inline-block mt-2" download data-no-skeleton {% if verification_proof %}href="{{ verification_proof.download_url }}"{% else %}hidden{% endif %}>Download submitted proof</a>
+                            </form>
+                            {{ verification_proof|json_script:"verificationSavedProof" }}
+
                             <div class="mt-3">
                                 <p class="auth-card-subtitle">What happens next:</p>
                                 <ul class="list-unstyled mb-0">
@@ -102,6 +137,7 @@
     </main>
     <script src="{% static 'js/skeleton.js' %}"></script>
     <script src="{% static 'js/app_shared.js' %}"></script>
+    <script src="{% static 'js/bookkeeper_verification_ui.js' %}?v=20261031-submit"></script>
     <script>
         (() => {
             const logoutActions = Array.from(document.querySelectorAll("[data-pending-logout]"));

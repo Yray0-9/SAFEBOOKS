@@ -1,5 +1,7 @@
 ﻿asgiref==3.11.1
 Django==6.0.9
+Pillow==13.0.0
+pypdf==6.21.4
 python-dotenv==1.2.2
 psycopg[binary]==3.3.3
 pyotp==2.9.0

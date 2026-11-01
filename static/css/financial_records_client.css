@@ -73,10 +73,37 @@
 }
 
 .financial-period-label {
+    display: block;
     font-size: 0.74rem;
     letter-spacing: 0.02em;
     text-transform: uppercase;
 }
+
+#financialPeriodYear { margin-left: 0.35rem; }
+.financial-period-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 0.6fr);
+    gap: 0.45rem;
+}
+.financial-period-fields > div { min-width: 0; }
+.financial-month-navigation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.45rem;
+}
+body.financial-records-page .financial-month-navigation .financial-month-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.85rem;
+}
+.financial-month-button:focus-visible { outline: 3px solid #8fb8ff; outline-offset: 2px; }
 
 .financial-period-select {
     min-height: 42px;

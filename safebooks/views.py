@@ -8,15 +8,18 @@ from urllib.parse import urlencode, urlsplit
 from django.conf import settings
 from django.core.cache import cache
 from django.db import DatabaseError, transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
 from safebooks.models import AdminAccount, AdminAuditLog, BookkeeperAccount, BookkeeperAuditLog, Client
+from safebooks.models import BookkeeperProof
+from safebooks.services.bookkeeper_proof_service import proof_metadata, save_proof
 from safebooks.services.auth_service import (
     authenticate_google_bookkeeper,
     build_google_oauth_authorization_url,
@@ -772,7 +775,9 @@ def require_bookkeeper_auth(view_func):
             return redirect("verify_email")
 
         if status == BookkeeperAccount.STATUS_PENDING:
-            if request.path == pending_path:
+            if request.path == pending_path or (request.resolver_match and request.resolver_match.url_name in {
+                "api_bookkeeper_proof", "api_bookkeeper_proof_download",
+            }):
                 request.bookkeeper_account = account
                 return view_func(request, *args, **kwargs)
 
@@ -1059,10 +1064,72 @@ def reports_page_view(request):
 
 @require_bookkeeper_auth
 @ensure_csrf_cookie
+@never_cache
 def pending_approval_page_view(request):
     context = _build_user_context(request.bookkeeper_account)
     context["active_nav"] = ""
+    context["verification_proof"] = proof_metadata(BookkeeperProof.objects.filter(bookkeeper=request.bookkeeper_account).first())
     return render(request, "authentication/pending_approval.html", context)
+
+
+@require_http_methods(["POST"])
+@require_bookkeeper_auth
+@never_cache
+def bookkeeper_proof_api_view(request):
+    if request.bookkeeper_account.status != BookkeeperAccount.STATUS_PENDING:
+        return JsonResponse({"ok": False, "message": "Proof submission is available only for pending accounts."}, status=403)
+    if len(request.FILES) != 1 or len(request.FILES.getlist("document")) != 1:
+        return JsonResponse({"ok": False, "message": "Choose one proof document."}, status=400)
+    try:
+        result, status = save_proof(
+            request.bookkeeper_account.id, request.FILES.get("document"),
+            request.POST.get("document_type"), request.POST.get("document_name"), request.POST.get("revision"),
+        )
+    except ValueError as error:
+        return JsonResponse({"ok": False, "message": str(error)}, status=400)
+    except DatabaseError:
+        return JsonResponse({"ok": False, "message": "Submission was not confirmed. Reload to check its status before trying again."}, status=503)
+    return JsonResponse(result, status=status)
+
+
+def _private_proof_response(proof):
+    if proof is None:
+        return JsonResponse({"ok": False, "message": "Document not found."}, status=404)
+    extension = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}[proof.media_type]
+    response = HttpResponse(bytes(proof.content), content_type=proof.media_type)
+    response["Content-Disposition"] = f'attachment; filename="bookkeeping-proof.{extension}"'
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Content-Security-Policy"] = "sandbox; default-src 'none'"
+    response["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+@require_http_methods(["GET"])
+@require_bookkeeper_auth
+@never_cache
+def bookkeeper_proof_download_api_view(request, revision):
+    proof = BookkeeperProof.objects.only("content", "media_type").filter(bookkeeper=request.bookkeeper_account, revision=revision).first()
+    return _private_proof_response(proof)
+
+
+@require_http_methods(["GET"])
+@require_admin_auth
+@never_cache
+def admin_bookkeeper_proof_download_api_view(request, bookkeeper_id, revision):
+    proof = BookkeeperProof.objects.only("content", "media_type").filter(bookkeeper_id=bookkeeper_id, revision=revision).first()
+    response = _private_proof_response(proof)
+    if proof is not None:
+        # Bound and time-limit the review receipts, tied to this authenticated admin session.
+        receipts = request.session.get("verification_proof_downloads", {})
+        if not isinstance(receipts, dict):
+            receipts = {}
+        now = timezone.now().timestamp()
+        receipts = {key: value for key, value in receipts.items() if isinstance(value, dict) and now - value.get("at", 0) < 900}
+        if len(receipts) >= 50:
+            receipts = {}
+        receipts[str(bookkeeper_id)] = {"revision": str(revision), "at": now, "admin": request.admin_account.id}
+        request.session["verification_proof_downloads"] = receipts
+    return response
 
 
 @require_bookkeeper_auth
@@ -1687,6 +1754,7 @@ def analytics_summary_api_view(request):
 
 @require_http_methods(["GET"])
 @require_admin_auth
+@never_cache
 def admin_approvals_api_view(request):
     status_value = (request.GET.get("status") or "").strip()
     search_value = (request.GET.get("search") or "").strip()
@@ -1708,7 +1776,17 @@ def admin_approvals_api_view(request):
 @require_http_methods(["POST"])
 @require_admin_auth
 def admin_approvals_approve_api_view(request, bookkeeper_id):
-    result = approve_bookkeeper(request.admin_account, bookkeeper_id)
+    payload = _decode_request_data(request) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    receipts = request.session.get("verification_proof_downloads", {})
+    receipt = receipts.get(str(bookkeeper_id), {}) if isinstance(receipts, dict) else {}
+    reviewed = (payload.get("proof_reviewed") is True and isinstance(receipt, dict)
+                and receipt.get("admin") == request.admin_account.id
+                and receipt.get("revision") == payload.get("proof_revision")
+                and 0 <= timezone.now().timestamp() - receipt.get("at", 0) < 900)
+    result = approve_bookkeeper(request.admin_account, bookkeeper_id,
+                               proof_revision=payload.get("proof_revision"), proof_reviewed=reviewed)
     if result.get("ok"):
         return JsonResponse(result)
 

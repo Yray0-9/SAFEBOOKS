@@ -11,7 +11,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261027-2">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261026-quarter-column">
-<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=20261028-edit-period">
+<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=20261030-year-navigation">
 {% endblock %}
 
 {% block skeleton %}
@@ -101,24 +101,40 @@
 
     <article class="dashboard-card dashboard-fade-up mt-3 financial-toolbar-card financial-delay-10">
         <div class="financial-action-bar">
-            <label class="financial-period-select-wrap" for="periodSelector">
-                <span class="financial-period-label">Period</span>
-                <select class="form-select financial-period-select" id="periodSelector" aria-label="Select period month">
-                    <option value="all">All Periods</option>
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
-            </label>
+            <div class="financial-period-select-wrap">
+                <div class="financial-period-fields">
+                    <div>
+                        <label class="financial-period-label" for="periodSelector">Period <span id="financialPeriodYear" class="visually-hidden"></span></label>
+                        <select class="form-select financial-period-select" id="periodSelector" aria-label="Select period month">
+                            <option value="all">All Periods</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="financial-period-label" for="financialYearSelector">Year</label>
+                        <select class="form-select financial-period-select" id="financialYearSelector" aria-label="Select period year" disabled></select>
+                    </div>
+                </div>
+                <div class="financial-month-navigation" role="group" aria-label="Move between months">
+                    <button type="button" class="btn dashboard-action-btn outline financial-month-button" id="financialPreviousMonth" aria-label="Previous month" disabled>
+                        <i class="bi bi-chevron-left" aria-hidden="true"></i><span>Previous</span>
+                    </button>
+                    <button type="button" class="btn dashboard-action-btn outline financial-month-button" id="financialNextMonth" aria-label="Next month" disabled>
+                        <span>Next</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
             <button type="button" class="btn dashboard-action-btn outline financial-client-details-btn" id="openClientAnalyticsButton" title="Open client details">
                 <i class="bi bi-person-vcard"></i>
                 <span>View Client Details</span>
@@ -135,7 +151,7 @@
 
     <article class="dashboard-card dashboard-fade-up mt-3 financial-record-list-card financial-delay-16">
         <div class="dashboard-card-head">
-            <h2 id="periodHeading">January Records</h2>
+            <h2 id="periodHeading" aria-live="polite" aria-atomic="true">January Records</h2>
             <span class="dashboard-tag" id="periodEntriesTag">0 Entries</span>
         </div>
 
@@ -639,6 +655,10 @@
             };
 
         const periodSelector = document.getElementById("periodSelector");
+        const financialPreviousMonth = document.getElementById("financialPreviousMonth");
+        const financialNextMonth = document.getElementById("financialNextMonth");
+        const financialPeriodYear = document.getElementById("financialPeriodYear");
+        const financialYearSelector = document.getElementById("financialYearSelector");
         const periodHeading = document.getElementById("periodHeading");
         const periodEntriesTag = document.getElementById("periodEntriesTag");
         const financialTableBody = document.getElementById("financialTableBody");
@@ -942,8 +962,17 @@
             return notification.reason ? `Client email not sent: ${notification.reason}` : "Client email not sent.";
         };
 
+        const hideFinancialSaveSummary = () => {
+            window.clearTimeout(financialSaveSummaryTimer);
+            financialSaveSummaryTimer = null;
+            if (financialSaveSummary) financialSaveSummary.hidden = true;
+        };
+
         const showFinancialSaveSummary = (mode, payload, result = {}) => {
             if (!financialSaveSummary || !financialSaveSummaryTitle || !financialSaveSummaryMeta) return;
+            const savedDate = parseIsoDateParts(payload && payload.date);
+            // A period change during the post-save refresh must not restore an old banner.
+            if (!savedDate || (activeMonth !== "all" && (savedDate.month !== activeMonth || savedDate.year !== activeYear))) return;
 
             const frequency = entryCoverageLabel(payload);
             const lineItems = payload && Array.isArray(payload.line_items) ? payload.line_items : [];
@@ -960,11 +989,7 @@
             financialSaveSummary.hidden = false;
 
             window.clearTimeout(financialSaveSummaryTimer);
-            financialSaveSummaryTimer = window.setTimeout(() => {
-                if (financialSaveSummary) {
-                    financialSaveSummary.hidden = true;
-                }
-            }, 7000);
+            financialSaveSummaryTimer = window.setTimeout(hideFinancialSaveSummary, 7000);
         };
 
         const getEntryById = (entryId) => {
@@ -1036,6 +1061,38 @@
                 const input = worksheetRow && worksheetRow.querySelector(`[data-worksheet-field="${name}"]`);
                 return [name, input && input.value.trim() !== "" ? input.value.trim() : null];
             }));
+        };
+
+        const configureWorksheetAmountInput = (input) => {
+            const editableAmount = /^[0-9]*(?:[.][0-9]{0,2})?$/;
+            let acceptedValue = input.value;
+            const acceptsInsertion = (text) => {
+                const start = input.selectionStart ?? input.value.length;
+                const end = input.selectionEnd ?? start;
+                return editableAmount.test(input.value.slice(0, start) + text + input.value.slice(end));
+            };
+            const reject = (event) => event.preventDefault();
+            input.addEventListener("keydown", (event) => {
+                if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+                if (event.key.length === 1 && !/^[0-9.]$/.test(event.key)) reject(event);
+            });
+            input.addEventListener("beforeinput", (event) => {
+                if (!event.isComposing && typeof event.data === "string" && !acceptsInsertion(event.data)) reject(event);
+            });
+            input.addEventListener("paste", (event) => {
+                if (event.clipboardData && !acceptsInsertion(event.clipboardData.getData("text"))) reject(event);
+            });
+            const checkInput = (event) => {
+                if (event.isComposing) return;
+                if (!editableAmount.test(input.value)) {
+                    // Reject the edit as a whole, never strip letters from a financial amount.
+                    input.value = acceptedValue;
+                    return;
+                }
+                acceptedValue = input.value;
+            };
+            input.addEventListener("input", checkInput);
+            input.addEventListener("compositionend", checkInput);
         };
 
         const suggestLineDescription = (input, suggestion) => {
@@ -1207,9 +1264,12 @@
                 <summary>Other worksheet amounts <span>Enter when applicable</span></summary>
                 <p class="financial-ready-amounts-hint">Supporting information only. These amounts are not added to totals.</p>
                 <div class="financial-worksheet-grid">${WORKSHEET_AMOUNT_FIELDS.map(([name, label]) => `
-                    <label>${label}<input type="number" class="form-control financial-form-input" data-worksheet-field="${name}" inputmode="decimal" min="0" step="0.01" placeholder="Not recorded" value="${escapeHtml(lineItem[name] == null ? "" : String(lineItem[name]))}"></label>
+                    <label>${label}<input type="text" class="form-control financial-form-input" data-worksheet-field="${name}" inputmode="decimal" pattern="(?:[0-9]+(?:[.][0-9]{0,2})?|[.][0-9]{1,2})" placeholder="Not recorded" value="${escapeHtml(lineItem[name] == null ? "" : String(lineItem[name]))}"></label>
                 `).join("")}</div>
             </details></td>`;
+            worksheetRow.querySelectorAll("[data-worksheet-field]").forEach((input) => {
+                configureWorksheetAmountInput(input);
+            });
             tbodyElement.appendChild(worksheetRow);
             if (getReadyAmountsMode(tbodyElement)) {
                 row.querySelector("option[value='Others']").textContent = "Other (custom type)";
@@ -1593,6 +1653,10 @@
 
         const setRecordsLoadingState = (isLoading, message = "Loading financial records...") => {
             isRecordsLoading = Boolean(isLoading);
+            if (isRecordsLoading) {
+                const summaryCard = document.querySelector(".financial-summary-card");
+                if (summaryCard) summaryCard.hidden = true;
+            }
 
             if (financialTableBody) {
                 financialTableBody.setAttribute("aria-busy", String(isRecordsLoading));
@@ -1730,6 +1794,7 @@
         };
 
         const renderEntriesTable = () => {
+            updateMonthNavigation();
             if (!financialTableBody) {
                 return;
             }
@@ -2056,6 +2121,8 @@
 
             activeMonth = parsedDate.month;
             activeYear = parsedDate.year;
+            hideFinancialSaveSummary();
+            updateMonthNavigation();
 
             if (periodSelector) {
                 periodSelector.value = String(activeMonth);
@@ -2419,6 +2486,10 @@
                 }
 
                 const result = await parseJsonSafe(response);
+                // A newer month can be selected while the previous response body is parsing.
+                if (requestToken !== recordsLoadRequestToken) {
+                    return;
+                }
                 if (!response.ok || !result || !result.ok) {
                     setRecordsLoadingState(false);
                     const message = result && result.message ? result.message : "Unable to load financial records.";
@@ -2632,6 +2703,77 @@
             });
         }
 
+        const getAdjacentMonth = (direction) => {
+            if (!Number.isInteger(activeMonth) || !Number.isInteger(activeYear)) return null;
+            const offset = activeYear * 12 + activeMonth - 1 + direction;
+            const year = Math.floor(offset / 12);
+            if (year < 2000 || year > 2100) return null;
+            return { month: offset % 12 + 1, year };
+        };
+
+        const updateMonthNavigation = () => {
+            if (financialPeriodYear) financialPeriodYear.textContent = activeMonth === "all" ? "" : String(activeYear);
+            if (financialYearSelector) {
+                financialYearSelector.value = String(activeYear);
+                financialYearSelector.disabled = activeMonth === "all" || !hasValidClientId();
+            }
+            [[financialPreviousMonth, -1, "Previous"], [financialNextMonth, 1, "Next"]].forEach(([button, direction, label]) => {
+                if (!button) return;
+                const destination = getAdjacentMonth(direction);
+                button.disabled = !destination || !hasValidClientId();
+                const description = destination ? `${label} month: ${MONTH_NAMES[destination.month]} ${destination.year}` : `${label} month`;
+                button.setAttribute("aria-label", description);
+                button.title = destination ? description : (activeMonth === "all" ? "Select a month first" : "No further month available");
+            });
+        };
+
+        const reloadSelectedPeriod = () => {
+            hideFinancialSaveSummary();
+            currentRecordsPage = 1;
+            expandedEntryIds.clear();
+            updateMonthNavigation();
+            if (periodSelector) periodSelector.value = String(activeMonth);
+            if (periodHeading) periodHeading.textContent = activeMonth === "all" ? "All Records" : `${getActivePeriodLabel()} Records`;
+            // Only reset the default date in an untouched form; never overwrite a draft.
+            if (!addEntryFormDirty) {
+                const dateInput = document.getElementById("addEntryDate");
+                if (dateInput) dateInput.value = "";
+                syncAddEntryDateToActivePeriod();
+            }
+            loadRecordsFromApi().catch(() => {
+                showToast("Unable to load financial records.");
+            });
+        };
+
+        [[financialPreviousMonth, -1], [financialNextMonth, 1]].forEach(([button, direction]) => {
+            if (!button) return;
+            button.addEventListener("click", () => {
+                if (button.disabled) return;
+                const destination = getAdjacentMonth(direction);
+                if (!destination) return;
+                activeMonth = destination.month;
+                activeYear = destination.year;
+                reloadSelectedPeriod();
+            });
+        });
+
+        if (financialYearSelector) {
+            // Match the existing record API's supported range, including empty years for back-entry.
+            financialYearSelector.innerHTML = Array.from({ length: 101 }, (_, index) => {
+                const year = 2100 - index;
+                return `<option value="${year}">${year}</option>`;
+            }).join("");
+            financialYearSelector.addEventListener("change", (event) => {
+                const year = Number(event.target.value);
+                if (financialYearSelector.disabled || !Number.isInteger(year) || year < 2000 || year > 2100) {
+                    updateMonthNavigation();
+                    return;
+                }
+                activeYear = year;
+                reloadSelectedPeriod();
+            });
+        }
+
         if (periodSelector) {
             periodSelector.addEventListener("change", (event) => {
                 const selectedValue = event.target.value;
@@ -2645,13 +2787,7 @@
                     activeMonth = selectedMonth;
                 }
 
-                currentRecordsPage = 1;
-                expandedEntryIds.clear();
-                syncAddEntryDateToActivePeriod();
-
-                loadRecordsFromApi().catch(() => {
-                    showToast("Unable to load financial records.");
-                });
+                reloadSelectedPeriod();
             });
         }
 
@@ -2753,10 +2889,7 @@
         }
 
         if (financialSaveSummaryDismiss && financialSaveSummary) {
-            financialSaveSummaryDismiss.addEventListener("click", () => {
-                window.clearTimeout(financialSaveSummaryTimer);
-                financialSaveSummary.hidden = true;
-            });
+            financialSaveSummaryDismiss.addEventListener("click", hideFinancialSaveSummary);
         }
 
         if (addEntryForm) {

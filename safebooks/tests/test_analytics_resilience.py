@@ -44,6 +44,11 @@ class AnalyticsResilienceTests(TestCase):
                 cursor.execute("SET LOCAL statement_timeout = '5s'")
         with patch.object(analytics.timezone, "localdate", return_value=date(2026, 10, 12)):
             payload = analytics.get_analytics_summary_for_bookkeeper(self.owner, ledger.id, year_filter="2026")
+        if connection.vendor == "postgresql":
+            # The application read keeps its five-second budget. Django's
+            # deferred checks of 20,000 synthetic foreign keys are test cleanup.
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL statement_timeout = '0'")
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["summary"]["total_sales"], 20000.0)
         self.assertEqual(payload["client_workflow"]["current_period_entry_count"], 5000)

@@ -7,6 +7,51 @@ from django.urls import reverse
 
 from safebooks.models import BookkeeperAccount
 from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
+from safebooks.tests.session_helpers import bind_authenticated_session
+
+
+class PendingVerificationUiTests(TestCase):
+    def sign_in(self, *, verified=True, status=BookkeeperAccount.STATUS_PENDING, google=False):
+        account = BookkeeperAccount.objects.create(
+            full_name="Pending Test", username="proof_ui", email="proof-ui@example.test",
+            password_hash="synthetic-unused", status=status, email_verified=verified,
+            google_sub="synthetic-google-proof" if google else None,
+        )
+        session = self.client.session
+        session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
+        session.save()
+        return account
+
+    def test_pending_page_offers_proof_submission_without_changing_account_on_get(self):
+        account = self.sign_in()
+        before = BookkeeperAccount.objects.get(pk=account.pk).__dict__.copy()
+        response = self.client.get(reverse("pending_approval"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Proof of bookkeeping")
+        self.assertContains(response, "Business Permit")
+        self.assertContains(response, "TESDA Certificate")
+        self.assertContains(response, "No document has been uploaded.")
+        self.assertRegex(response.content.decode(), r'id="verificationSubmitProof"[^>]*\bdisabled')
+        self.assertContains(response, 'data-pending-logout', count=3)
+        after = BookkeeperAccount.objects.get(pk=account.pk).__dict__.copy()
+        before.pop('_state')
+        after.pop('_state')
+        self.assertEqual(before, after)
+        self.assertEqual(self.client.get(reverse("dashboard")).url, reverse("pending_approval"))
+
+    def test_google_pending_account_uses_the_same_page(self):
+        self.sign_in(google=True)
+        response = self.client.get(reverse("pending_approval"))
+        self.assertContains(response, 'id="verificationProofFile"')
+
+    def test_unverified_account_still_requires_email_verification(self):
+        self.sign_in(verified=False)
+        self.assertRedirects(self.client.get(reverse("pending_approval")), reverse("verify_email"), fetch_redirect_response=False)
+
+    def test_approved_account_still_returns_to_workspace(self):
+        self.sign_in(status=BookkeeperAccount.STATUS_APPROVED)
+        self.assertRedirects(self.client.get(reverse("pending_approval")), reverse("dashboard"), fetch_redirect_response=False)
 
 
 class AuthApiTests(TestCase):

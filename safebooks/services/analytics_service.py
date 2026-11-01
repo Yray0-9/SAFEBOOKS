@@ -7,8 +7,8 @@ from datetime import date
 from decimal import Decimal
 import re
 
-from django.db.models import Count, F, Max, Window
-from django.db.models.functions import Coalesce, RowNumber
+from django.db.models import Case, CharField, Count, F, Max, Value, When, Window
+from django.db.models.functions import Coalesce, Lower, RowNumber, Trim
 from django.utils import timezone
 
 from safebooks.models import Client, FinancialRecord, FinancialRecordLine
@@ -16,7 +16,9 @@ from safebooks.services.forecasting_service import (
     build_sarima_forecast, requires_sarima_fit, FORECAST_READY_STATUSES, rejected_prediction_note,
 )
 from safebooks.services.forecast_period_service import build_frequency_forecasts
-from safebooks.services.tax_form_frequency_service import standard_tax_form_frequency
+from safebooks.services.tax_form_frequency_service import (
+    TAX_FORM_FREQUENCIES, standard_tax_form_frequency, standard_tax_form_frequency_pattern,
+)
 from safebooks.services.workload_limits import (
     MAX_RECORDS, MAX_TRANSACTION_DETAILS, MAX_FORECAST_SERIES, MAX_FORECAST_OBSERVATIONS,
     MAX_FORECAST_DISTINCT_FITS, MAX_FORECAST_FIT_OBSERVATIONS,
@@ -180,6 +182,7 @@ FREQUENCY_INTERVALS = {
     FinancialRecord.FREQUENCY_QUARTERLY: 3,
     FinancialRecord.FREQUENCY_ANNUALLY: 12,
 }
+WORKFLOW_ENTRY_FIELDS = ("id", "period_id", "period__year", "period__month", "entry_date")
 
 FORECAST_CATEGORIES = ("sales", "expenses", "tax")
 FORECAST_METHOD_LABEL = "SARIMA"
@@ -516,6 +519,7 @@ def _build_workflow_schedule_item(
     recorded_periods: set[tuple[int, int]] | None,
     period_counts: dict[tuple[int, int], tuple[int, int]],
     reference_date: date,
+    scope_year: int | None = None,
 ) -> dict:
     normalized_frequency = _normalize_frequency(frequency)
     has_current_year_annual_record = False
@@ -536,6 +540,10 @@ def _build_workflow_schedule_item(
             reference_date,
             has_current_year_annual_record,
         )
+    if scope_year is not None and target_year > scope_year and safe_recorded_periods:
+        # A completed year is a historical snapshot, not a reminder for the next year.
+        target_year, target_month = max(safe_recorded_periods)
+        is_due_now = _period_index(target_year, target_month) <= _period_index(reference_date.year, reference_date.month)
     entry_count, detail_count = period_counts.get((target_year, target_month), (0, 0))
     has_record = entry_count > 0
     status = "ready" if has_record else ("missing" if is_due_now else "upcoming")
@@ -575,12 +583,56 @@ class _WorkflowRecord:
     workflow_detail_count: int
 
 
-def _build_client_workflow_status(client: Client | None, bookkeeper, reference_date: date) -> dict | None:
+def _build_client_workflow_status(
+    client: Client | None, bookkeeper, reference_date: date, year_filter: int | None = None,
+    entry_metadata: list[dict] | None = None,
+) -> dict | None:
     if client is None:
         return None
 
-    scoped = FinancialRecord.objects.filter(bookkeeper=bookkeeper, client=client).annotate(
-        workflow_frequency=Coalesce("line_items__coverage_frequency", "frequency"),
+    records = FinancialRecord.objects.filter(bookkeeper=bookkeeper, client=client)
+    schedule_reference_date = reference_date
+    if year_filter is not None:
+        records = records.filter(period__year=year_filter)
+        if year_filter < reference_date.year:
+            schedule_reference_date = date(year_filter, 12, 31)
+        elif year_filter > reference_date.year:
+            schedule_reference_date = date(year_filter, 1, 1)
+
+    legacy_frequency = Coalesce("line_items__coverage_frequency", "frequency")
+    formatted_form_frequency = Case(
+        *[
+            When(
+                line_items__type_code__iregex=standard_tax_form_frequency_pattern(frequency),
+                then=Value(frequency),
+            )
+            for frequency in FREQUENCY_INTERVALS
+        ],
+        default=legacy_frequency, output_field=CharField(),
+    )
+    scoped = records.annotate(
+        workflow_form_code=Lower(Trim("line_items__type_code")),
+    ).annotate(
+        workflow_frequency=Case(
+            # Ordinary saved choices use cheap exact lookups. Only unusually
+            # formatted numeric form codes need the spacing/version patterns.
+            *[
+                When(
+                    workflow_form_code__in=[
+                        spelling for code, schedule in TAX_FORM_FREQUENCIES.items()
+                        if schedule == frequency for spelling in (code, f"bir form {code}")
+                    ],
+                    then=Value(frequency),
+                )
+                for frequency in FREQUENCY_INTERVALS
+            ],
+            When(
+                line_items__type_code__iregex=r"^\s*(?:bir\s*form\s*)?[\s-]*[0-9]",
+                then=formatted_form_frequency,
+            ),
+            default=legacy_frequency,
+            output_field=CharField(),
+        ),
     )
     # Workflow needs frequency/period counts and the latest date, not every raw
     # record. This keeps a narrow analytics year usable with a large older history.
@@ -633,6 +685,37 @@ def _build_client_workflow_status(client: Client | None, bookkeeper, reference_d
         if normalized_frequency not in latest_by_frequency:
             latest_by_frequency[normalized_frequency] = record
 
+    if FinancialRecord.FREQUENCY_MONTHLY in latest_by_frequency:
+        # This card answers whether a calendar month has saved entries, not
+        # whether every category has a native monthly observation. A quarterly
+        # form saved in March is still an entry in March. Do not invent a
+        # monthly schedule for clients with only quarterly/annual activity.
+        if entry_metadata is None:
+            entry_metadata = bounded_list(records.values(*WORKFLOW_ENTRY_FIELDS), MAX_RECORDS, "records")
+        monthly_start = min(periods_by_frequency[FinancialRecord.FREQUENCY_MONTHLY], default=None)
+        month_entries = [
+            item for item in entry_metadata
+            if item["period_id"] and (year_filter is None or item["period__year"] == year_filter)
+            and (monthly_start is None or (item["period__year"], item["period__month"]) >= monthly_start)
+        ]
+        ids_by_month = defaultdict(set)
+        details_by_month = defaultdict(int)
+        for item in groups:
+            details_by_month[(item["period__year"], item["period__month"])] += item["workflow_detail_count"]
+        for item in month_entries:
+            ids_by_month[(item["period__year"], item["period__month"])].add(item["id"])
+        monthly_counts = {key: (len(ids), details_by_month[key]) for key, ids in ids_by_month.items()}
+        counts_by_frequency[FinancialRecord.FREQUENCY_MONTHLY] = monthly_counts
+        periods_by_frequency[FinancialRecord.FREQUENCY_MONTHLY] = set(monthly_counts)
+        if month_entries:
+            latest_month_entry = max(month_entries, key=lambda item: (item["entry_date"], item["id"]))
+            key = (latest_month_entry["period__year"], latest_month_entry["period__month"])
+            latest_by_frequency[FinancialRecord.FREQUENCY_MONTHLY] = _WorkflowRecord(
+                frequency=FinancialRecord.FREQUENCY_MONTHLY, period_id=latest_month_entry["period_id"],
+                period=_WorkflowPeriod(*key), entry_date=latest_month_entry["entry_date"],
+                workflow_entry_count=monthly_counts[key][0], workflow_detail_count=monthly_counts[key][1],
+            )
+
     if not latest_by_frequency:
         latest_by_frequency[FinancialRecord.FREQUENCY_MONTHLY] = None
 
@@ -644,13 +727,19 @@ def _build_client_workflow_status(client: Client | None, bookkeeper, reference_d
             latest_record=frequency_latest_record,
             recorded_periods=periods_by_frequency.get(frequency, set()),
             period_counts=counts_by_frequency.get(frequency, {}),
-            reference_date=reference_date,
+            reference_date=schedule_reference_date,
+            scope_year=year_filter,
         )
         for frequency, frequency_latest_record in sorted(
             latest_by_frequency.items(),
             key=lambda item: _workflow_frequency_order(item[0]),
         )
     ]
+    if year_filter is not None and year_filter > reference_date.year:
+        for item in schedule_items:
+            item["is_due_now"] = False
+            if not item["has_record"]:
+                item["status"] = "upcoming"
     missing_items = [item for item in schedule_items if item["status"] == "missing"]
     ready_items = [item for item in schedule_items if item["status"] == "ready"]
     primary_item = missing_items[0] if missing_items else (ready_items[0] if ready_items else schedule_items[0])
@@ -1213,7 +1302,7 @@ def get_analytics_summary_for_bookkeeper(
     if selected_year is not None:
         record_scope = record_scope.filter(period__year__lte=selected_year)
     try:
-        bounded_list(record_scope.values_list("pk", flat=True), MAX_RECORDS, "records")
+        entry_metadata = bounded_list(record_scope.values(*WORKFLOW_ENTRY_FIELDS), MAX_RECORDS, "records")
         history_lines = bounded_list(
             base_lines_query.select_related("record", "record__period").defer("record__notes"),
             MAX_TRANSACTION_DETAILS, "transaction details",
@@ -1362,7 +1451,9 @@ def get_analytics_summary_for_bookkeeper(
             "history_end": "%04d-%02d" % max(history_periods) if history_periods else None,
             "history_cutoff_year": selected_year,
         })
-        client_workflow = _build_client_workflow_status(scope_client, bookkeeper, today)
+        client_workflow = _build_client_workflow_status(
+            scope_client, bookkeeper, today, year_filter=selected_year, entry_metadata=entry_metadata,
+        )
     except WorkloadLimitExceeded as error:
         return limit_response(error)
 

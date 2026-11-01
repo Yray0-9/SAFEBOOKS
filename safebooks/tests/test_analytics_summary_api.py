@@ -15,6 +15,23 @@ from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
 
 
 class AnalyticsSummaryApiTests(TestCase):
+    @patch('safebooks.services.analytics_service.timezone.localdate', return_value=date(2026, 10, 30))
+    def test_schedule_status_follows_api_year_without_later_year_data(self, _today):
+        owner = self._create_bookkeeper('schedule-year')
+        ledger = self._create_client(bookkeeper=owner, suffix='schedule-year', remarks=Client.REMARK_NEW)
+        for year in (2025, 2026):
+            self._create_record_with_lines(bookkeeper=owner, client=ledger, entry_date=date(year, 3, 1),
+                                          lines=[('BIR Form 2551Q', 'QP', Decimal('100.00'))])
+        self._login_as(owner)
+        for year in (2025, 2026):
+            response = self.client.get(reverse('api_analytics_summary'), {'client_id': ledger.id, 'year': str(year)})
+            self.assertEqual(response.status_code, 200)
+            schedule, = response.json()['client_workflow']['schedule_items']
+            self.assertEqual((schedule['period_year'], schedule['period_month']), (year, 6))
+            self.assertEqual(schedule['status'], 'missing')
+        legacy = self.client.get(reverse('api_analytics_summary'), {'client_id': ledger.id})
+        self.assertEqual(legacy.json()['client_workflow']['schedule_items'][0]['period_year'], 2025)
+
     def _create_bookkeeper(self, suffix: str) -> BookkeeperAccount:
         return BookkeeperAccount.objects.create(
             full_name=f"Bookkeeper {suffix}",
@@ -246,8 +263,12 @@ class AnalyticsSummaryApiTests(TestCase):
         self.assertEqual(payload["client_workflow"]["current_period_transaction_detail_count"], 3)
         self.assertTrue(payload["client_workflow"]["report_ready"])
         self.assertEqual(payload["client_workflow"]["overall_status"], "ready")
-        self.assertEqual(len(payload["client_workflow"]["schedule_items"]), 1)
+        self.assertEqual(len(payload["client_workflow"]["schedule_items"]), 2)
         self.assertEqual(payload["client_workflow"]["schedule_items"][0]["status"], "ready")
+        annual = payload["client_workflow"]["schedule_items"][1]
+        self.assertEqual(annual["frequency"], FinancialRecord.FREQUENCY_ANNUALLY)
+        self.assertEqual(annual["transaction_detail_count"], 1)
+        self.assertEqual(annual["status"], "ready")
 
         forbidden_response = self.client.get(
             reverse("api_analytics_summary"),

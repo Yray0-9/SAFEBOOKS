@@ -23,6 +23,8 @@ const recordState = {
     financialTableBody: null, financialTableWrap: null, financialEmptyState: null,
     financialPagination: null, periodEntriesTag: null,
     openClientAnalyticsButton: {}, financialAddEntryButton: {}, financialPreviewReportButton: { disabled: true },
+    summaryCard: { hidden: false },
+    document: { querySelector: () => recordState.summaryCard },
 };
 recordState.hasValidClientId = () => recordState.validClient;
 vm.createContext(recordState);
@@ -31,6 +33,7 @@ recordState.setLoading(false);
 assert.equal(recordState.financialPreviewReportButton.disabled, false, "Preview must be available after loading finishes");
 recordState.setLoading(true);
 assert.equal(recordState.financialPreviewReportButton.disabled, true);
+assert.equal(recordState.summaryCard.hidden, true, "Loading a different period must hide the previous summary");
 recordState.validClient = false;
 recordState.setLoading(false);
 assert.equal(recordState.financialPreviewReportButton.disabled, true, "Missing client must not open a report");
@@ -168,7 +171,7 @@ const makeReport = () => {
     ]});
     assert.equal(workflowNodes.clientPeriodReadinessTag.textContent, "Needs record");
     assert.equal(workflowNodes.clientPeriodReadinessHint.hidden, false);
-    assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Monthly record"));
+    assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Monthly entries"));
     assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Oct 2026 · No saved record"));
     assert(workflowNodes.clientWorkflowScheduleList.innerHTML.includes("Q1 2027 · Not due yet"));
     workflowContext.apply({overall_status: "upcoming", schedule_items: [

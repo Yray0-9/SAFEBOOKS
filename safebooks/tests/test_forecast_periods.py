@@ -49,12 +49,12 @@ class ForecastPeriodTests(TestCase):
         with patch.object(analytics, '_build_workflow_schedule_item', wraps=analytics._build_workflow_schedule_item) as schedule_builder:
             workflow = analytics._build_client_workflow_status(self.ledger, self.owner, date(2025, 12, 15))
         counts = {call.kwargs['frequency']: call.kwargs['period_counts'] for call in schedule_builder.call_args_list}
-        self.assertEqual(counts['monthly'][(2025, 12)], (1, 1))
+        self.assertEqual(counts['monthly'][(2025, 12)], (1, 2))
         self.assertEqual(counts['quarterly'][(2025, 12)], (1, 1))
         schedules = {item['frequency']: item for item in workflow['schedule_items']}
         self.assertEqual(set(schedules), {'monthly', 'quarterly'})
         self.assertEqual(schedules['monthly']['entry_count'], 1)
-        self.assertEqual(schedules['monthly']['transaction_detail_count'], 1)
+        self.assertEqual(schedules['monthly']['transaction_detail_count'], 2)
         self.assertEqual(schedules['quarterly']['period_month'], 3)
         self.assertEqual(schedules['quarterly']['entry_count'], 0)
         self.assertEqual(before, self.snapshot(), 'Reads must never rewrite coverage or financial data')

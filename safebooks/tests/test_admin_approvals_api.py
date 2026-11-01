@@ -1,4 +1,5 @@
 from safebooks.tests.session_helpers import bind_authenticated_session
+from safebooks.tests.proof_helpers import create_test_proof
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -38,6 +39,12 @@ class AdminApprovalsApiTests(TestCase):
             password_hash="not-used-in-test",
             status=status,
         )
+
+    def _review_proof(self, account):
+        proof = create_test_proof(account)
+        response = self.client.get(reverse("api_admin_bookkeeper_proof_download", args=[account.id, proof.revision]))
+        self.assertEqual(response.status_code, 200)
+        return {"proof_revision": str(proof.revision), "proof_reviewed": True}
 
     def _login_bookkeeper(self, account: BookkeeperAccount) -> None:
         session = self.client.session
@@ -186,6 +193,7 @@ class AdminApprovalsApiTests(TestCase):
 
         response = self.client.post(
             reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
             content_type="application/json",
         )
 
@@ -215,6 +223,7 @@ class AdminApprovalsApiTests(TestCase):
 
         response = self.client.post(
             reverse("api_admin_approvals_approve", args=[rejected.id]),
+            data=self._review_proof(rejected),
             content_type="application/json",
         )
 
@@ -296,10 +305,12 @@ class AdminApprovalsApiTests(TestCase):
 
         first_response = self.client.post(
             reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
             content_type="application/json",
         )
         second_response = self.client.post(
             reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
             content_type="application/json",
         )
 
@@ -354,6 +365,7 @@ class AdminApprovalsApiTests(TestCase):
 
         response = self.client.post(
             reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
             content_type="application/json",
         )
 
@@ -411,6 +423,7 @@ class AdminApprovalsApiTests(TestCase):
 
         response = self.client.post(
             reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
             content_type="application/json",
         )
 
@@ -433,6 +446,7 @@ class AdminApprovalsApiTests(TestCase):
 
         response = self.client.post(
             reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
             content_type="application/json",
         )
 
@@ -464,6 +478,7 @@ class AdminApprovalsApiTests(TestCase):
         ):
             approval_response = self.client.post(
                 reverse("api_admin_approvals_approve", args=[pending.id]),
+            data=self._review_proof(pending),
                 content_type="application/json",
             )
         self.assertEqual(approval_response.status_code, 200)
@@ -522,6 +537,7 @@ class AdminApprovalConcurrencyTests(TransactionTestCase):
             password_hash="not-used-in-test",
             status=BookkeeperAccount.STATUS_PENDING,
         )
+        proof = create_test_proof(pending)
         start_barrier = Barrier(2)
 
         def run_approval(admin_id):
@@ -529,7 +545,7 @@ class AdminApprovalConcurrencyTests(TransactionTestCase):
             try:
                 admin = AdminAccount.objects.get(id=admin_id)
                 start_barrier.wait(timeout=5)
-                return approve_bookkeeper(admin, pending.id)
+                return approve_bookkeeper(admin, pending.id, proof_revision=str(proof.revision), proof_reviewed=True)
             finally:
                 close_old_connections()
 

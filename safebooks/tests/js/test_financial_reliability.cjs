@@ -177,6 +177,85 @@ const supportedStandard = [{ type_code: 'SALES', description: 'Original', amount
 assert.equal(readyContext.resetReady(supportedStandard).length, 1, 'A line with worksheet data must remain intact instead of losing its supporting values');
 console.log('Worksheet adapter passed: per-row values, null versus zero, validation, unchanged base amount, and copying without loss.');
 
+vm.runInContext('this.bindWorksheetAmount = configureWorksheetAmountInput;', readyContext);
+const worksheetControl = (value = '') => {
+    const handlers = {};
+    const input = { value, selectionStart: value.length, selectionEnd: value.length,
+        addEventListener(name, handler) { handlers[name] = handler; } };
+    readyContext.bindWorksheetAmount(input);
+    const event = extra => ({ prevented: false, preventDefault() { this.prevented = true; }, ...extra });
+    const insert = text => {
+        const before = event({ data: text, inputType: 'insertText' });
+        handlers.beforeinput(before);
+        if (!before.prevented) {
+            input.value = input.value.slice(0, input.selectionStart) + text + input.value.slice(input.selectionEnd);
+            input.selectionStart += text.length;
+            input.selectionEnd = input.selectionStart;
+            handlers.input({});
+        }
+        return before;
+    };
+    const paste = text => {
+        const attempt = event({ clipboardData: { getData: () => text } });
+        handlers.paste(attempt);
+        if (!attempt.prevented) insert(text);
+        return attempt;
+    };
+    return { input, handlers, event, insert, paste };
+};
+for (const mode of ['add', 'edit']) for (const field of ['mict', 'cogs_cos', 'income_payments_2307', 'tax_withheld']) {
+    const control = worksheetControl();
+    for (const text of ['e', 'E', '1e3', 'e232132131', '+1', '-1', 'Infinity', 'NaN', '1,000.00', '1.234']) {
+        assert(control.insert(text).prevented, `${mode}/${field}: invalid typed insertion accepted`);
+        assert(control.paste(text).prevented, `${mode}/${field}: invalid paste accepted`);
+        assert.equal(control.input.value, '', 'Reject the edit without manufacturing a different amount');
+    }
+    assert.equal(control.paste('1234.56').prevented, false);
+    assert.equal(control.input.value, '1234.56');
+    // Replacing a selection works without joining old and new amounts.
+    control.input.selectionStart = 0;
+    control.input.selectionEnd = control.input.value.length;
+    control.paste('0.00');
+    assert.equal(control.input.value, '0.00');
+    control.input.value = '';
+    control.handlers.input({});
+    assert.equal(control.input.value, '', 'Blank must remain unrecorded, not zero');
+    control.input.selectionStart = control.input.selectionEnd = 0;
+    control.insert('.');
+    control.insert('5');
+    assert.equal(control.input.value, '.5');
+    control.input.value = '1e3'; // Mobile/drop/input fallback when beforeinput is unavailable.
+    control.handlers.input({});
+    assert.equal(control.input.value, '.5', 'Never strip 1e3 into 13 or convert it to 1000');
+}
+const savedWorksheet = worksheetControl('20.00');
+assert.equal(template.includes('Use digits and up to two decimal places'), false);
+assert.equal(template.includes('data-worksheet-feedback'), false);
+assert.equal(savedWorksheet.input.value, '20.00');
+const worksheetPattern = template.match(/data-worksheet-field="\$\{name\}" inputmode="decimal" pattern="([^"]+)"/);
+assert(worksheetPattern, 'Worksheet controls must retain a native decimal format constraint');
+const finalAmountPattern = new RegExp(`^(?:${worksheetPattern[1]})$`);
+for (const value of ['0', '0.00', '1234.56', '.5', '12.']) assert(finalAmountPattern.test(value));
+for (const value of ['.', 'e', '1e3', '-1', '1.234']) assert.equal(finalAmountPattern.test(value), false);
+for (const key of ['e', 'E', '+', '-', 'a']) {
+    const keyEvent = savedWorksheet.event({ key });
+    savedWorksheet.handlers.keydown(keyEvent);
+    assert(keyEvent.prevented);
+}
+for (const key of ['Tab', 'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End', '1', '.']) {
+    const keyEvent = savedWorksheet.event({ key });
+    savedWorksheet.handlers.keydown(keyEvent);
+    assert.equal(keyEvent.prevented, false, `Keyboard access blocked: ${key}`);
+}
+const selectAll = savedWorksheet.event({ key: 'a', ctrlKey: true });
+savedWorksheet.handlers.keydown(selectAll);
+assert.equal(selectAll.prevented, false);
+savedWorksheet.input.value = 'e';
+savedWorksheet.handlers.input({ isComposing: true });
+savedWorksheet.handlers.compositionend({});
+assert.equal(savedWorksheet.input.value, '20.00', 'An invalid composition must not erase the saved value');
+console.log('Worksheet input formatting passed: all four Add/Edit fields, letters/exponents/signs, paste and mobile/drop fallback, decimal editing, zero/blank, saved values, selection and keyboard access.');
+
 readyContext.resetReady([]);
 const paidRow = detailRow('BIR Form 2551Q', 'PQ', '5', '', 'Paid');
 const pendingRow = detailRow('BIR Form 1701Q', 'IQ', '10', '', 'Pending for payment');

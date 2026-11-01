@@ -48,6 +48,10 @@
     const approvalEmailDeliveryRow = document.getElementById("approvalEmailDeliveryRow");
     const approvalEmailDeliveryStatus = document.getElementById("approvalEmailDeliveryStatus");
     const approvalEmailRetryButton = document.getElementById("approvalEmailRetryButton");
+    const proofSummary = document.getElementById("approvalProofSummary");
+    const proofDownload = document.getElementById("approvalProofDownload");
+    const proofReviewWrap = document.getElementById("approvalProofReviewWrap");
+    const proofReviewed = document.getElementById("approvalProofReviewed");
 
     const uiToastContainer = document.getElementById("uiToastContainer");
 
@@ -125,6 +129,15 @@
     };
 
     const setDetailState = (approval) => {
+        const proof = approval && approval.proof;
+        if (proofSummary) proofSummary.textContent = proof
+            ? `${proof.document_name} · Submitted ${formatDate(proof.submitted_at)}`
+            : approval ? "No proof submitted." : "Select a request.";
+        if (proofDownload) {
+            proofDownload.hidden = !proof;
+            if (proof) proofDownload.href = proof.download_url;
+            else proofDownload.removeAttribute("href");
+        }
         if (!approval) {
             if (approvalDetailEmpty) {
                 approvalDetailEmpty.hidden = false;
@@ -324,7 +337,10 @@
         pendingAction = {
             id: approval.id,
             action,
+            proofRevision: approval.proof && approval.proof.revision,
         };
+        if (proofReviewed) proofReviewed.checked = false;
+        if (proofReviewWrap) proofReviewWrap.hidden = action !== "approve";
 
         if (approvalsActionReasonInput) {
             approvalsActionReasonInput.value = "";
@@ -455,7 +471,7 @@
         }
     };
 
-    const runApprovalAction = async (approvalId, action, rejectionReason = "") => {
+    const runApprovalAction = async (approvalId, action, rejectionReason = "", proofRevision = null) => {
         const url = buildActionUrl(approvalId, action);
         if (!url) {
             showToast("Approval action is unavailable.", "warning");
@@ -465,6 +481,8 @@
         let payload = {};
         if (action === "reject") {
             payload = { rejection_reason: rejectionReason };
+        } else if (action === "approve") {
+            payload = { proof_revision: proofRevision, proof_reviewed: Boolean(proofReviewed && proofReviewed.checked) };
         }
 
         const csrfToken = shared && typeof shared.getCookieValue === "function"
@@ -571,7 +589,7 @@
         const rejectBtn = document.getElementById("approvalDetailRejectBtn");
 
         if (approveBtn) {
-            const canApprove = approval.status === "pending" || approval.status === "rejected";
+            const canApprove = Boolean(approval.email_verified && approval.proof && (approval.status === "pending" || approval.status === "rejected"));
             approveBtn.disabled = !canApprove;
             approveBtn.onclick = () => {
                 detailsModalInstance.hide();
@@ -709,7 +727,12 @@
                 return;
             }
 
-            const { id, action } = pendingAction;
+            const { id, action, proofRevision } = pendingAction;
+            if (action === "approve" && (!proofReviewed || !proofReviewed.checked)) {
+                showToast("Download and review the proof, then confirm your review.", "warning");
+                if (proofReviewed) proofReviewed.focus();
+                return;
+            }
             const rejectionReason = approvalsActionReasonInput
                 ? approvalsActionReasonInput.value.trim()
                 : "";
@@ -724,7 +747,7 @@
             }
 
             approvalsActionConfirm.disabled = true;
-            const completed = await runApprovalAction(id, action, rejectionReason);
+            const completed = await runApprovalAction(id, action, rejectionReason, proofRevision);
             approvalsActionConfirm.disabled = false;
 
             if (completed) {
