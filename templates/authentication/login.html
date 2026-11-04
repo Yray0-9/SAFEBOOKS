@@ -470,9 +470,9 @@
                 const isEmailUnverified = result && result.user && result.user.email_verified === false;
                 const showWarning = isPending || isEmailUnverified;
                 if (adminTwoFactorSection && !adminTwoFactorSection.classList.contains("d-none")) {
-                    setAdminTwoFactorFeedback(result.message || "Login successful.", showWarning ? "warning" : "success");
+                    if (!showWarning) setAdminTwoFactorFeedback(result.message || "Login successful.", "success");
                 } else {
-                    setFeedback(result.message || "Login successful.", showWarning ? "warning" : "success");
+                    if (!showWarning) setFeedback(result.message || "Login successful.", "success");
                 }
                 redirecting = true;
 
@@ -487,8 +487,8 @@
                             : "";
                         const safeFirstName = fullName ? fullName.split(" ")[0] : "";
                         const welcomeMessage = safeFirstName
-                            ? `Welcome back, ${safeFirstName}. Login successful.`
-                            : "Welcome back. Login successful.";
+                            ? `Welcome back, ${safeFirstName}!`
+                            : "Welcome back!";
 
                         window.sessionStorage.setItem(
                             "safebooks.loginWelcome",
@@ -502,11 +502,11 @@
                     // Keep login flow stable even if browser storage is unavailable.
                 }
 
-                document.body.classList.remove("skeleton-loaded");
-                document.body.classList.add("skeleton-active");
                 window.setTimeout(() => {
+                    document.body.classList.remove("skeleton-loaded");
+                    document.body.classList.add("skeleton-active");
                     window.location.assign(result.redirect_url || "{% url 'dashboard' %}");
-                }, 500);
+                }, showWarning ? 0 : 800);
             };
 
             loginForm.addEventListener("submit", async (event) => {
@@ -638,7 +638,7 @@
                     setFeedback("Something went wrong. Please try again.", "error");
                     clearSkeletonState();
                 } finally {
-                    setSubmittingState(false);
+                    if (!redirecting) setSubmittingState(false);
                     if (!redirecting) {
                         clearSkeletonState();
                         if (retryFocusInput) {
@@ -694,7 +694,7 @@
                                 return;
                             }
                             setAdminTwoFactorFeedback(result.message || "Unable to verify that code.");
-                            if (adminTwoFactorInput) {
+                            if (!redirecting && adminTwoFactorInput) {
                                 adminTwoFactorInput.select();
                                 adminTwoFactorInput.focus();
                             }
@@ -706,14 +706,14 @@
                         setAdminTwoFactorFeedback("Something went wrong. Please try again.");
                         clearSkeletonState();
                     } finally {
-                        if (verifyButton) {
+                        if (!redirecting && verifyButton) {
                             verifyButton.disabled = false;
                             verifyButton.textContent = "Verify and Continue";
                         }
-                        if (adminTwoFactorInput) {
+                        if (!redirecting && adminTwoFactorInput) {
                             adminTwoFactorInput.disabled = false;
                         }
-                        if (backToLoginFromAdminTwoFactor) {
+                        if (!redirecting && backToLoginFromAdminTwoFactor) {
                             backToLoginFromAdminTwoFactor.style.pointerEvents = "";
                             backToLoginFromAdminTwoFactor.style.opacity = "";
                         }

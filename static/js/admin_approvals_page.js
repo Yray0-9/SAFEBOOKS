@@ -151,6 +151,12 @@
             if (approvalEmailDeliveryRow) {
                 approvalEmailDeliveryRow.hidden = true;
             }
+            if (approvalEmailDeliveryStatus) {
+                setChip(approvalEmailDeliveryStatus, "Not sent", "inactive");
+            }
+            if (approvalEmailRetryButton) {
+                approvalEmailRetryButton.hidden = true;
+            }
             return;
         }
 
@@ -204,12 +210,16 @@
             approvalNotificationText.textContent = approval.notification_preview || "No notification prepared.";
         }
 
+        const accountStatus = String(approval.status || "").toLowerCase();
         const delivery = approval.email_delivery || {};
-        const deliveryStatus = String(delivery.status || "").toLowerCase();
+        const rawDeliveryStatus = String(delivery.status || "").toLowerCase();
+        const deliveryStatus = accountStatus === "pending"
+            ? "not_sent"
+            : (rawDeliveryStatus || (accountStatus === "approved" || accountStatus === "rejected" ? "sent" : "not_sent"));
         if (approvalEmailDeliveryRow) {
-            approvalEmailDeliveryRow.hidden = !deliveryStatus;
+            approvalEmailDeliveryRow.hidden = false;
         }
-        if (approvalEmailDeliveryStatus && deliveryStatus) {
+        if (approvalEmailDeliveryStatus) {
             const deliveryMeta = {
                 sent: { label: "Sent", className: "approved" },
                 skipped: { label: "Skipped", className: "suspended" },
@@ -219,7 +229,7 @@
             approvalEmailDeliveryStatus.title = delivery.reason || deliveryMeta.label;
         }
         if (approvalEmailRetryButton) {
-            approvalEmailRetryButton.hidden = deliveryStatus !== "failed";
+            approvalEmailRetryButton.hidden = rawDeliveryStatus !== "failed";
             approvalEmailRetryButton.dataset.approvalId = String(approval.id || "");
         }
     };

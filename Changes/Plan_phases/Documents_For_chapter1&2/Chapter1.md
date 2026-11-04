@@ -4,101 +4,72 @@
 
 ## Background of the Study
 
-For bookkeeping experts all across the globe, keeping track of financial
-documentation and evaluating data pertaining to adherence to laws and
-regulations for a variety of clients is one daunting task. They need to keep the
-necessary data organized and ensure that the information of each client can be
-accessed when required as well as keep everything accurate. As the number of
-clients grows, so does the number of transactions, calendars, comments, and
-data that must be managed timely. Correct accounting information management
-makes it possible to obtain reliable data for making decisions and planning
-activities[1]. Plus, scientific studies on online accounting indicate that web
-accounting enhances efficiency of accounting tasks like bank reconciliation and
-shows the advantages of digitalization in the process of financial accounting [2].
+Managing financial records for several client businesses requires bookkeepers to
+organize information, retrieve records, and review financial activity across
+different periods. Research on small and medium-sized enterprises in Ghana
+highlights the importance of business records management for decision-making and
+business growth [1]. A study of web-based accounting also examined how online
+processing can support bookkeeping activities [2]. These studies provide a basis for
+using digital tools to organize financial information while retaining the
+bookkeeper's responsibility for accurate recording and review.
 
-In the Philippines, the Bureau of Internal Revenue (BIR) continues to
-expand its digital services to empower tax administration and taxpayer
-transacting. One of these is the Online Registration and Update System (ORUS),
-which supports taxpayer registration and updating of registration information [3].
-The BIR Strategic Plan 2024-2028 also outlines the agency's shift toward a
-highly digital tax administration system and improved taxpayer services [4].
-Though such government platforms support official tax transactions, they are not
-intended as internal workspaces for bookkeepers to manage the records and
-schedule of various businesses for clients. It follows that in order for the
-bookkeeper to use BIR services, each client file is to be organized, reviewed, and
-examined before being directed to the BIR services.
+In the Philippines, the Bureau of Internal Revenue (BIR) provides digital services
+for taxpayer transactions. The Online Registration and Update System (ORUS) supports
+taxpayer registration and the updating of registration information [3]. The BIR
+Strategic Plan 2024-2028 also identifies digital transformation and improved
+taxpayer services as priorities [4]. The present study focuses on the internal work
+of bookkeepers who organize client information, maintain financial records, and
+monitor record schedules in preparation for their professional responsibilities.
 
-Locally, accounting information systems have been examined among
-agri-related cooperatives in Davao del Norte, particularly in relation to the
-usefulness of accounting information when responding to operational uncertainty
-[5]. In a different study conducted in the Philippines, the micro and small
-companies faced the challenge of keeping accurate accounting records as a
-result of lack of recording methods and lack of accounting knowledge[6]. These
-issues are vital in bookkeeping environment where multiple businesses are
-managed due to the work including the maintaining of the profiles of the clients,
-recording transactions, monitoring schedules, and keeping proper notes. If the
-information is kept in a variety of files, Excel worksheets, and handwritten
-records, more time would be needed in order to find something related to a
-specific client. The system of client management, which offers one central
-database, would help bookkeepers to find the company records quicker and keep
-all the relevant information in one place.
+Within Davao del Norte, a study examined accounting information systems and
+environmental uncertainty among agri-related cooperatives [5]. Another Philippine
+study documented difficulties in maintaining accurate accounting records among micro
+and small businesses in Zamboanga del Sur, including limitations in recording
+practices and accounting knowledge [6]. These findings provide context for the
+importance of organized bookkeeping information. For a bookkeeper managing several
+clients, maintaining profiles, financial entries, schedules, and remarks across
+separate files can complicate retrieval and review. A centralized workspace can
+bring these related records together for easier access.
 
-The vast number of digital accounting platforms has been growing but still,
-most of the existing software tools are basically designed for general accounting,
-tax operations, or single company management. The tools are helpful in
-accounting and reporting processes but they still lack their functions aimed
-directly at the needs of a daily work of home accountants working with several
-client companies. In particular, in this situation, it should be taken into account
-the fact that those involved have to manage lots of client-related information,
-financial documents used during certain period of time, schedules, notes, and
-financial summaries for each client or company in particular. The analysis of the
-previously explored studies and platforms shows that it is still impossible to find
-the above-mentioned functions alongside with forecasting and compliance
-monitoring in one working environment suitable for this group of consumers.
-Thus, the premises for the establishment of new centralized accounting software
-for keeping records of several clients are justified.
+The present study focuses on the workflow of home-based bookkeepers associated with
+the Bookkeepers Guild of Panabo City Inc. in Panabo City, Davao del Norte. Their
+work involves maintaining information for several client businesses and reviewing
+records by client and reporting period. The project addresses this workflow through
+a shared structure for client profiles, financial entries, internal schedules,
+summaries, and printable reports. Its contribution lies in organizing these
+functions around the intended users' bookkeeping activities and providing historical
+financial information for review and forecasting.
 
-The study is aligned with the Commission on Higher Education’s
-A.C.H.I.E.V.E. Agenda 2030, particularly the H pillar, Harmonized SDG-Based
-Research, Development, and Innovation, which encourages higher education
-research to address community needs and contribute to sustainable
-development [7]. It also supports the DOST Harmonized National Research and
-Development Agenda 2022–2028 under the Industry, Energy and Emerging
-Technology Research and Development Agenda, particularly the ICT Innovations
-priority area, which includes cloud computing and cyber resilience or
-cybersecurity [8]. SafeBooks relates to these directions through its web-based
-platform, centralized database, authenticated access, role-based controls, audit
-records, and financial analytics, which help home-based bookkeepers organize
-and review the records of several client businesses. At the institutional level, the
-project supports the DNSC RDE Agenda 2026–2030 through ICT for
-Development under Innovation and Inclusion [9]. These functions also relate to
-Sustainable Development Goal 8, Decent Work and Economic Growth, by
-supporting a more organized and efficient bookkeeping workflow, and
-Sustainable Development Goal 9, Industry, Innovation and Infrastructure, by
-applying accessible digital technology to an identified local record-management
-concern [10], [11].
+The study relates to the Commission on Higher Education's A.C.H.I.E.V.E. Agenda 2030
+through its emphasis on SDG-based research and innovation [7]. It also relates to
+the ICT Innovations priority of the Department of Science and Technology (DOST)
+Harmonized National Research and Development Agenda 2022-2028 through its
+application of web-based information management [8]. At the institutional level,
+Davao del Norte State College's (DNSC) approved Research, Development, and Extension
+(RDE) Agenda for 2026-2030 provides a framework for the College's research
+priorities and extension programs [9]. The project's intended support for organized
+bookkeeping work relates to Sustainable Development Goal 8, Decent Work and Economic
+Growth [10]. Its application of digital technology to a local record-management
+concern also relates to Sustainable Development Goal 9, Industry, Innovation and
+Infrastructure [11].
 
-To solve these issues, the current study suggests SafeBooks: an Online
-Financial Records and Compliance Monitoring System with Predictive Analysis.
-This system includes a secured online platform with different accesses for
-Bookkeepers and a managing personnel as well as providing an opportunity to
-search clients’ records through a specific name or TIN. The system allows for
-Bookkeepers to generate periodic financial statements with the details on
-transactions, frequency (on a monthly, quarterly or annual basis), deadlines and
-comments, while the clients’ remarks and internal signals help track registered
-operations and timelines. The system comprises a financial analysis tool able to
-summarize sales, expenditures, taxes and net values for various periods,
-historical records of transactions serving as the basis for forecasts made
-employing Seasonal Autoregressive Integrated Moving Average (SARIMA)
-model. SafeBooks does not cover tax calculations, tax reporting, proof of 
-compliance with the local tax authorities as well as any other electronic services
-of the tax authorities
+To address this need, the study develops SafeBooks: A Web-Based Financial Records
+and Compliance Monitoring System with Forecasting Analytics. The system provides
+separate access for bookkeepers and administrators, maintains client profiles and
+dated financial entries, and supports searching by client name or TIN. Bookkeepers
+can record sales and expenses with separate coverage choices, encode tax-related
+details and remarks, monitor internal schedules and deadlines, and prepare printable
+client financial reports. Recorded amounts support descriptive summaries and financial trends, while forecasts
+use the model selected through comparative evaluation when sufficient, regularly
+spaced historical data are available.
+SafeBooks does not calculate tax liabilities, file tax returns, process tax
+payments, or confirm official BIR compliance.
 
 
 **Objectives of the Study**
 The primary objective of this study is to develop SafeBooks, a web-based
 financial records monitoring system for home-based bookkeepers that centralizes
-client records, supports compliance tracking, and provides financial analytics with
+client records, supports internal schedule monitoring, and provides financial analytics with
 an evaluated forecasting model for bookkeeping review and follow-up.
 Specifically, the study aims to:
 1. Digitize client business profiles, historical financial records, transaction
@@ -107,8 +78,8 @@ entries, record schedules, deadlines, remarks, and supporting notes.
 client profiles and related bookkeeping records, with search using the
 client name or TIN.
 3. Implement period-based financial records for manually encoded sales,
-expenses, tax-related entries, deadlines, and notes, with each record
-assigned a monthly, quarterly, or annual frequency.
+expenses, tax-related entries, deadlines, and notes, with separate monthly
+or quarterly coverage for sales and expenses.
 4. Compare Weighted Moving Average (WMA), Holt-Winters Exponential
 Smoothing, and Seasonal Autoregressive Integrated Moving Average
 (SARIMA) using a time-based holdout of historical client financial records
@@ -116,12 +87,14 @@ and the Mean Absolute Error (MAE), Mean Absolute Percentage Error
 (MAPE), Root Mean Square Error (RMSE), and Weighted Absolute
 Percentage Error (WAPE) metrics to determine a suitable forecasting
 model.
-5. Generate descriptive summaries, financial trends, and forecasts from
-recorded financial data using the model with the highest accuracy.
+5. Generate descriptive summaries and financial trends from recorded
+financial data, and provide forecasts using the model selected through
+comparative evaluation when sufficient, regularly spaced historical data
+are available.
 6. Generate dashboard and analytics outputs that provide financial
 summaries, upcoming deadlines, client remarks, and forecasting results,
 together with printable client financial reports for bookkeeping review and
-follow-up
+follow-up.
 
 **Significance of the Study**
 The development of SafeBooks: A Web-Based Financial Records and

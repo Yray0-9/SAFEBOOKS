@@ -4287,6 +4287,7 @@ select.financial-form-input {
     z-index: 9999 !important;
     max-width: 100%;
     pointer-events: none;
+    padding: 1rem 1.25rem 1.65rem !important;
     max-height: calc(100vh - 1rem);
     max-height: calc(100dvh - 1rem);
     overflow-y: auto;
@@ -4297,6 +4298,8 @@ select.financial-form-input {
 .safebooks-toast-container:not(:empty) { pointer-events: auto; }
 
 .safebooks-toast {
+    position: relative;
+    overflow: hidden;
     width: min(24rem, calc(100vw - 2rem));
     max-width: 100%;
     pointer-events: auto;
@@ -4305,9 +4308,25 @@ select.financial-form-input {
     border-radius: 10px;
     background: #f5f9ff;
     color: #1f3f74;
-    box-shadow: 0 14px 24px rgba(19, 60, 136, 0.16);
+    --safebooks-toast-duration: 2800ms;
+    --bs-toast-box-shadow: 0 8px 16px -4px rgba(19, 49, 112, 0.14), 0 3px 6px -2px rgba(19, 49, 112, 0.09);
+    box-shadow: 0 8px 16px -4px rgba(19, 49, 112, 0.14), 0 3px 6px -2px rgba(19, 49, 112, 0.09);
     overflow-wrap: anywhere;
     animation: safebooks-toast-enter 180ms ease-out;
+}
+
+.safebooks-toast::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 3px;
+    background: #2463d8;
+    opacity: 0.82;
+    transform-origin: left center;
+    animation: safebooks-toast-progress var(--safebooks-toast-duration, 2800ms) linear forwards;
+    pointer-events: none;
 }
 
 @keyframes safebooks-toast-enter {
@@ -4315,10 +4334,19 @@ select.financial-form-input {
     to { transform: translateY(0); }
 }
 
+@keyframes safebooks-toast-progress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .safebooks-toast {
         animation: none;
         transition: none;
+    }
+
+    .safebooks-toast::after {
+        animation: none;
     }
 }
 
@@ -4329,11 +4357,20 @@ select.financial-form-input {
     color: #195c3a;
 }
 
+.safebooks-toast.success::after,
+.safebooks-toast.safebooks-toast-welcome::after {
+    background: #1a7c50;
+}
+
 .safebooks-toast.warning {
     border-color: #f0d69f;
     border-inline-start-color: #ad6400;
     background: #fff8e8;
     color: #775000;
+}
+
+.safebooks-toast.warning::after {
+    background: #ad6400;
 }
 
 .safebooks-toast.danger {
@@ -4343,7 +4380,12 @@ select.financial-form-input {
     color: #922828;
 }
 
+.safebooks-toast.danger::after {
+    background: #bd3232;
+}
+
 .safebooks-toast .toast-body {
+    padding-bottom: 0.82rem;
     font-size: 0.84rem;
     font-weight: 700;
 }
@@ -4353,7 +4395,6 @@ select.financial-form-input {
     border-inline-start-color: #1a7c50;
     background: #edfbf3;
     color: #1f6b42;
-    box-shadow: 0 14px 24px rgba(19, 106, 64, 0.16);
 }
 
 .dashboard-tag {
@@ -6861,7 +6902,12 @@ body.theme-dark .safebooks-toast {
     border-color: #2a3c5a;
     border-inline-start-color: #87b5ff;
     color: #d7e6ff;
-    box-shadow: 0 14px 24px rgba(2, 8, 20, 0.5);
+    --bs-toast-box-shadow: 0 8px 18px -4px rgba(2, 8, 20, 0.45), 0 3px 7px -2px rgba(2, 8, 20, 0.3);
+    box-shadow: 0 8px 18px -4px rgba(2, 8, 20, 0.45), 0 3px 7px -2px rgba(2, 8, 20, 0.3);
+}
+
+body.theme-dark .safebooks-toast::after {
+    background: #87b5ff;
 }
 
 body.theme-dark .safebooks-toast.safebooks-toast-welcome {
@@ -6878,6 +6924,11 @@ body.theme-dark .safebooks-toast.success {
     color: #bfead3;
 }
 
+body.theme-dark .safebooks-toast.success::after,
+body.theme-dark .safebooks-toast.safebooks-toast-welcome::after {
+    background: #72d9a5;
+}
+
 body.theme-dark .safebooks-toast.warning {
     background: #302719;
     border-color: #6a522c;
@@ -6885,11 +6936,19 @@ body.theme-dark .safebooks-toast.warning {
     color: #ffe0a3;
 }
 
+body.theme-dark .safebooks-toast.warning::after {
+    background: #f1bd62;
+}
+
 body.theme-dark .safebooks-toast.danger {
     background: #321e27;
     border-color: #70404c;
     border-inline-start-color: #f48b98;
     color: #ffc7ce;
+}
+
+body.theme-dark .safebooks-toast.danger::after {
+    background: #f48b98;
 }
 
 body.theme-dark .dashboard-search {

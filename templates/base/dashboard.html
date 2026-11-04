@@ -1398,9 +1398,10 @@
                 payload = null;
             }
 
-            const message = payload && typeof payload.message === "string"
+            const rawMessage = payload && typeof payload.message === "string"
                 ? payload.message.trim()
                 : "";
+            const message = rawMessage.replace(/\s*Login successful\.?$/i, "").trim();
 
             if (!message) {
                 return;

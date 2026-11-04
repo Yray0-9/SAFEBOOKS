@@ -134,6 +134,9 @@
         const delay = Number.isFinite(options.delay) ? options.delay : 2800;
         const toastElement = document.createElement("div");
         toastElement.className = `toast safebooks-toast ${variantClass}`.trim();
+        if (toastElement.style && typeof toastElement.style.setProperty === "function") {
+            toastElement.style.setProperty("--safebooks-toast-duration", `${delay}ms`);
+        }
         toastElement.setAttribute("role", "status");
         toastElement.setAttribute("aria-live", "polite");
         toastElement.setAttribute("aria-atomic", "true");
