@@ -238,7 +238,17 @@ class ClientDataSecurityTests(TestCase):
         for url, params in requests:
             response = self.client.get(url, params)
             self.assertEqual(response.status_code, 200)
-            self._assert_private_values_absent(response)
+            if url == reverse("api_reports_print_layout"):
+                # Only the three existing worksheet headings are populated.
+                for value in (self.protected.email_password, self.protected.orus_password,
+                              self.protected.orus_account, "SyntheticPrivatePIN"):
+                    self.assertNotContains(response, value)
+                self.assertEqual(response.json()["client"]["permit_number"], self.protected.permit_number)
+                self.assertEqual(response.json()["client"]["birthday"], self.protected.birthday.isoformat())
+                self.assertEqual(response.json()["client"]["email"], self.protected.email)
+                self.assertEqual(response.json()["client"]["custom_fields"], [])
+            else:
+                self._assert_private_values_absent(response)
             self.assertEqual(response.json()["client"]["email_password"], "")
         report = self.client.get(requests[-1][0], requests[-1][1]).json()
         self.assertEqual(report["summary"]["total_amount"], "123.45")

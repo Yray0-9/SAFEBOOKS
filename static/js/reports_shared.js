@@ -143,10 +143,12 @@
         ];
     };
 
-    const buildWorksheetTable = (transactionRows, { yearFilter, classifyLine }) => {
+    const buildWorksheetTable = (transactionRows, { yearFilter, classifyLine, netSales }) => {
         const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const supportingKeys = ["mict", "cogs_cos", "income_payments_2307", "tax_withheld"];
         const periods = new Map();
+        const serverNet = netSales && typeof netSales.periods === "object" ? netSales : null;
+        let hasBroadCoverage = false;
         const present = (value) => value !== null && value !== undefined && String(value).trim() !== "";
         const displayAmount = (value) => present(value) ? formatCurrency(Number(value)) : "";
         (Array.isArray(transactionRows) ? transactionRows : []).forEach((line) => {
@@ -157,6 +159,7 @@
             if (!periods.has(key)) periods.set(key, { label: `${months[Number(date[2]) - 1]} ${date[1]}`, quarter: String(Math.ceil(Number(date[2]) / 3)), sales: 0, expenses: 0, hasSales: false, hasExpenses: false, details: [], notes: new Set() });
             const period = periods.get(key);
             const category = classifyLine(line.type_code, line.description);
+            if (["sales", "expenses"].includes(category) && ![undefined, null, "", "monthly"].includes(line.coverage_frequency || line.frequency)) hasBroadCoverage = true;
             const amount = Number(line.amount || 0);
             if (category === "sales") {
                 period.sales += Number.isFinite(amount) ? amount : 0;
@@ -180,26 +183,40 @@
         });
         const rows = [];
         const rowKinds = [];
-        Array.from(periods.entries()).sort(([left], [right]) => left.localeCompare(right)).forEach(([, period]) => {
+        const cellAnnotations = [];
+        Array.from(periods.entries()).sort(([left], [right]) => left.localeCompare(right)).forEach(([key, period]) => {
             // Align the first saved tax form with the monthly figures, without repeating those figures on later forms.
             const firstTaxIndex = period.details.findIndex((detail) => detail.tax_due !== "");
             const firstTax = firstTaxIndex >= 0 ? period.details[firstTaxIndex] : {};
             const monthRemarks = new Set(period.notes);
             if (firstTax.remarks) monthRemarks.add(firstTax.remarks);
+            const net = serverNet && serverNet.periods[key];
+            // Older monthly-only responses retain their familiar display. Never
+            // recreate a monthly subtraction from quarterly amounts if metadata is unavailable.
+            const netValue = serverNet ? displayAmount(net && net.amount)
+                : !hasBroadCoverage && (period.hasSales || period.hasExpenses) ? formatCurrency(period.sales - period.expenses) : "";
             rows.push({ ...firstTax, period: period.label, quarter: period.quarter,
                 sales: period.hasSales ? formatCurrency(period.sales) : "",
                 expenses: period.hasExpenses ? formatCurrency(period.expenses) : "",
-                net_value: period.hasSales || period.hasExpenses ? formatCurrency(period.sales - period.expenses) : "",
+                net_value: netValue,
                 remarks: firstTax.hasOwnRemarks ? firstTax.remarks : Array.from(monthRemarks).join("; ") });
             rowKinds.push("month");
+            cellAnnotations.push(net ? { 8: {
+                label: net.status === "calculated" && net.coverage_start !== net.coverage_end ? net.coverage_label : "",
+                title: net.reason || (net.status === "covered" ? `Included in ${net.coverage_label}`
+                    : `${net.coverage_label}: ${displayAmount(net.sales_basis)} − ${displayAmount(net.expenses_basis)}`),
+            } } : {});
             period.details.forEach((detail, index) => {
                 if (index === firstTaxIndex) return;
                 rows.push(detail);
                 rowKinds.push("detail");
+                cellAnnotations.push({});
             });
         });
         return {
-            layout: "worksheet", preserveColumnOrder: true, rowKinds,
+            layout: "worksheet", preserveColumnOrder: true, rowKinds, cellAnnotations,
+            totalOverrides: serverNet ? { "Net Sales": displayAmount(serverNet.total) }
+                : hasBroadCoverage ? { "Net Sales": "" } : null,
             totalColumns: ["Sales", "Expenses", "Net Sales", "Tax Due"],
             columns: [
                 { key: "type_code", label: "Type / Code" }, { key: "description", label: "Description" },
@@ -299,6 +316,8 @@
                     if (index === 0) {
                         return "Total";
                     }
+                    const override = Object.entries(table.totalOverrides || {}).find(([label]) => label.toLowerCase() === finalColumns[index].toLowerCase());
+                    if (override) return override[1];
                     if (!hasNumericValues[index]) {
                         return "-";
                     }
@@ -360,6 +379,11 @@
                     // Leave zero amounts writable on the worksheet without changing data or totals.
                     const isWorksheetMoney = worksheet && worksheetMoneyColumns.has(column.toLowerCase().replace(/[^a-z0-9]/g, ""));
                     if (isWorksheetMoney && parseNumericValue(rowCells[columnIndex]) === 0) return "<td></td>";
+                    const annotation = !isTotalsRow && table.cellAnnotations && table.cellAnnotations[rowIndex] && table.cellAnnotations[rowIndex][columnIndex];
+                    if (annotation) {
+                        const label = annotation.label ? `<small style="display:block;white-space:normal">${escapeHtml(annotation.label)}</small>` : "";
+                        return `<td title="${escapeHtml(annotation.title)}">${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}${label}</td>`;
+                    }
                     return `<td>${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}</td>`;
                 })
                 .join("");

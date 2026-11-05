@@ -509,7 +509,7 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=20261026-quarter-spacing"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261105-net-coverage"></script>
 <script src="{% static 'js/financial_coverage.js' %}?v=20261028-period-choices"></script>
 <script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
@@ -3343,6 +3343,7 @@
                 scopeLabel: reportClientProfile.client_name,
                 ...window.SafeBooksReportsShared.buildWorksheetTable(payload && payload.rows, {
                     yearFilter: selectedYear, classifyLine: classifyModalReportLine,
+                    netSales: payload && payload.worksheet_net_sales,
                 }),
             };
         };
@@ -3393,6 +3394,8 @@
                     preserveColumnOrder: report.preserveColumnOrder,
                     totalColumns: report.totalColumns,
                     rowKinds: report.rowKinds,
+                    cellAnnotations: report.cellAnnotations,
+                    totalOverrides: report.totalOverrides,
                     columns,
                     rows,
                     minRows: 14,

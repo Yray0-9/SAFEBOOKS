@@ -91,6 +91,56 @@ const render = (data) => shared.buildReportSheetHtml({
 });
 const html = render(report);
 
+// Use the backend's read-only matching-coverage calculation, never March minus
+// quarterly expenses. January/February remain visible but their net is not counted twice.
+const quarterlyPayload = { rows: [
+    ...['122000', '128000', '137500'].map((amount, index) => ({ entry_date: `2026-0${index + 1}-01`,
+        type_code: 'Sales', description: 'Sales', amount, coverage_frequency: 'monthly', frequency: 'quarterly' })),
+    { entry_date: '2026-03-31', type_code: 'Expenses', amount: '290500', coverage_frequency: 'quarterly', frequency: 'monthly' },
+    { entry_date: '2026-03-31', type_code: 'BIR Form 2551Q', description: 'PQ', amount: '6006', remarks: 'Paid' },
+], worksheet_net_sales: { periods: {
+    '2026-01': { amount: null, status: 'covered', coverage_label: 'Jan–Mar 2026' },
+    '2026-02': { amount: null, status: 'covered', coverage_label: 'Jan–Mar 2026' },
+    '2026-03': { amount: '97000.00', status: 'calculated', coverage_label: 'Jan–Mar 2026',
+        coverage_start: '2026-01', coverage_end: '2026-03', sales_basis: '387500.00', expenses_basis: '290500.00' },
+}, total: '97000.00' } };
+const quarterlyBefore = JSON.stringify(quarterlyPayload);
+const quarterly = context.build(quarterlyPayload, '2026');
+assert.equal(quarterly.rows.length, 3);
+assert.equal(quarterly.rows[0].net_value, '');
+assert.equal(quarterly.rows[1].net_value, '');
+assert.match(quarterly.rows[2].net_value, /97,000\.00/);
+assert.match(quarterly.rows[2].sales, /137,500\.00/);
+assert.match(quarterly.rows[2].expenses, /290,500\.00/);
+assert.equal(quarterly.rows[2].type_code, 'BIR Form 2551Q');
+assert.equal(quarterly.rows[2].remarks, 'Paid');
+const quarterlyHtml = render(quarterly);
+assert.match(quarterlyHtml, /title="Jan–Mar 2026: ₱387,500\.00 − ₱290,500\.00"/);
+assert.match(quarterlyHtml, /97,000\.00<small[^>]*>Jan–Mar 2026<\/small>/);
+const quarterlyFooter = quarterlyHtml.match(/<tr class="reports-ledger-totals-row">([\s\S]*?)<\/tr>/)[1];
+assert.match(quarterlyFooter, /97,000\.00/);
+assert.match(quarterlyFooter, /387,500\.00/);
+assert(!quarterlyHtml.includes('153,000.00'));
+assert.equal(JSON.stringify(quarterlyPayload), quarterlyBefore);
+// A response without matching-coverage metadata must not fall back to the wrong subtraction.
+const oldQuarterly = context.build({ rows: quarterlyPayload.rows }, '2026');
+assert(oldQuarterly.rows.every(row => !row.net_value));
+assert.equal(oldQuarterly.totalOverrides['Net Sales'], '');
+const incompleteQuarterly = JSON.parse(quarterlyBefore);
+incompleteQuarterly.worksheet_net_sales.periods['2026-03'] = { amount: null, status: 'incomplete', reason: 'Incomplete Sales coverage' };
+incompleteQuarterly.worksheet_net_sales.total = null;
+const incompleteReport = context.build(incompleteQuarterly, '2026');
+assert.equal(incompleteReport.rows[2].net_value, '');
+assert.equal(incompleteReport.totalOverrides['Net Sales'], '');
+assert(render(incompleteReport).includes('title="Incomplete Sales coverage"'));
+const zeroQuarter = JSON.parse(quarterlyBefore);
+zeroQuarter.worksheet_net_sales.periods['2026-03'].amount = '0.00';
+zeroQuarter.worksheet_net_sales.total = '0.00';
+assert(!render(context.build(zeroQuarter, '2026')).includes('₱0.00'));
+// The actual modal must pass these annotations and totals to the preview that is printed.
+assert.match(extract('        const buildModalLedgerSheetHtml =', '        const renderModalReportForSelectedYear ='), /cellAnnotations: report.cellAnnotations/);
+assert.match(extract('        const buildModalLedgerSheetHtml =', '        const renderModalReportForSelectedYear ='), /totalOverrides: report.totalOverrides/);
+
 // Saved zeros stay numeric in data and calculations, but print as truly blank worksheet cells.
 const blankAndZero = context.build({ rows: [
     { entry_date: '2026-01-01', type_code: 'BIR Form 0619E', description: 'TW', amount: '500' },
@@ -245,4 +295,39 @@ context.modalReportSheet = { innerHTML: allZeroHtml };
 vm.runInContext('printModalLedgerLayout();', context);
 assert(printed.includes(allZeroHtml.trim()));
 assert(!printed.includes('₱0.00'));
-console.log('Worksheet report passed: automatic quarters for all months and form rows, year boundaries, no quarter totals, unchanged data/frequency, blank/zero, independent remarks and matching landscape print.');
+context.modalLatestReport = quarterly;
+context.modalReportSheet = { innerHTML: quarterlyHtml };
+vm.runInContext('printModalLedgerLayout();', context);
+assert(printed.includes(quarterlyHtml.trim()));
+assert(printed.includes('97,000.00<small'));
+
+// Exercise the real modal-to-sheet mapping, not just the shared renderer.
+context.formatTin = value => value;
+context.reportClientProfile = {
+    client_name: 'Worksheet header sample', tin_number: '123456789000', trade_name: 'Sample trade',
+    location: 'Sample location', permit_number: '00519', birthday: '1991-02-03', email: 'worksheet-client@example.test',
+    email_password: 'SyntheticHeaderEmailSecret', orus_account: 'SyntheticHeaderOrusLogin',
+    orus_password: 'SyntheticHeaderOrusSecret',
+    custom_fields: [{ label: 'Portal password', type: 'password', value: 'SyntheticHeaderCustomSecret' }],
+};
+vm.runInContext(extract('        const buildModalLedgerSheetHtml =', '        const renderModalReportForSelectedYear =')
+    + '\nthis.buildSheet = buildModalLedgerSheetHtml;', context);
+const headerSheet = context.buildSheet(quarterly);
+for (const value of ['00519', '1991-02-03', 'worksheet-client@example.test']) assert(headerSheet.includes(value));
+for (const value of ['SyntheticHeaderEmailSecret', 'SyntheticHeaderOrusLogin', 'SyntheticHeaderOrusSecret', 'SyntheticHeaderCustomSecret']) assert(!headerSheet.includes(value));
+context.modalLatestReport = quarterly;
+context.modalReportSheet = { innerHTML: headerSheet };
+vm.runInContext('printModalLedgerLayout();', context);
+assert(printed.includes(headerSheet.trim()));
+for (const value of ['00519', '1991-02-03', 'worksheet-client@example.test']) assert(printed.includes(value));
+assert(!printed.includes('SyntheticHeader'));
+context.reportClientProfile.permit_number = '<img src=x onerror=alert(1)>';
+const escapedHeaderSheet = context.buildSheet(quarterly);
+assert(!escapedHeaderSheet.includes('<img src=x'));
+assert(escapedHeaderSheet.includes('&lt;img src=x'));
+context.reportClientProfile = { client_name: 'Empty header sample' };
+const missingHeaderSheet = context.buildSheet(quarterly);
+assert.match(missingHeaderSheet, /<th>Permit No\.<\/th>\s*<td>-<\/td>/);
+assert.match(missingHeaderSheet, /<th>Birthday<\/th>\s*<td>-<\/td>/);
+assert.match(missingHeaderSheet, /<th>Email<\/th>\s*<td colspan="3">-<\/td>/);
+console.log('Worksheet report passed: matching Net Sales coverage and totals, quarters, blank/zero, remarks, unchanged source data and matching landscape print.');

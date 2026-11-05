@@ -10,6 +10,7 @@ from django.utils import timezone
 from safebooks.models import BookkeeperAuditLog, Client, FinancialRecord, FinancialRecordLine, Period
 from safebooks.services.bookkeeper_audit_service import record_bookkeeper_audit
 from safebooks.services.client_service import serialize_client
+from safebooks.services.worksheet_report_service import build_worksheet_net_sales
 from safebooks.services.workload_limits import (
     MAX_RECORDS, MAX_TRANSACTION_DETAILS, WorkloadLimitExceeded, bounded_list, workload_error,
 )
@@ -286,6 +287,20 @@ def _serialize_client(client: Client) -> dict:
         "birthday", "email", "email_password", "orus_account", "orus_password",
         "custom_fields", "forecast_growth_percent",
     )}
+
+
+def _serialize_report_client(client: Client) -> dict:
+    """Populate existing worksheet headings without granting full-profile access.
+
+    Do not use include_sensitive=True here: report reads must never return
+    saved credentials, ORUS login details, or private custom fields.
+    """
+    return {
+        **_serialize_client(client),
+        "permit_number": client.permit_number,
+        "birthday": client.birthday.isoformat() if client.birthday else "",
+        "email": client.email,
+    }
 
 
 def _serialize_line_item(line_item: FinancialRecordLine) -> dict:
@@ -703,9 +718,10 @@ def list_transactions_for_client_range(bookkeeper, client_id: int, date_from_val
 
     return {
         "ok": True,
-        "client": _serialize_client(client),
+        "client": _serialize_report_client(client),
         "date_from": date_from.isoformat(),
         "date_to": date_to.isoformat(),
+        "worksheet_net_sales": build_worksheet_net_sales(rows),
         "summary": {
             "entry_count": len(records),
             "line_item_count": line_item_count,

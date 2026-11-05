@@ -426,3 +426,175 @@ and [the owner-operated usability deployment guide](USABILITY_DEPLOYMENT.md).
 Start the hosted trial with a fresh database and fictional client data. Resolve
 credential-at-rest and private Git/backup-history concerns separately before
 sensitive live use. Complete the guide's real-host release gate before invitations.
+
+## Hosted recovery: missing database migrations on Render Free
+
+Recorded from the November 4, 2026 incident. The owner-provided logs confirmed
+that migrations `0035` through `0040` were pending. All six subsequently finished
+with `OK`, and Render reported the service Live. Client-list and save checks are
+still required after deployment; a Live status alone does not verify those flows.
+
+### Why pushing code did not update the database
+
+Git push sends application code and migration files to GitHub. Render then builds
+and runs the code from its connected branch. In this deployment, that process
+does **not** automatically run Django migrations against the hosted Neon database.
+
+- `makemigrations` creates migration files during development. Include those files
+  in the commit when a model change requires them.
+- `migrate` applies the existing migration files to the selected database. Applying
+  them locally does not apply them to Neon; these are separate databases.
+
+On November 4, the application expected the VAT/Non-VAT field, but the hosted
+database lacked the column created by `0038_client_tax_registration`. The logs
+reported:
+
+```text
+django.db.utils.ProgrammingError: column clients.tax_registration does not exist
+```
+
+Both `/api/clients/` and `/api/financial-records/clients/` failed while reading
+clients. This prevents the lists from displaying; it does not by itself prove
+that existing records were deleted. An earlier audit entry also does not establish
+whether a later save succeeded. Check existing clients after recovery before
+entering the same client again.
+
+### 1. Confirm the error and preserve the working startup command
+
+Open the failed request in Render's Logs and read the final exception line.
+`Internal Server Error` alone is not enough to diagnose missing migrations.
+If the error concerns a missing column or table, check migration status below.
+If it concerns another cause, investigate that cause before applying changes.
+
+Before editing Settings, copy the current working Start Command somewhere safe.
+The owner's full working command for this incident was:
+
+```sh
+env GUNICORN_CMD_ARGS="" SAFEBOOKS_ALLOWED_HOSTS="${SAFEBOOKS_ALLOWED_HOSTS:-$RENDER_EXTERNAL_HOSTNAME}" gunicorn --config gunicorn.conf.py safebooks.wsgi:application
+```
+
+Preserve the complete command when restoring it. The prefix clears extra
+`GUNICORN_CMD_ARGS` options and supplies Render's hostname when
+`SAFEBOOKS_ALLOWED_HOSTS` is unset or empty. A shorter plain Gunicorn command
+relies on the environment already supplying the same required configuration.
+
+### 2. Check hosting configuration before the migration command
+
+In Render, open the SafeBooks service's **Environment** page. Ensure the key
+`SAFEBOOKS_ALLOWED_HOSTS` has this value for the recorded usability site:
+
+```text
+safebooks-usability.onrender.com
+```
+
+Use the actual public hostname if the site address changes. Do not include
+`https://`, a trailing slash, quotation marks, or a wildcard. Preserve existing
+database credentials, signing keys, Redis configuration, and email settings.
+
+During the incident, the first checking deployment failed with:
+
+```text
+Production requires SAFEBOOKS_ALLOWED_HOSTS in hosting environment secrets.
+```
+
+The hostname fallback in the normal command applies only to the Gunicorn process.
+It does not configure a preceding `python manage.py ...` command. That is why the
+hostname must be available in Render's Environment for these management commands.
+Save the environment change and deploy; do not switch to development settings to
+bypass a production configuration error. If another required variable is missing,
+correct it privately using the hosting configuration described earlier in this guide.
+
+### 3. Read migration status without paid Shell access
+
+On Render Free, use **Settings → Build & Deploy → Start Command** temporarily.
+Paste the following as **one line**, without adding surrounding quotation marks:
+
+```sh
+python manage.py showmigrations safebooks --settings=safebooks.settings_production && env GUNICORN_CMD_ARGS="" SAFEBOOKS_ALLOWED_HOSTS="${SAFEBOOKS_ALLOWED_HOSTS:-$RENDER_EXTERNAL_HOSTNAME}" gunicorn --config gunicorn.conf.py safebooks.wsgi:application
+```
+
+Click **Save Changes once**. Saving the command triggers a deployment. Open that
+deployment's logs, rather than repeatedly saving or starting more deployments.
+After the build, the command prints a list such as:
+
+```text
+[X] 0034_account_case_insensitive_unique
+[ ] 0035_financialrecordline_worksheet_amounts
+[ ] 0036_financialrecordline_remarks
+[ ] 0037_financialrecordline_coverage_frequency
+[ ] 0038_client_tax_registration
+[ ] 0039_client_details_lock_opt_in
+[ ] 0040_bookkeeper_verification_proof
+```
+
+`[X]` means applied; `[ ]` means pending. This command only checks status, then
+starts the web server. Wait for the deployment status to become **Live** or
+**Failed**. The log stream stays open while Gunicorn runs; that is normal. If
+Deploying lasts more than about ten minutes, inspect the latest logs instead of
+continuing to wait or repeatedly redeploying.
+
+If `0038` is already marked `[X]` but its column is missing, stop and investigate
+the migration-history/schema mismatch and the database selected by the service.
+Do not use `--fake` or manually add the column to hide the mismatch.
+
+### 4. Apply the reviewed pending migrations
+
+The following command is the **specific recovery command used for the November 4
+incident**, when only `0035`–`0040` were pending. Those reviewed migrations add
+worksheet fields, line remarks, coverage, tax registration, the opt-in lock
+default, and the proof table; they do not reset the database or recalculate saved
+financial amounts. They update migration history, add defaults for new fields,
+and can acquire schema locks. Use an appropriate maintenance window and the
+existing hosted backup/recovery arrangements.
+
+```sh
+python manage.py migrate safebooks 0040_bookkeeper_verification_proof --noinput --settings=safebooks.settings_production && env GUNICORN_CMD_ARGS="" SAFEBOOKS_ALLOWED_HOSTS="${SAFEBOOKS_ALLOWED_HOSTS:-$RENDER_EXTERNAL_HOSTNAME}" gunicorn --config gunicorn.conf.py safebooks.wsgi:application
+```
+
+Set this as the temporary Start Command, save once, and inspect the new deployment's
+logs. Each pending migration should finish with `OK`, followed by Gunicorn startup
+and Render's **Live** status. The `&&` starts Gunicorn only if migration succeeds.
+
+**For a future update, do not blindly reuse the `0040` target.** Review the actual
+pending migration files and their dependencies, and select the appropriate forward
+target. Targeting an older migration can reverse newer migrations. If necessary,
+temporarily run `python manage.py migrate safebooks --plan --settings=safebooks.settings_production`
+before the normal startup command to inspect the plan without applying it. New
+migrations may have different data or availability consequences.
+
+If migration fails, stop and inspect the error. Some earlier migrations may already
+have committed. Do not delete tables, reset the database, run `makemigrations` on
+the host, use `--fake`, or issue manual repair SQL as a substitute for diagnosis.
+`No migrations to apply` with the same missing-column error needs investigation,
+not repeated execution.
+
+### 5. Restore normal startup and verify the feature
+
+After successful migration, restore the **full original Start Command** saved in
+step 1. For the recorded deployment, it is:
+
+```sh
+env GUNICORN_CMD_ARGS="" SAFEBOOKS_ALLOWED_HOSTS="${SAFEBOOKS_ALLOWED_HOSTS:-$RENDER_EXTERNAL_HOSTNAME}" gunicorn --config gunicorn.conf.py safebooks.wsgi:application
+```
+
+Save and wait for the resulting deployment to become Live. Do not leave migration
+commands in the permanent startup command: this recovery runs before one Gunicorn
+master, not separately inside web workers or application imports.
+
+Then verify the hosted application:
+
+1. Refresh Clients and Financial Records; confirm existing clients load.
+2. Clear search/status filters if a particular client is not visible.
+3. Check whether an earlier save succeeded before entering the same client again.
+4. Save one clearly fictitious test client, then refresh and confirm it remains
+   visible in both client directories.
+5. Check the latest logs for another error before asking the bookkeeper to resume
+   testing. If other affected features changed, check those flows too.
+
+No new code commit is required merely to change these Render settings. Future
+releases that contain new migration files still need a planned hosted migration
+step in addition to pushing code. Successful migration and Live status confirm
+schema application/startup, not complete user-workflow verification.
+
+References: [Render deployments](https://render.com/docs/deploys) and
+[Render environment variables](https://render.com/docs/configure-environment-variables).
