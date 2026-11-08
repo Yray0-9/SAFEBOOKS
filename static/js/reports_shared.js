@@ -143,10 +143,28 @@
         ];
     };
 
+    const formatWorksheetCents = (cents) => {
+        const absolute = cents < 0n ? -cents : cents;
+        const fraction = String(absolute % 100n).padStart(2, "0");
+        const amount = currencyFormatter.formatToParts(absolute / 100n)
+            .map((part) => part.type === "fraction" ? fraction : part.value).join("");
+        return cents < 0n ? `-${amount}` : amount;
+    };
+
     const buildWorksheetTable = (transactionRows, { yearFilter, classifyLine, netSales }) => {
         const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const supportingKeys = ["mict", "cogs_cos", "income_payments_2307", "tax_withheld"];
+        const columns = [
+            { key: "type_code", label: "Type / Code" }, { key: "description", label: "Description" },
+            { key: "period", label: "Period" }, { key: "quarter", label: "Quarter" },
+            { key: "sales", label: "Sales" }, { key: "mict", label: "MICT" },
+            { key: "expenses", label: "Expenses" }, { key: "cogs_cos", label: "COGS / COS" },
+            { key: "net_value", label: "Net Sales" }, { key: "income_payments_2307", label: "Income payments (2307)" },
+            { key: "tax_withheld", label: "Tax withheld" }, { key: "tax_due", label: "Tax Due" }, { key: "remarks", label: "Remarks" },
+        ];
+        const columnIndexByKey = new Map(columns.map(({ key }, index) => [key, index]));
         const periods = new Map();
+        const customColumns = new Map();
         const serverNet = netSales && typeof netSales.periods === "object" ? netSales : null;
         let hasBroadCoverage = false;
         const present = (value) => value !== null && value !== undefined && String(value).trim() !== "";
@@ -156,9 +174,33 @@
             const date = String(line.entry_date || "").match(/^(\d{4})-(\d{2})-\d{2}$/);
             if (!date || Number(date[2]) < 1 || Number(date[2]) > 12 || (yearFilter !== "all" && date[1] !== yearFilter)) return;
             const key = `${date[1]}-${date[2]}`;
-            if (!periods.has(key)) periods.set(key, { label: `${months[Number(date[2]) - 1]} ${date[1]}`, quarter: String(Math.ceil(Number(date[2]) / 3)), sales: 0, expenses: 0, hasSales: false, hasExpenses: false, details: [], notes: new Set() });
+            if (!periods.has(key)) periods.set(key, { label: `${months[Number(date[2]) - 1]} ${date[1]}`, quarter: String(Math.ceil(Number(date[2]) / 3)), sales: 0, expenses: 0, hasSales: false, hasExpenses: false, details: [], notes: new Set(), customAmounts: new Map(), customDetails: [] });
             const period = periods.get(key);
             const category = classifyLine(line.type_code, line.description);
+            const hasSupportingAmounts = supportingKeys.some((key) => present(line[key]));
+            if (category === "custom") {
+                const label = String(line.type_code || "").trim();
+                const decimal = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(line.amount ?? ""));
+                if (label && decimal) {
+                    const code = label.toLowerCase();
+                    if (!customColumns.has(code)) {
+                        customColumns.set(code, { key: `custom_amount_${customColumns.size}`, label, total: 0n });
+                    }
+                    const column = customColumns.get(code);
+                    const cents = BigInt(decimal[1] + decimal[2] + (decimal[3] || "").padEnd(2, "0"));
+                    column.total += cents;
+                    period.customAmounts.set(column.key, (period.customAmounts.get(column.key) ?? 0n) + cents);
+                }
+                if (!hasSupportingAmounts && !line.remarks) {
+                    if (line.remarks == null && line.notes) period.notes.add(line.notes);
+                } else {
+                    period.customDetails.push({
+                        label,
+                        remarks: line.remarks ?? line.notes,
+                    });
+                }
+                return;
+            }
             if (["sales", "expenses"].includes(category) && ![undefined, null, "", "monthly"].includes(line.coverage_frequency || line.frequency)) hasBroadCoverage = true;
             const amount = Number(line.amount || 0);
             if (category === "sales") {
@@ -171,7 +213,7 @@
             }
             const standard = /^(sales|expenses)$/i.test(String(line.type_code || "").trim());
             // Keep each form's saved supporting values separate. Monthly totals appear only once.
-            if (category === "tax" || !standard || supportingKeys.some((key) => present(line[key]))) {
+            if (category === "tax" || !standard || hasSupportingAmounts) {
                 period.details.push({
                     type_code: line.type_code || "", description: standard ? "" : line.description || "", quarter: period.quarter,
                     ...Object.fromEntries(supportingKeys.map((key) => [key, displayAmount(line[key])])),
@@ -196,16 +238,26 @@
             const netValue = serverNet ? displayAmount(net && net.amount)
                 : !hasBroadCoverage && (period.hasSales || period.hasExpenses) ? formatCurrency(period.sales - period.expenses) : "";
             rows.push({ ...firstTax, period: period.label, quarter: period.quarter,
+                ...Object.fromEntries(Array.from(period.customAmounts, ([columnKey, cents]) => [columnKey, formatWorksheetCents(cents)])),
                 sales: period.hasSales ? formatCurrency(period.sales) : "",
                 expenses: period.hasExpenses ? formatCurrency(period.expenses) : "",
                 net_value: netValue,
                 remarks: firstTax.hasOwnRemarks ? firstTax.remarks : Array.from(monthRemarks).join("; ") });
             rowKinds.push("month");
-            cellAnnotations.push(net ? { 8: {
+            const annotations = net ? { [columnIndexByKey.get("net_value")]: {
                 label: net.status === "calculated" && net.coverage_start !== net.coverage_end ? net.coverage_label : "",
                 title: net.reason || (net.status === "covered" ? `Included in ${net.coverage_label}`
                     : `${net.coverage_label}: ${displayAmount(net.sales_basis)} − ${displayAmount(net.expenses_basis)}`),
-            } } : {});
+            } } : {};
+            const addCustomDetail = (key, label, value) => {
+                const index = columnIndexByKey.get(key);
+                annotations[index] ??= { entries: [] };
+                annotations[index].entries.push({ label, value });
+            };
+            for (const detail of period.customDetails) {
+                if (detail.remarks) addCustomDetail("remarks", detail.label, detail.remarks);
+            }
+            cellAnnotations.push(annotations);
             period.details.forEach((detail, index) => {
                 if (index === firstTaxIndex) return;
                 rows.push(detail);
@@ -218,13 +270,10 @@
             totalOverrides: serverNet ? { "Net Sales": displayAmount(serverNet.total) }
                 : hasBroadCoverage ? { "Net Sales": "" } : null,
             totalColumns: ["Sales", "Expenses", "Net Sales", "Tax Due"],
+            customColumnTotals: Array.from(customColumns.values(), ({ total }) => formatWorksheetCents(total)),
             columns: [
-                { key: "type_code", label: "Type / Code" }, { key: "description", label: "Description" },
-                { key: "period", label: "Period" }, { key: "quarter", label: "Quarter" },
-                { key: "sales", label: "Sales" }, { key: "mict", label: "MICT" },
-                { key: "expenses", label: "Expenses" }, { key: "cogs_cos", label: "COGS / COS" },
-                { key: "net_value", label: "Net Sales" }, { key: "income_payments_2307", label: "Income payments (2307)" },
-                { key: "tax_withheld", label: "Tax withheld" }, { key: "tax_due", label: "Tax Due" }, { key: "remarks", label: "Remarks" },
+                ...columns,
+                ...Array.from(customColumns.values(), ({ key, label }) => ({ key, label })),
             ], rows,
         };
     };
@@ -280,6 +329,8 @@
             "incomepayments2307", "taxwithheld", "taxdue",
         ]);
         const totalColumns = Array.isArray(table.totalColumns) ? new Set(table.totalColumns.map((label) => label.toLowerCase())) : null;
+        const customColumnTotals = worksheet && Array.isArray(table.customColumnTotals) ? table.customColumnTotals : [];
+        const firstCustomColumn = finalColumns.length - customColumnTotals.length;
 
         const rows = Array.isArray(table.rows) ? table.rows : [];
         const minRows = Number.isFinite(table.minRows) ? table.minRows : 14;
@@ -297,7 +348,7 @@
                     : finalColumns.map((column) => row[column]);
 
                 rowCells.forEach((cell, index) => {
-                    if (index === 0 || (totalColumns && !totalColumns.has(finalColumns[index].toLowerCase()))) {
+                    if (index === 0 || index >= firstCustomColumn || (totalColumns && !totalColumns.has(finalColumns[index].toLowerCase()))) {
                         return;
                     }
 
@@ -311,11 +362,12 @@
                 });
             });
 
-            if (hasNumericValues.some((value) => value)) {
+            if (customColumnTotals.length || hasNumericValues.some((value) => value)) {
                 totalsRow = finalColumns.map((_, index) => {
                     if (index === 0) {
                         return "Total";
                     }
+                    if (index >= firstCustomColumn) return customColumnTotals[index - firstCustomColumn];
                     const override = Object.entries(table.totalOverrides || {}).find(([label]) => label.toLowerCase() === finalColumns[index].toLowerCase());
                     if (override) return override[1];
                     if (!hasNumericValues[index]) {
@@ -377,14 +429,25 @@
             const cellsMarkup = finalColumns
                 .map((column, columnIndex) => {
                     // Leave zero amounts writable on the worksheet without changing data or totals.
-                    const isWorksheetMoney = worksheet && worksheetMoneyColumns.has(column.toLowerCase().replace(/[^a-z0-9]/g, ""));
-                    if (isWorksheetMoney && parseNumericValue(rowCells[columnIndex]) === 0) return "<td></td>";
+                    const customAmount = columnIndex >= firstCustomColumn;
+                    const cellTag = customAmount ? '<td class="reports-worksheet-custom-amount">' : "<td>";
+                    const isWorksheetMoney = worksheet && (customAmount || worksheetMoneyColumns.has(column.toLowerCase().replace(/[^a-z0-9]/g, "")));
+                    const isZero = isWorksheetMoney && parseNumericValue(rowCells[columnIndex]) === 0;
                     const annotation = !isTotalsRow && table.cellAnnotations && table.cellAnnotations[rowIndex] && table.cellAnnotations[rowIndex][columnIndex];
+                    if (annotation && annotation.entries) {
+                        const mainValue = isZero ? "" : toDisplayText(rowCells[columnIndex], "");
+                        const extraValues = annotation.entries
+                            .filter(({ value }) => !isWorksheetMoney || parseNumericValue(value) !== 0)
+                            .map(({ label, value }) => `<div>${escapeHtml(value)}<small style="display:block;white-space:normal">${escapeHtml(label)}</small></div>`)
+                            .join("");
+                        return `${cellTag}${escapeHtml(mainValue)}${extraValues}</td>`;
+                    }
+                    if (isZero) return `${cellTag}</td>`;
                     if (annotation) {
                         const label = annotation.label ? `<small style="display:block;white-space:normal">${escapeHtml(annotation.label)}</small>` : "";
                         return `<td title="${escapeHtml(annotation.title)}">${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}${label}</td>`;
                     }
-                    return `<td>${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}</td>`;
+                    return `${cellTag}${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}</td>`;
                 })
                 .join("");
 
@@ -464,7 +527,7 @@
             </table>
 
             <div class="reports-ledger-grid-wrap" tabindex="0" role="region" aria-label="Ledger columns">
-                <table class="reports-ledger-grid-table${worksheet ? " reports-worksheet-table" : ""}" aria-label="Ledger entries">
+                <table class="reports-ledger-grid-table${worksheet ? " reports-worksheet-table" : ""}"${customColumnTotals.length ? ` style="--worksheet-extra-width:${customColumnTotals.length * 110}px"` : ""} aria-label="Ledger entries">
                     <thead>
                         <tr>
                             ${headerMarkup}

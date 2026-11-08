@@ -10,8 +10,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261101-badge">
-<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261026-quarter-column">
-<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=20261030-year-navigation">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261108-custom-columns">
+<link rel="stylesheet" href="{% static 'css/financial_records_client.css' %}?v=20261108-tax-worksheet">
 {% endblock %}
 
 {% block skeleton %}
@@ -509,7 +509,7 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=20261105-net-coverage"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261108-tax-worksheet"></script>
 <script src="{% static 'js/financial_coverage.js' %}?v=20261028-period-choices"></script>
 <script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
@@ -1059,7 +1059,9 @@
             const worksheetRow = worksheetRowFor(row);
             return Object.fromEntries(WORKSHEET_AMOUNT_FIELDS.map(([name]) => {
                 const input = worksheetRow && worksheetRow.querySelector(`[data-worksheet-field="${name}"]`);
-                return [name, input && input.value.trim() !== "" ? input.value.trim() : null];
+                // Hidden inputs retain loaded values, but unsaved form input must not follow a custom type.
+                const value = input && (input.disabled ? input.defaultValue : input.value);
+                return [name, value ? value.trim() || null : null];
             }));
         };
 
@@ -1422,6 +1424,15 @@
             const amountInput = row.querySelector(".financial-line-amount-input");
             const code = codeSelect.value === "Others" ? customInput.value : codeSelect.value;
             const isTaxForm = isListedTaxForm(code);
+            const worksheetRow = worksheetRowFor(row);
+            if (worksheetRow) {
+                const showWorksheet = isTaxForm && codeSelect.value !== "Others";
+                worksheetRow.hidden = !showWorksheet;
+                for (const [name] of WORKSHEET_AMOUNT_FIELDS) {
+                    const input = worksheetRow.querySelector(`[data-worksheet-field="${name}"]`);
+                    if (input) input.disabled = !showWorksheet;
+                }
+            }
             // Keep saved non-form descriptions internally; only form descriptions are editable.
             row.classList.toggle("financial-non-tax-detail-row", !isTaxForm);
             if (!isTaxForm && code) suggestLineDescription(descriptionInput, code);
@@ -3270,19 +3281,14 @@
         let modalReportRequestToken = 0;
         let modalReportAbortController = null;
 
-        const classifyModalReportLine = (typeCode, description) => {
+        const classifyModalReportLine = (typeCode) => {
             const code = String(typeCode || "").trim().toLowerCase();
-            if (/^bir form\b/.test(code) || /^\d{4}[a-z]{0,2}$/.test(code) || /^(tax|taxes|vat|withholding|wht)$/.test(code)) return "tax";
-            if (code === "sales") return "sales";
-            if (code === "expenses") return "expenses";
-            const text = `${typeCode || ""} ${description || ""}`.toLowerCase();
-            if (/(expense|cost|payment|purchase)/.test(text)) {
-                return "expenses";
-            }
-            if (/(tax|bir|1701|2551|percentage|income return|return)/.test(text)) {
-                return "tax";
-            }
-            return "sales";
+            if (code === "sales" || code === "expenses") return code;
+            const formCode = code.replace(/^bir\s*form\s*/, "").replace(/[\s-]+/g, "");
+            // Keep known legacy BIR codes that are no longer in the picker.
+            if (isListedTaxForm(formCode) || /^(1602q|1603q|1702)$/.test(formCode)
+                || /^(tax|taxes|vat|withholding|wht)$/.test(code)) return "tax";
+            return "custom";
         };
 
         const getModalReportRowYear = (row) => {
@@ -3393,6 +3399,7 @@
                     layout: report.layout,
                     preserveColumnOrder: report.preserveColumnOrder,
                     totalColumns: report.totalColumns,
+                    customColumnTotals: report.customColumnTotals,
                     rowKinds: report.rowKinds,
                     cellAnnotations: report.cellAnnotations,
                     totalOverrides: report.totalOverrides,
@@ -3524,7 +3531,8 @@
                             }
                             .reports-worksheet-table th:nth-child(2), .reports-worksheet-table td:nth-child(2) { width: 13%; }
                             .reports-worksheet-table th:nth-child(4), .reports-worksheet-table td:nth-child(4) { width: 4%; text-align: center; white-space: nowrap; }
-                            .reports-worksheet-table td:nth-child(n+5):nth-child(-n+12) { text-align: right; }
+                            .reports-worksheet-table td:nth-child(n+5):nth-child(-n+12),
+                            .reports-worksheet-table td.reports-worksheet-custom-amount { text-align: right; }
                             .reports-worksheet-table tbody td { background: transparent; }
                             .reports-worksheet-month-row td { break-after: avoid; }
                             .reports-worksheet-quarter-gap { break-after: avoid; }

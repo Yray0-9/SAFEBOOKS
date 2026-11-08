@@ -170,6 +170,21 @@ assert.equal(worksheetPayload[0].mict, null);
 assert.equal(worksheetPayload[0].cogs_cos, '1000.50');
 assert.equal(worksheetPayload[0].tax_withheld, '0');
 assert.equal(validator.validate({ date: '2026-04-15', line_items: worksheetPayload }), '');
+readyContext.syncRow(worksheetRow);
+assert.equal(worksheetRow.nextElementSibling.hidden, false);
+worksheetRow.querySelector('.financial-line-code-select').value = 'Others';
+worksheetRow.querySelector('.financial-line-code-custom-input').value = '2037';
+readyContext.syncRow(worksheetRow);
+assert.equal(worksheetRow.nextElementSibling.hidden, true);
+assert.equal(worksheetInputs.cogs_cos.disabled, true);
+assert.equal(readyContext.collect(readyContext.addLineItemsBody)[0].cogs_cos, null, 'A hidden draft amount must not be saved for a custom type');
+worksheetInputs.cogs_cos.defaultValue = '321332.00';
+assert.equal(readyContext.collect(readyContext.addLineItemsBody)[0].cogs_cos, '321332.00', 'A loaded legacy amount must survive editing a custom entry');
+worksheetRow.querySelector('.financial-line-code-select').value = 'BIR Form 2551Q';
+readyContext.syncRow(worksheetRow);
+assert.equal(worksheetRow.nextElementSibling.hidden, false);
+assert.equal(worksheetInputs.cogs_cos.disabled, false);
+assert.equal(worksheetInputs.cogs_cos.value, '1000.50', 'Returning to a tax form must restore access to the draft');
 for (const invalid of ['-1', 'Infinity', 'NaN', {}, true]) {
     assert.notEqual(validator.validate({ date: '2026-04-15', line_items: [{ type_code: 'BIR Form 2551Q', description: 'PQ', amount: '25', cogs_cos: invalid }] }), '');
 }

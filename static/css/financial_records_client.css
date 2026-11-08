@@ -495,6 +495,7 @@ body.theme-dark .financial-ready-amounts-hint { color: #9eb0d3; }
 }
 
 .financial-line-items-table .financial-worksheet-row > td { width: auto; padding: 0 0.6rem 0.8rem; }
+.financial-worksheet-row[hidden] { display: none; }
 .financial-worksheet-fields { border: 1px solid #dce6ff; border-radius: 9px; padding: 0 0.7rem 0.65rem; background: #f8fbff; }
 .financial-worksheet-fields:not([open]) { padding-bottom: 0; }
 .financial-worksheet-fields summary { min-height: 44px; padding-block: 0.65rem; cursor: pointer; color: #315b9f; font-size: 0.78rem; font-weight: 700; }

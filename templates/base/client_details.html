@@ -192,7 +192,7 @@
                     </div>
                 </div>
                 <div class="client-details-row">
-                    <span class="client-details-key">Status / Remarks</span>
+                    <span class="client-details-key">Client Status</span>
                     <strong class="client-details-val" data-client-profile-field="remarks">
                         {% if client.remarks == 'new' %}New
                         {% elif client.remarks == 'active' %}Active
@@ -729,7 +729,7 @@
 {% block extra_js %}
 <script src="{% static 'js/analytics_trend_tooltip.js' %}?v=1"></script>
 <script src="{% static 'js/analytics_tax_breakdown.js' %}?v=1"></script>
-<script src="{% static 'js/forecast_periods.js' %}?v=8"></script>
+<script src="{% static 'js/forecast_periods.js' %}?v=9"></script>
 <script id="clientCustomFieldsData" type="application/json">
     [
         {% for field in client.custom_fields %}
@@ -1749,7 +1749,8 @@
                     return period || getProjectionMethodLabel(safeForecast, category, valueKey);
                 }
                 const note = String(safeForecast[`${category}_readiness_note`] || "Needs historical data");
-                const shortNote = /missing|irregular|coverage|align/i.test(note) ? "Review record periods"
+                const shortNote = /^Review missing (monthly|quarterly) periods$/.test(note) ? note
+                    : /missing|irregular|coverage|align/i.test(note) ? "Review record periods"
                     : /unsupported/i.test(note) ? "Unsupported frequency"
                     : note.length > 50 ? "Needs more history" : note;
                 return period ? `${period} · ${shortNote}` : shortNote;
@@ -1809,6 +1810,7 @@
                     : category === "net" && valid ? "Calculated"
                     : !valid && /Negative SARIMA prediction/.test(note || "") ? "Negative prediction"
                     : !valid && /Non-finite SARIMA prediction/.test(note || "") ? "Invalid prediction"
+                    : !valid && /^(Review missing (monthly|quarterly) periods|\d+ of \d+ (monthly|quarterly) periods)$/.test(note || "") ? note
                     : "";
                 const label = [interval, issue].filter(Boolean).join(" · ");
                 const color = category === "net" ? (valid

@@ -135,7 +135,6 @@
                 // Prefer native predictions over derived quarterly comparisons.
                 const native = candidates.filter(row => !hasDerived(row, category));
                 const row = native.find(item => hasValue(item, category))
-                    || native.find(item => item.frequency === "quarterly" && item[`expected_${category}_applicable`])
                     || native.find(item => item[`expected_${category}_applicable`])
                     || candidates.find(item => hasValue(item, category));
                 for (const key of [`expected_${category}`, `expected_${category}_applicable`,

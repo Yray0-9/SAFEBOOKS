@@ -36,7 +36,7 @@ for (const name of ['client_details', 'analytics']) {
     page.apply({...model, sales_period_label: 'Nov 2026', expenses_period_label: 'Dec 2026 · Quarterly',
         expected_expenses: null, expenses_readiness_note: 'Review missing quarterly periods'});
     assert.equal(page.analyticsPredictiveSalesNote.textContent, 'Nov 2026');
-    assert.equal(page.analyticsPredictiveExpensesNote.textContent, 'Dec 2026 · Quarterly · Review record periods');
+    assert.equal(page.analyticsPredictiveExpensesNote.textContent, 'Dec 2026 · Quarterly · Review missing quarterly periods');
     page.apply({...model, coverage_note: 'Quarterly', sparkline: [1340]});
     assert.equal(page.analyticsPredictivePlaceholder.textContent, 'One forecast period available.');
     page.apply({has_forecast: false, coverage_note: 'Quarterly', sparkline: []});

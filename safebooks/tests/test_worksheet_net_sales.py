@@ -10,6 +10,15 @@ def line(month, category, amount, coverage="monthly", year=2026, parent="monthly
 
 
 class WorksheetNetSalesTests(TestCase):
+    def test_custom_codes_are_excluded_from_worksheet_net_sales(self):
+        result = build_worksheet_net_sales([
+            line(1, "Sales", "397411.00"),
+            line(1, "2307", "3973.00"),
+            line(1, "Custom payment", "75.00"),
+            line(1, "BIR Form 2550M", "2265.00"),
+        ])
+        self.assertEqual(result["total"], "397411.00")
+
     def sample(self):
         return [line(1, "Sales", "122000"), line(2, "Sales", "128000"), line(3, "Sales", "137500"),
                 line(3, "Expenses", "290500", "quarterly")]

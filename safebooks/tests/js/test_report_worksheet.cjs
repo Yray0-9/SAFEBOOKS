@@ -8,7 +8,9 @@ vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(root, 'static/js/reports_shared.js'), 'utf8'), context);
 const template = fs.readFileSync(path.join(root, 'templates/base/financial_records_client.html'), 'utf8');
 const extract = (start, end) => template.slice(template.indexOf(start), template.indexOf(end, template.indexOf(start)));
-vm.runInContext(extract('        const classifyModalReportLine =', '        const getModalReportRowYear =')
+vm.runInContext(extract('        const BIR_FORMS_LIST =', '        const body =')
+    + extract('        const isListedTaxForm =', '        const getReadyAmountsMode =')
+    + extract('        const classifyModalReportLine =', '        const getModalReportRowYear =')
     + extract('        const buildModalReportData =', '        const buildModalLedgerSheetHtml =')
     + '\nthis.build = buildModalReportData;', context);
 const shared = context.window.SafeBooksReportsShared;
@@ -90,6 +92,40 @@ const render = (data) => shared.buildReportSheetHtml({
     rowHint: '',
 });
 const html = render(report);
+
+const customReport = context.build({ rows: [
+    { entry_date: '2025-01-01', type_code: 'Sales', amount: '397411.00' },
+    { entry_date: '2025-01-02', type_code: '2307', description: '2307', amount: '3973.00',
+        cogs_cos: '321312.00', mict: '75.00', tax_withheld: '0.00', remarks: 'Custom note' },
+    { entry_date: '2025-01-03', type_code: 'BIR Form 2550M', description: 'VT', amount: '2265.00',
+        mict: '25.00', cogs_cos: '0.00', remarks: 'Paid' },
+    { entry_date: '2025-01-04', type_code: 'Custom payment', amount: '10.01' },
+    { entry_date: '2025-01-05', type_code: 'CUSTOM PAYMENT', amount: '0.99' },
+    { entry_date: '2025-02-01', type_code: '2307', amount: '0.00' },
+    { entry_date: '2026-01-01', type_code: 'Other year only', amount: '50.00' },
+] }, '2025');
+const [codeColumn, paymentColumn] = customReport.columns.slice(-2);
+assert.equal(codeColumn.label, '2307');
+assert.equal(paymentColumn.label, 'Custom payment');
+assert.equal(customReport.rows.length, 2, 'Custom supporting amounts must not create an extra row');
+assert.equal(customReport.rows[0].type_code, 'BIR Form 2550M');
+assert.equal(customReport.rows[0].description, 'VT');
+assert.match(customReport.rows[0].tax_due, /2,265\.00/);
+assert.equal(customReport.rows[0].income_payments_2307, '');
+assert.match(customReport.rows[0].net_value, /397,411\.00/);
+assert.match(customReport.rows[0][codeColumn.key], /3,973\.00/);
+assert.match(customReport.rows[0][paymentColumn.key], /11\.00/);
+const customHtml = render(customReport);
+const januaryMarkup = customHtml.match(/<tr class="reports-worksheet-month-row">([\s\S]*?)<\/tr>/)[1];
+assert.match(januaryMarkup, /<td>₱25\.00<\/td>/);
+assert(!januaryMarkup.includes('₱75.00'));
+assert(!januaryMarkup.includes('₱321,312.00'));
+assert.match(januaryMarkup, /Paid<div>Custom note<small[^>]*>2307<\/small>/);
+assert(!januaryMarkup.includes('₱0.00'));
+assert.match(customHtml, /<th scope="col">2307<\/th>/);
+assert.match(customHtml, /reports-worksheet-custom-amount"><\/td>/);
+assert.match(customHtml, /reports-ledger-totals-row[\s\S]*3,973\.00/);
+assert(!customHtml.includes('Other year only'));
 
 // Use the backend's read-only matching-coverage calculation, never March minus
 // quarterly expenses. January/February remain visible but their net is not counted twice.
@@ -321,6 +357,12 @@ vm.runInContext('printModalLedgerLayout();', context);
 assert(printed.includes(headerSheet.trim()));
 for (const value of ['00519', '1991-02-03', 'worksheet-client@example.test']) assert(printed.includes(value));
 assert(!printed.includes('SyntheticHeader'));
+context.modalLatestReport = customReport;
+context.modalReportSheet = { innerHTML: context.buildSheet(customReport) };
+vm.runInContext('printModalLedgerLayout();', context);
+assert.match(printed, /<th scope="col">2307<\/th>/);
+assert.match(printed, /reports-worksheet-custom-amount">₱3,973\.00<\/td>/);
+assert(!printed.includes('₱321,312.00'));
 context.reportClientProfile.permit_number = '<img src=x onerror=alert(1)>';
 const escapedHeaderSheet = context.buildSheet(quarterly);
 assert(!escapedHeaderSheet.includes('<img src=x'));

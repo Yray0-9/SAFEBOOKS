@@ -99,6 +99,8 @@ const unavailable = {...quarterly, future_projections: quarterly.future_projecti
     expected_expenses: null, expected_expenses_applicable: true, expenses_unreliable: true,
     expected_net: null, expected_net_unreliable: true}))};
 const blocked = prepare({frequency_forecasts: [monthly, unavailable]});
+assert.equal(blocked.expenses_period_label, 'Nov 2026',
+    'When both native schedules lack a prediction, explain the next monthly period first');
 assert.equal(blocked.future_projections[1].forecast_cells.expenses[0].model.expected_expenses, null);
 assert.equal(blocked.future_projections[1].forecast_cells.expenses[0].frequency, 'quarterly');
 assert.equal(blocked.future_projections[1].forecast_cells.net[0].model.expected_net, null);

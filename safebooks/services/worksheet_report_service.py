@@ -3,9 +3,10 @@
 Amounts remain in their saved rows. Only Net Sales groups matching coverage;
 no allocation, overlap inference, forecast fitting, or persistence happens here.
 """
-import re
 from datetime import date
 from decimal import Decimal
+
+from .tax_form_frequency_service import standard_tax_form_frequency
 
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -13,19 +14,13 @@ _WIDTHS = {"monthly": 1, "quarterly": 3, "annually": 12}
 
 
 def _category(row):
-    """Preserve the worksheet's existing category rules, independent of SARIMA."""
+    """Classify by saved code for this worksheet, independent of SARIMA."""
     code = str(row.get("type_code") or "").strip().lower()
-    if (re.match(r"^bir form\b", code) or re.fullmatch(r"\d{4}[a-z]{0,2}", code)
-            or code in {"tax", "taxes", "vat", "withholding", "wht"}):
-        return "tax"
     if code in {"sales", "expenses"}:
         return code
-    text = f"{code} {row.get('description') or ''}".lower()
-    if re.search(r"expense|cost|payment|purchase", text):
-        return "expenses"
-    if re.search(r"tax|bir|1701|2551|percentage|income return|return", text):
+    if standard_tax_form_frequency(code)[0] or code in {"tax", "taxes", "vat", "withholding", "wht"}:
         return "tax"
-    return "sales"
+    return "custom"
 
 
 def _period(index):
