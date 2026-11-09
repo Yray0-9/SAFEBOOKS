@@ -287,7 +287,8 @@
         const reportTitle = toDisplayText(settings.reportTitle, "SafeBooks Client Report Sheet");
         const printedBy = toDisplayText(settings.printedBy, "Bookkeeper User");
 
-        const reportTypeLabel = toDisplayText(meta.reportTypeLabel, "Client Report");
+        const reportTypeLabel = toDisplayText(meta.reportTypeLabel, "Financial Summary Report");
+        const printedByLabel = toDisplayText(settings.printedByLabel, settings.meta ? "Presented By:" : "Printed by:");
         const dateRangeLabel = toDisplayText(meta.dateRangeLabel, "-");
         const generatedLabel = toDisplayText(meta.generatedLabel, "-");
 
@@ -488,14 +489,9 @@
 
         return `
             <div class="reports-ledger-heading">
-                <h3 class="reports-ledger-title">${escapeHtml(reportTitle)}</h3>
-                <p class="reports-ledger-printed-by">Printed by: ${escapeHtml(printedBy)}</p>
-            </div>
-
-            <div class="reports-ledger-meta-row">
-                <span class="reports-ledger-meta-pill">Type: ${escapeHtml(reportTypeLabel)}</span>
-                <span class="reports-ledger-meta-pill">Range: ${escapeHtml(dateRangeLabel)}</span>
-                <span class="reports-ledger-meta-pill">Generated: ${escapeHtml(generatedLabel)}</span>
+                <p class="reports-ledger-subtitle">${escapeHtml(reportTitle)}</p>
+                <h3 class="reports-ledger-title">${escapeHtml(reportTypeLabel)}</h3>
+                ${generatedLabel && generatedLabel !== "-" ? `<p class="reports-ledger-date">Date: ${escapeHtml(generatedLabel)}</p>` : ""}
             </div>
 
             <table class="reports-ledger-client-table" aria-label="Client details">
@@ -540,6 +536,9 @@
             </div>
 
             ${rowHint ? `<p class="reports-ledger-note">${escapeHtml(rowHint)}</p>` : ""}
+            <div class="reports-ledger-footer">
+                <p class="reports-ledger-printed-by">${escapeHtml(printedByLabel)} ${escapeHtml(printedBy)}</p>
+            </div>
         `;
     };
 

@@ -13,6 +13,7 @@
 .verification-proof-copy { margin-bottom: 1rem; }
 .verification-file-hint { margin: 0.5rem 0 0; }
 .verification-proof .auth-input { min-height: 44px; max-width: 100%; font-size: 0.9rem; }
+.verification-proof select.auth-input { padding-right: 2.5rem; cursor: pointer; background-color: #fbfdff; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%234a68a0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.9rem center; background-size: 14px 10px; }
 .verification-proof input[type="file"] { padding: 0.5rem; overflow: hidden; }
 .verification-proof-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .verification-proof-actions .auth-submit-btn { flex: 1 1 150px; width: auto; margin: 0; min-height: 44px; }

@@ -262,27 +262,51 @@
 
 .reports-ledger-heading {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.16rem;
+    margin-bottom: 0.68rem;
+}
+
+.reports-ledger-subtitle {
+    margin: 0;
+    color: #607ca9;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 .reports-ledger-title {
     margin: 0;
     color: #183365;
-    font-size: 0.96rem;
+    font-size: 1.24rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+}
+
+.reports-ledger-date {
+    margin: 0.1rem 0 0;
+    color: #4d6896;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.reports-ledger-footer {
+    margin-top: 0.72rem;
+    display: flex;
+    justify-content: flex-start;
 }
 
 .reports-ledger-printed-by {
     margin: 0;
-    color: #607ca9;
-    font-size: 0.72rem;
+    color: #3f5e92;
+    font-size: 0.78rem;
     font-weight: 700;
-    text-align: right;
-    white-space: nowrap;
+    text-align: left;
 }
 
 .reports-ledger-meta-row {
@@ -620,6 +644,8 @@ body.theme-dark .reports-ledger-title {
     color: #e6edf7;
 }
 
+body.theme-dark .reports-ledger-subtitle,
+body.theme-dark .reports-ledger-date,
 body.theme-dark .reports-ledger-printed-by {
     color: #9eb0d3;
 }

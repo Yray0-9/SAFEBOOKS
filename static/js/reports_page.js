@@ -1124,7 +1124,7 @@
                     <style>
                         @page {
                             size: A4 portrait;
-                            margin: 10mm;
+                            margin: 0;
                         }
 
                         * {
@@ -1142,6 +1142,7 @@
 
                         .reports-print-root {
                             width: 100%;
+                            padding: 10mm;
                         }
 
                         .reports-ledger-sheet {
@@ -1152,27 +1153,51 @@
 
                         .reports-ledger-heading {
                             display: flex;
-                            align-items: baseline;
-                            justify-content: space-between;
-                            gap: 16px;
+                            flex-direction: column;
+                            align-items: center;
+                            text-align: center;
+                            gap: 2px;
+                            margin-bottom: 8px;
+                        }
+
+                        .reports-ledger-subtitle {
+                            margin: 0;
+                            color: #607ca9;
+                            font-size: 9px;
+                            font-weight: 700;
+                            text-transform: uppercase;
+                            letter-spacing: 0.06em;
                         }
 
                         .reports-ledger-title {
                             margin: 0;
                             color: #183365;
-                            font-size: 13px;
-                            font-weight: 700;
+                            font-size: 16px;
+                            font-weight: 800;
                             text-transform: uppercase;
-                            letter-spacing: 0.04em;
+                            letter-spacing: 0.03em;
+                            line-height: 1.2;
+                        }
+
+                        .reports-ledger-date {
+                            margin: 2px 0 0;
+                            color: #4d6896;
+                            font-size: 10px;
+                            font-weight: 700;
+                        }
+
+                        .reports-ledger-footer {
+                            margin-top: 10px;
+                            display: flex;
+                            justify-content: flex-start;
                         }
 
                         .reports-ledger-printed-by {
                             margin: 0;
-                            color: #607ca9;
-                            font-size: 10px;
+                            color: #1f3f74;
+                            font-size: 10.5px;
                             font-weight: 700;
-                            text-align: right;
-                            white-space: nowrap;
+                            text-align: left;
                         }
 
                         .reports-ledger-meta-row {
