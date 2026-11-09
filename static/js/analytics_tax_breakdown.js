@@ -47,7 +47,7 @@
             dot.className = 'analytics-tax-dot';
             dot.style.backgroundColor = color;
             dot.setAttribute('aria-hidden', 'true');
-            label.append(dot, document.createTextNode(row.label));
+            label.append(dot, document.createTextNode(window.SafeBooksTransactionCodeLabel(row.label)));
             tr.append(label);
             for (const text of [money.format(row.cents / 100), `${(row.cents / data.total * 100).toFixed(1)}%`]) {
                 const td = document.createElement('td');

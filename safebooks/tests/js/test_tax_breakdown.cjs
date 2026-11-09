@@ -11,6 +11,7 @@ class Element {
     removeAttribute(key) { delete this.attributes[key]; }
 }
 const context = { window: {}, Intl, document: { createElement: () => new Element(), createTextNode: text => ({ textContent: text }) } };
+vm.runInNewContext(fs.readFileSync(path.join(rootPath, 'static/js/transaction_code_labels.js'), 'utf8'), context);
 vm.runInNewContext(fs.readFileSync(path.join(rootPath, 'static/js/analytics_tax_breakdown.js'), 'utf8'), context);
 const { prepare, render, state } = context.window.SafeBooksTaxBreakdown;
 const amounts = [{ type_code: 'BIR Form 0619E', amount: .1 }, { type_code: 'BIR Form 2551Q', amount: .2 }];
@@ -27,6 +28,7 @@ const before = JSON.stringify(payload);
 render(root, payload, '2026');
 assert.equal(JSON.stringify(payload), before, 'Rendering must not modify source amounts');
 assert.equal(nodes['[data-tax-rows]'].children.length, 2);
+assert.equal(nodes['[data-tax-rows]'].children[0].children[0].children[1].textContent, '2551Q');
 assert.equal(nodes['[data-tax-content]'].hidden, false);
 assert(nodes['[data-tax-ring]'].style.background.startsWith('conic-gradient('));
 assert.equal(nodes['[data-tax-rows]'].children[0].children[2].textContent, '66.7%');

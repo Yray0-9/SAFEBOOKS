@@ -49,7 +49,7 @@
     const approvalEmailDeliveryStatus = document.getElementById("approvalEmailDeliveryStatus");
     const approvalEmailRetryButton = document.getElementById("approvalEmailRetryButton");
     const proofSummary = document.getElementById("approvalProofSummary");
-    const proofDownload = document.getElementById("approvalProofDownload");
+    const proofPreview = document.getElementById("approvalProofPreview");
     const proofReviewWrap = document.getElementById("approvalProofReviewWrap");
     const proofReviewed = document.getElementById("approvalProofReviewed");
 
@@ -75,6 +75,54 @@
 
         shared.showToast(uiToastContainer, message, variantClass, { delay: 2800 });
     };
+
+    const openProofPreview = async () => {
+        const proofUrl = proofPreview.dataset.proofUrl;
+        if (!proofUrl) return;
+
+        // Open during the click so the browser treats this as a user-initiated tab.
+        const previewTab = window.open("about:blank", "_blank");
+        if (!previewTab) {
+            showToast("Allow pop-ups for SafeBooks, then select View proof again.", "warning");
+            return;
+        }
+        previewTab.opener = null;
+        previewTab.document.title = "Bookkeeping proof";
+        previewTab.document.body.textContent = "Loading bookkeeping proof…";
+        proofPreview.disabled = true;
+        let previewUrl;
+        try {
+            const response = await fetch(proofUrl, {
+                mode: "same-origin",
+                credentials: "same-origin",
+                redirect: "error",
+                cache: "no-store",
+            });
+            const mediaType = response.headers.get("Content-Type");
+            if (!response.ok || !["image/jpeg", "image/png", "application/pdf"].includes(mediaType)) {
+                throw new Error("Proof unavailable");
+            }
+            const documentBytes = await response.blob();
+            if (previewTab.closed) return;
+            // The protected endpoint still serves an attachment. Only validated proof
+            // types are opened from a temporary browser URL for this admin preview.
+            previewUrl = URL.createObjectURL(documentBytes);
+            previewTab.location.replace(previewUrl);
+            const cleanup = window.setInterval(() => {
+                if (!previewTab.closed) return;
+                window.clearInterval(cleanup);
+                URL.revokeObjectURL(previewUrl);
+            }, 1000);
+        } catch {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewTab.close();
+            showToast("Unable to open proof. Refresh the request and try again.", "warning");
+        } finally {
+            proofPreview.disabled = false;
+        }
+    };
+
+    proofPreview?.addEventListener("click", openProofPreview);
 
     const dateFormatter = new Intl.DateTimeFormat("en-PH", {
         year: "numeric",
@@ -133,10 +181,9 @@
         if (proofSummary) proofSummary.textContent = proof
             ? `${proof.document_name} · Submitted ${formatDate(proof.submitted_at)}`
             : approval ? "No proof submitted." : "Select a request.";
-        if (proofDownload) {
-            proofDownload.hidden = !proof;
-            if (proof) proofDownload.href = proof.download_url;
-            else proofDownload.removeAttribute("href");
+        if (proofPreview) {
+            proofPreview.hidden = !proof?.download_url;
+            proofPreview.dataset.proofUrl = proof?.download_url || "";
         }
         if (!approval) {
             if (approvalDetailEmpty) {
@@ -739,7 +786,7 @@
 
             const { id, action, proofRevision } = pendingAction;
             if (action === "approve" && (!proofReviewed || !proofReviewed.checked)) {
-                showToast("Download and review the proof, then confirm your review.", "warning");
+                showToast("View the proof, then confirm your review.", "warning");
                 if (proofReviewed) proofReviewed.focus();
                 return;
             }

@@ -394,7 +394,7 @@
         const rowCount = Math.max(minRows, finalRows.length);
 
         const headerMarkup = finalColumns
-            .map((label) => `<th scope="col">${escapeHtml(toDisplayText(label, "VALUE"))}</th>`)
+            .map((label) => `<th scope="col">${escapeHtml(window.SafeBooksTransactionCodeLabel(toDisplayText(label, "VALUE")))}</th>`)
             .join("");
 
         let previousWorksheetQuarter = null;
@@ -448,7 +448,10 @@
                         const label = annotation.label ? `<small style="display:block;white-space:normal">${escapeHtml(annotation.label)}</small>` : "";
                         return `<td title="${escapeHtml(annotation.title)}">${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}${label}</td>`;
                     }
-                    return `${cellTag}${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}</td>`;
+                    const cellText = toDisplayText(rowCells[columnIndex], "-");
+                    const displayText = column.toLowerCase() === "type / code"
+                        ? window.SafeBooksTransactionCodeLabel(cellText) : cellText;
+                    return `${cellTag}${escapeHtml(displayText)}</td>`;
                 })
                 .join("");
 

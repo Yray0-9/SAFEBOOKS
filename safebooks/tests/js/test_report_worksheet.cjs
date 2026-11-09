@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '../../..');
 const context = { window: {}, activeClientId: 1, reportClientProfile: { client_name: 'Sample client' } };
 vm.createContext(context);
+vm.runInNewContext(fs.readFileSync(path.join(root, 'static/js/transaction_code_labels.js'), 'utf8'), context);
 vm.runInContext(fs.readFileSync(path.join(root, 'static/js/reports_shared.js'), 'utf8'), context);
 const template = fs.readFileSync(path.join(root, 'templates/base/financial_records_client.html'), 'utf8');
 const extract = (start, end) => template.slice(template.indexOf(start), template.indexOf(end, template.indexOf(start)));
@@ -14,6 +15,10 @@ vm.runInContext(extract('        const BIR_FORMS_LIST =', '        const body ='
     + extract('        const buildModalReportData =', '        const buildModalLedgerSheetHtml =')
     + '\nthis.build = buildModalReportData;', context);
 const shared = context.window.SafeBooksReportsShared;
+const formatCode = context.window.SafeBooksTransactionCodeLabel;
+assert.equal(formatCode('BIR Form 2550Qv2024'), '2550Qv2024');
+assert.equal(formatCode('0619E'), '0619E');
+assert.equal(formatCode('SALES'), 'SALES');
 const payload = { rows: [
     { entry_date: '2026-03-01', type_code: 'Sales', description: 'Taxable sales', amount: '75000' },
     { entry_date: '2026-03-02', type_code: 'Expenses', description: 'Expenses', amount: '5000' },
@@ -259,7 +264,8 @@ assert(html.includes('&lt;script&gt;'));
 assert(!html.includes('Prepared from generated'));
 assert(html.includes('tabindex="0" role="region"'));
 const monthMarkup = html.match(/<tr class="reports-worksheet-month-row">([\s\S]*?)<\/tr>/)[1];
-assert.match(monthMarkup, /BIR Form 0605/);
+assert.match(monthMarkup, /<td>0605<\/td>/);
+assert(!monthMarkup.includes('BIR Form'));
 assert.match(monthMarkup, /Payment Form/);
 assert.match(monthMarkup, /Mar 2026/);
 assert.match(monthMarkup, /75,000\.00/);
@@ -322,6 +328,7 @@ context.window.setTimeout = callback => callback();
 context.showToast = () => assert.fail('Printing failed');
 vm.runInContext(extract('        const printModalLedgerLayout =', '        const fetchModalReportPayload =') + '\nprintModalLedgerLayout();', context);
 assert(printed.includes(quarterHtml.trim()));
+assert(!printed.includes('BIR Form'));
 assert.equal((printed.match(/class="reports-worksheet-quarter-gap"/g) || []).length, 3);
 assert(printed.includes('<th scope="col">Quarter</th>'));
 assert(printed.includes('size: A4 landscape'));
@@ -349,6 +356,9 @@ context.reportClientProfile = {
 vm.runInContext(extract('        const buildModalLedgerSheetHtml =', '        const renderModalReportForSelectedYear =')
     + '\nthis.buildSheet = buildModalLedgerSheetHtml;', context);
 const headerSheet = context.buildSheet(quarterly);
+assert.match(headerSheet, /<th scope="col">TYPE \/ CODE<\/th>/);
+assert.match(headerSheet, /<td>2551Q<\/td>/);
+assert(!headerSheet.includes('BIR Form'));
 for (const value of ['00519', '1991-02-03', 'worksheet-client@example.test']) assert(headerSheet.includes(value));
 for (const value of ['SyntheticHeaderEmailSecret', 'SyntheticHeaderOrusLogin', 'SyntheticHeaderOrusSecret', 'SyntheticHeaderCustomSecret']) assert(!headerSheet.includes(value));
 context.modalLatestReport = quarterly;
@@ -361,6 +371,8 @@ context.modalLatestReport = customReport;
 context.modalReportSheet = { innerHTML: context.buildSheet(customReport) };
 vm.runInContext('printModalLedgerLayout();', context);
 assert.match(printed, /<th scope="col">2307<\/th>/);
+assert.match(printed, /<td>2550M<\/td>/);
+assert(!printed.includes('BIR Form'));
 assert.match(printed, /reports-worksheet-custom-amount">₱3,973\.00<\/td>/);
 assert(!printed.includes('₱321,312.00'));
 context.reportClientProfile.permit_number = '<img src=x onerror=alert(1)>';

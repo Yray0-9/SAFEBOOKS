@@ -5,6 +5,30 @@ const context = {window: {}};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('static/js/forecast_periods.js', 'utf8'), context);
 const prepare = context.window.SafeBooksForecastPeriods.prepare;
+const svg = {
+    clientWidth: 1160,
+    clientHeight: 360,
+    setAttribute(name, value) { this[name] = value; },
+};
+let notifyProjectionResize;
+let redraws = 0;
+context.window.ResizeObserver = class {
+    constructor(callback) { notifyProjectionResize = callback; }
+    observe(element) { assert.equal(element, svg); }
+};
+const measureProjection = () => context.window.SafeBooksForecastPeriods.projectionViewport(svg, () => {
+    redraws += 1;
+    measureProjection();
+});
+measureProjection();
+assert.equal(svg.viewBox, '0 0 1160 360');
+svg.clientWidth = 340;
+svg.clientHeight = 304;
+notifyProjectionResize();
+notifyProjectionResize();
+assert.equal(svg.viewBox, '0 0 340 304');
+assert.equal(redraws, 1);
+delete context.window.ResizeObserver;
 const lane = (prepared, category) => prepared.chart_series.find(item => item.category === category);
 const row = (frequency, end, label, values) => ({frequency, coverage_end: end, period_label: label, ...values});
 const monthly = {frequency: 'monthly', frequency_label: 'Monthly', future_projections: [
@@ -209,15 +233,16 @@ assert(removed,'Resize fallback must be removed when the chart is cleared');
 // Execute both real template report renderers, not a duplicate formatter.
 for (const name of ['client_details', 'analytics']) {
     const template = fs.readFileSync(`templates/base/${name}.html`, 'utf8');
-    assert(template.includes('<th scope="col">Net Value<span class="visually-hidden">: calculated sales minus expenses for matching periods, not a separate SARIMA forecast</span></th>'));
-    assert(!template.includes('<th>Projected Net Value</th>'));
+    assert(template.includes('<th scope="col">Net Sales<span class="visually-hidden">: calculated sales minus expenses for matching periods, not a separate SARIMA forecast</span></th>'));
+    assert(!template.includes('<th>Projected Net Sales</th>'));
     const table = {innerHTML: ''};
     const page = {predictiveForecastTableBody: table, formatCurrency: value => `PHP ${value}`,
         escapeHtml: value => String(value ?? '').replace(/[&<>"']/g, character =>
             ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[character])};
     vm.createContext(page);
     const start = template.indexOf('        const projectionHasValue =');
-    const end = template.indexOf('        const getProjectionMethodLabel =', start);
+    const end = template.indexOf(name === 'client_details'
+        ? '        const setAnalyticsLoadingState =' : '        const formatTin =', start);
     const renderStart = template.indexOf('        const formatForecastCell =');
     const renderEnd = template.indexOf('        const renderForecastProjectionChart =', renderStart);
     assert(start > 0 && end > start && renderStart > 0 && renderEnd > renderStart);
@@ -252,7 +277,7 @@ for (const name of ['client_details', 'analytics']) {
     assert(incompleteNetCell.includes('Quarterly · Incomplete monthly expenses'));
     assert(!incompleteNetCell.includes('3/24'), 'Do not confuse monthly readiness with a quarterly count');
     assert(incompleteNetCell.includes('Complete three-month coverage required'), 'Preserve the full coverage reason in accessible details');
-    assert(!incompleteNetCell.includes('analytics-forecast-basis'), 'Do not display a partial formula for unavailable Net Value');
+    assert(!incompleteNetCell.includes('analytics-forecast-basis'), 'Do not display a partial formula for unavailable Net Sales');
     const missingSales = {...netModel,
         net_readiness_note:'Sales (monthly): Complete three-month coverage required; 5 of 24 monthly periods'};
     assert(page.cell({forecast_cells:{net:[{model:missingSales,frequency:'quarterly'}]}}, 'net')
@@ -280,7 +305,7 @@ for (const name of ['client_details', 'analytics']) {
         .includes('<span>Dec 2026</span>'));
     const originalBasis = JSON.stringify(coveredNet);
     page.cell({forecast_cells:{net:[{model:coveredNet,frequency:'quarterly'}]}}, 'net');
-    assert.equal(JSON.stringify(coveredNet), originalBasis, 'Displaying the formula never recomputes or mutates Net Value');
+    assert.equal(JSON.stringify(coveredNet), originalBasis, 'Displaying the formula never recomputes or mutates Net Sales');
     for (const amount of [0, -100]) {
         const calculated = {...netBasis, expected_net:amount};
         const cell = page.cell({forecast_cells:{net:[{model:calculated,frequency:'quarterly'}]}}, 'net');
@@ -302,7 +327,7 @@ for (const name of ['client_details', 'analytics']) {
     page.analyticsForecastProjectionTooltip = null;
     page.document = {getElementById:id => id === 'analyticsForecastProjectionAreas' ? areas : null};
     page.formatCompactCurrency = value => String(value);
-    page.animatePolyline = () => {};
+    page.animatePolyline = () => { throw Error('Projection lines must render without dash animation'); };
     page.getBezierPath = points => points.length ? 'M' + points.map(point => `${point.x},${point.y}`).join('L') : '';
     page.getAreaBezierPath = points => 'AREA ' + points.length;
     page.fillSeriesGaps = () => {throw Error('Forecast charts must not interpolate unavailable values');};
@@ -330,7 +355,7 @@ for (const name of ['client_details', 'analytics']) {
     assert(page.analyticsForecastProjectionGrid.innerHTML.includes('Sales · Monthly'));
     assert(page.analyticsForecastProjectionGrid.innerHTML.includes('Expenses · Quarterly'));
     assert(page.analyticsForecastProjectionGrid.innerHTML.includes('Tax · Quarterly'));
-    assert(page.analyticsForecastProjectionGrid.innerHTML.includes('Net Value · Calculated · Quarterly'));
+    assert(page.analyticsForecastProjectionGrid.innerHTML.includes('Net Sales · Calculated · Quarterly'));
     assert(!page.analyticsForecastProjectionDots.innerHTML.includes('data-tooltip-value="PHP 300"'),
         'The comparison-only quarterly Sales amount must not be plotted');
     const alignedQuarterRows = [
@@ -357,7 +382,8 @@ for (const name of ['client_details', 'analytics']) {
     assert.equal((page.analyticsForecastProjectionTaxLine.attrs.d.match(/M/g) || []).length, 1,
         'Connect consecutive native quarters, not nonscheduled monthly slots');
     const quarterDots = [...page.analyticsForecastProjectionDots.innerHTML.matchAll(/class="analytics-forecast-projection-dot tax"\s+cx="([^"]+)"/g)].map(match => Number(match[1]));
-    assert.equal(quarterDots.join('|'), '214.4|575.6', 'Quarter dots belong at December and March on the shared six-month calendar');
+    const salesDots = [...page.analyticsForecastProjectionDots.innerHTML.matchAll(/class="analytics-forecast-projection-dot sales"\s+cx="([^"]+)"/g)].map(match => Number(match[1]));
+    assert.deepEqual(quarterDots, [salesDots[1], salesDots[4]], 'Quarter dots align with December and March');
     assert(page.analyticsForecastProjectionDots.innerHTML.includes('data-tooltip-label="Sales · Monthly"'));
     assert(page.analyticsForecastProjectionDots.innerHTML.includes('2026-10 to 2026-12'));
     const missingQuarter = [alignedQuarterRows[0], {...alignedQuarterRows[1], expected_tax:null, tax_unreliable:true},

@@ -8,6 +8,8 @@ for (const name of ['client_details', 'analytics']) {
     const source = fs.readFileSync(path.join(root, `templates/base/${name}.html`), 'utf8').replace(/\r\n/g, '\n');
     assert(source.includes('id="analyticsPredictiveHistory"'));
     assert(!source.includes('forecast_period_controls.html'));
+    assert(!source.includes('Forecasting Insight'));
+    assert(!source.includes('analyticsPredictiveSalesValue'));
     assert(!source.includes('analyticsForecastMonthly'));
     assert(!source.includes('analyticsForecastQuarterly'));
     const start = source.indexOf('        const formatForecastHistory =');
@@ -15,12 +17,6 @@ for (const name of ['client_details', 'analytics']) {
     assert(start > 0 && end > start);
     const page = {
         analyticsPredictivePeriod: {}, analyticsPredictiveHistory: {},
-        analyticsPredictiveSalesValue: {}, analyticsPredictiveExpensesValue: {}, analyticsPredictiveTaxValue: {},
-        analyticsPredictiveSalesNote: {}, analyticsPredictiveExpensesNote: {}, analyticsPredictiveTaxNote: {},
-        analyticsPredictivePlaceholder: {}, formatCurrency: value => `PHP ${value}`,
-        formatProjectionCurrency: (model, key) => model[key] == null ? 'Cannot forecast' : `PHP ${model[key]}`,
-        projectionHasValue: (model, key) => model[`${key}_applicable`] !== false && model[key] != null,
-        getProjectionMethodLabel: () => 'SARIMA', renderPredictiveSparkline() {},
     };
     vm.createContext(page);
     vm.runInContext(source.slice(start, end) + '\nthis.format = formatForecastHistory; this.apply = applyPredictiveForecast;', page);
@@ -31,22 +27,12 @@ for (const name of ['client_details', 'analytics']) {
     assert.equal(page.analyticsPredictiveHistory.textContent, 'History: Jan 2024 to Oct 2026');
     assert.equal(page.analyticsPredictiveHistory.hidden, false);
     assert.equal(page.analyticsPredictivePeriod.textContent, 'Next period: Nov 2026 • Monthly');
-    assert.equal(page.analyticsPredictiveSalesValue.textContent, 'PHP 1340');
     assert.equal(JSON.stringify(model), original, 'Display must not mutate forecasting data');
-    page.apply({...model, sales_period_label: 'Nov 2026', expenses_period_label: 'Dec 2026 · Quarterly',
-        expected_expenses: null, expenses_readiness_note: 'Review missing quarterly periods'});
-    assert.equal(page.analyticsPredictiveSalesNote.textContent, 'Nov 2026');
-    assert.equal(page.analyticsPredictiveExpensesNote.textContent, 'Dec 2026 · Quarterly · Review missing quarterly periods');
-    page.apply({...model, coverage_note: 'Quarterly', sparkline: [1340]});
-    assert.equal(page.analyticsPredictivePlaceholder.textContent, 'One forecast period available.');
-    page.apply({has_forecast: false, coverage_note: 'Quarterly', sparkline: []});
-    assert.equal(page.analyticsPredictivePlaceholder.textContent, 'More complete history is needed.');
     page.apply({...model, history_end: '2025-12', history_cutoff_year: 2025, next_period_label: 'Jan 2026'});
     assert(page.analyticsPredictiveHistory.textContent.includes('Dec 2025'));
     assert(!page.analyticsPredictiveHistory.textContent.includes('Oct 2026'));
     page.apply({history_cutoff_year: 2023, has_forecast: false});
     assert.equal(page.analyticsPredictiveHistory.textContent, 'No history through 2023.');
-    assert.equal(page.analyticsPredictiveSalesValue.textContent, 'PHP --');
     page.apply({has_forecast: false});
     assert.equal(page.analyticsPredictiveHistory.textContent, '');
     assert.equal(page.analyticsPredictiveHistory.hidden, true, 'Failures and old payloads must not retain stale history');

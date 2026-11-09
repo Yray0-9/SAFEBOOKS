@@ -1708,7 +1708,7 @@
                     icon: "bi-receipt",
                 },
                 {
-                    label: "Net Value",
+                    label: "Net Sales",
                     value: formatCurrency(summary.net_value),
                     note: "Sales minus expenses",
                     icon: "bi-graph-up-arrow",
@@ -1718,14 +1718,14 @@
                 ? [
                     { key: "period", label: "Period" },
                     ...typeColumnMeta,
-                    { key: "net_value", label: "Net Value" },
+                    { key: "net_value", label: "Net Sales" },
                 ]
                 : [
                     { key: "period", label: "Period" },
                     { key: "sales", label: "Sales" },
                     { key: "expenses", label: "Expenses" },
                     { key: "tax", label: "Tax" },
-                    { key: "net_value", label: "Net Value" },
+                    { key: "net_value", label: "Net Sales" },
                 ],
             rows,
         };

@@ -344,13 +344,13 @@
                     <p class="financial-ready-amounts-hint" id="addStandardAmountsHint">Leave blank if not recorded. Enter 0 only for a confirmed zero.</p>
                 </section>
 
-                <section class="financial-line-items-section" aria-label="Tax forms and other details">
+                <section class="financial-line-items-section" aria-label="Tax codes and other details">
                     <div class="financial-line-items-head">
                         <div>
                             <h3 class="financial-line-items-title">
-                                Tax Forms and Other Details
+                                Tax Codes and Other Details
                             </h3>
-                            <p class="financial-ready-amounts-hint">Choose a form and enter your description.</p>
+                            <p class="financial-ready-amounts-hint">Choose a tax code and enter your description.</p>
                         </div>
                         <button type="button" class="btn dashboard-action-btn outline financial-add-line-item-btn" id="addLineItemBtn">
                             <i class="bi bi-plus-lg"></i>
@@ -403,7 +403,7 @@
                 </div>
                 <div class="financial-entry-warning financial-period-change" id="editEntryPeriodChange" hidden>
                     <div>
-                        <p id="editEntryPeriodChangeHelp" role="status">This moves the whole entry, including its amounts and tax forms. Use Add Entry to keep records in both months.</p>
+                        <p id="editEntryPeriodChangeHelp" role="status">This moves the whole entry, including its amounts and tax details. Use Add Entry to keep records in both months.</p>
                         <div class="form-check">
                             <input class="form-check-input" id="editEntryConfirmPeriodChange" type="checkbox" aria-describedby="editEntryPeriodChangeHelp" disabled>
                             <label class="form-check-label" for="editEntryConfirmPeriodChange" id="editEntryPeriodChangeLabel"></label>
@@ -447,13 +447,13 @@
                     <p class="financial-ready-amounts-hint" id="editStandardAmountsHint">Leave blank if not recorded. Enter 0 only for a confirmed zero.</p>
                 </section>
 
-<section class="financial-line-items-section" aria-label="Edit tax forms and other details">
+<section class="financial-line-items-section" aria-label="Edit tax codes and other details">
                     <div class="financial-line-items-head">
                         <div>
                             <h3 class="financial-line-items-title">
-                                Tax Forms and Other Details
+                                Tax Codes and Other Details
                             </h3>
-                            <p class="financial-ready-amounts-hint">Choose a form and enter your description.</p>
+                            <p class="financial-ready-amounts-hint">Choose a tax code and enter your description.</p>
                         </div>
                         <button type="button" class="btn dashboard-action-btn outline financial-add-line-item-btn" id="editAddLineItemBtn">
                             <i class="bi bi-plus-lg"></i>
@@ -509,7 +509,7 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=20261109-print-centered"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261109-tax-code-labels-2"></script>
 <script src="{% static 'js/financial_coverage.js' %}?v=20261028-period-choices"></script>
 <script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
@@ -1021,6 +1021,7 @@
             const descriptionInput = rowElement.querySelector(".financial-line-description-input");
             const description = descriptionInput ? descriptionInput.value.trim() : "";
 
+            typeCode = window.SafeBooksTransactionCodeLabel(typeCode);
             if (typeCode && description) {
                 return `${typeCode} - ${description}`;
             }
@@ -1116,7 +1117,7 @@
             const safeDescription = escapeHtml(lineItem.description || "");
             const safeAmount = Number.isFinite(Number.parseFloat(lineItem.amount)) ? escapeHtml(String(lineItem.amount)) : "";
 
-            const formOptionsMarkup = BIR_FORMS_LIST.map(form => `<option value="${escapeHtml(form.code)}">${escapeHtml(form.code)}</option>`).join("");
+            const formOptionsMarkup = BIR_FORMS_LIST.map(form => `<option value="${escapeHtml(form.code)}">${escapeHtml(window.SafeBooksTransactionCodeLabel(form.code))}</option>`).join("");
 
             row.innerHTML = `
                 <td data-label="Type / Code">
@@ -1128,7 +1129,7 @@
                         </select>
                         <div class="financial-line-code-custom-wrapper gap-1" hidden>
                             <input type="text" class="form-control financial-form-input financial-line-code-custom-input" aria-label="Custom transaction type" placeholder="Sales, Expenses, or custom type">
-                            <button type="button" class="btn financial-line-code-cancel-btn" title="Back to standard BIR Forms">
+                            <button type="button" class="btn financial-line-code-cancel-btn" title="Back to listed tax codes">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
@@ -1147,7 +1148,7 @@
                     </label>
                 </td>
                 <td data-label="Remarks">
-                    <input type="text" class="form-control financial-form-input financial-line-remarks-input" aria-label="Tax form remarks" list="taxFormRemarksSuggestions" placeholder="Paid or Pending for payment" value="${escapeHtml(lineItem.remarks || "")}" maxlength="255">
+                    <input type="text" class="form-control financial-form-input financial-line-remarks-input" aria-label="Tax detail remarks" list="taxFormRemarksSuggestions" placeholder="Paid or Pending for payment" value="${escapeHtml(lineItem.remarks || "")}" maxlength="255">
                 </td>
                 <td>
                     <button type="button" class="btn financial-line-remove-btn" data-line-action="remove" aria-label="Remove transaction detail">
@@ -1567,7 +1568,7 @@
                 breakdownByType.forEach((item) => {
                     const listItem = document.createElement("li");
                     listItem.className = "financial-breakdown-item";
-                    listItem.innerHTML = `<span>${escapeHtml(item.typeCode)}</span><strong>${formatCurrency(parseAmount(item.totalAmount))}</strong>`;
+                    listItem.innerHTML = `<span>${escapeHtml(window.SafeBooksTransactionCodeLabel(item.typeCode))}</span><strong>${formatCurrency(parseAmount(item.totalAmount))}</strong>`;
                     summaryTypeBreakdown.appendChild(listItem);
                 });
             }
@@ -1585,7 +1586,7 @@
 
             const rowsMarkup = lineItems
                 .map((lineItem) => {
-                    const safeTypeCode = escapeHtml(toDisplayText(lineItem.type_code));
+                    const safeTypeCode = escapeHtml(window.SafeBooksTransactionCodeLabel(toDisplayText(lineItem.type_code)));
                     const safeDescription = escapeHtml(toDisplayText(lineItem.description));
                     const formRemarks = lineItem.remarks == null && isListedTaxForm(lineItem.type_code) ? entry.notes : lineItem.remarks;
                     const worksheetValues = WORKSHEET_AMOUNT_FIELDS

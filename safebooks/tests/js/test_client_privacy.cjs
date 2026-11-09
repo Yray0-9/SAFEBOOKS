@@ -5,6 +5,7 @@ const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "../../..");
 const shared = { window: {} };
+vm.runInNewContext(fs.readFileSync(path.join(root, 'static/js/transaction_code_labels.js'), 'utf8'), shared);
 vm.runInNewContext(fs.readFileSync(path.join(root, "static/js/reports_shared.js"), "utf8"), shared);
 
 for (const naming of ["snake", "camel"]) {

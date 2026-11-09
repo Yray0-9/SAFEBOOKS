@@ -127,6 +127,15 @@
     stroke-linejoin: round;
 }
 
+.analytics-trend-line-tax {
+    fill: none;
+    stroke: #805ad5;
+    stroke-width: 2.5;
+    stroke-dasharray: 5 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .analytics-trend-legend {
     display: flex;
     align-items: center;
@@ -156,6 +165,10 @@
 
 .analytics-legend-dot.expenses {
     background: #e48a2d;
+}
+
+.analytics-legend-dot.tax {
+    background: #805ad5;
 }
 
 .analytics-month-labels {

@@ -10,7 +10,7 @@
         instances.get(svg)?.();
         instances.delete(svg);
     };
-    const render = (svg, rows, salesPoints, expensePoints) => {
+    const render = (svg, rows, salesPoints, expensePoints, taxPoints) => {
         if (!svg) return;
         clear(svg);
         if (!rows.length) return;
@@ -23,14 +23,16 @@
         const title = document.createElement('strong');
         const sales = document.createElement('span');
         const expenses = document.createElement('span');
-        tooltip.append(title, sales, expenses);
+        const tax = document.createElement('span');
+        tooltip.append(title, sales, expenses, tax);
         root.append(tooltip);
         const overlay = svgNode('g', { class: 'analytics-month-interaction' });
         const guide = svgNode('g', { 'aria-hidden': 'true', 'pointer-events': 'none', visibility: 'hidden' });
         const rule = svgNode('line', { y1: 16, y2: 206, class: 'analytics-month-rule' });
         const salesDot = svgNode('circle', { r: 4, fill: '#2366dd', stroke: '#fff', 'stroke-width': 2 });
         const expensesDot = svgNode('circle', { r: 4, fill: '#e48a2d', stroke: '#fff', 'stroke-width': 2 });
-        guide.append(rule, salesDot, expensesDot);
+        const taxDot = svgNode('circle', { r: 4, fill: '#805ad5', stroke: '#fff', 'stroke-width': 2 });
+        guide.append(rule, salesDot, expensesDot, taxDot);
         const targets = [];
         let pinned = false;
         const hide = () => {
@@ -41,14 +43,14 @@
         const show = index => {
             const row = rows[index];
             const point = salesPoints[index];
-            const expensePoint = expensePoints[index];
             const month = `${row.month_label || row.month || ''} ${row.year || ''}`.trim();
             title.textContent = month;
             sales.textContent = `Sales: ${currency.format(Number(row.sales || 0))}`;
             expenses.textContent = `Expenses: ${currency.format(Number(row.expenses || 0))}`;
+            tax.textContent = `Tax: ${currency.format(Number(row.tax || 0))}`;
             rule.setAttribute('x1', point.x);
             rule.setAttribute('x2', point.x);
-            for (const [dot, xy] of [[salesDot, point], [expensesDot, expensePoint]]) {
+            for (const [dot, xy] of [[salesDot, point], [expensesDot, expensePoints[index]], [taxDot, taxPoints[index]]]) {
                 dot.setAttribute('cx', xy.x);
                 dot.setAttribute('cy', xy.y);
             }
@@ -67,7 +69,7 @@
             const target = svgNode('rect', {
                 x: left, y: 0, width: right - left, height: 240, fill: 'transparent',
                 class: 'analytics-month-target', role: 'button', tabindex: index ? -1 : 0,
-                'aria-label': `${row.month_label || row.month || ''} ${row.year || ''}. Sales ${currency.format(Number(row.sales || 0))}. Expenses ${currency.format(Number(row.expenses || 0))}.`,
+                'aria-label': `${row.month_label || row.month || ''} ${row.year || ''}. Sales ${currency.format(Number(row.sales || 0))}. Expenses ${currency.format(Number(row.expenses || 0))}. Tax ${currency.format(Number(row.tax || 0))}.`,
             });
             target.addEventListener('pointerenter', () => show(index));
             target.addEventListener('pointerdown', event => { pinned = event.pointerType === 'touch'; show(index); });

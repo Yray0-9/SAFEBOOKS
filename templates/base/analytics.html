@@ -11,7 +11,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/analytics_trend_tooltip.css' %}?v=2">
 <link rel="stylesheet" href="{% static 'css/analytics_tax_breakdown.css' %}?v=2">
-<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.9">
+<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.10">
 {% endblock %}
 
 {% block skeleton %}
@@ -166,7 +166,7 @@
                 <article class="dashboard-stat-card dashboard-fade-up w-100 h-100" style="--delay: 0.22s;">
                     <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
                     <div>
-                        <p class="stat-label">Net Value</p>
+                        <p class="stat-label">Net Sales</p>
                         <h3 id="analyticsNetValueValue">PHP 0.00</h3>
                         <p class="stat-note">Sales minus expenses</p>
                     </div>
@@ -180,16 +180,17 @@
             <div class="col-12">
                 <article class="dashboard-card dashboard-fade-up" style="--delay: 0.26s;">
                     <div class="dashboard-card-head">
-                        <h2>Monthly Trend</h2>
+                        <h2>Financial Trends</h2>
                     </div>
-                    <p class="dashboard-section-hint">Shows monthly financial trends from the last 6 months.</p>
+                    <p class="dashboard-section-hint">Monthly sales, expenses, and tax</p>
                     <div class="analytics-trend-legend" id="analyticsTrendLegend" aria-label="Trend legend">
                         <span class="analytics-legend-item"><i class="analytics-legend-dot sales"></i>Sales</span>
                         <span class="analytics-legend-item"><i class="analytics-legend-dot expenses"></i>Expenses</span>
+                        <span class="analytics-legend-item"><i class="analytics-legend-dot tax"></i>Tax</span>
                     </div>
                     <p class="analytics-timeframe-caption analytics-timeframe-caption-trend" id="analyticsTrendTimeframeCaption">Trend chart window: latest 6 months only.</p>
                     <div class="analytics-trend-chart">
-                        <svg class="analytics-line-svg" viewBox="0 0 640 240" preserveAspectRatio="none" role="img" aria-label="Monthly sales and expenses in Philippine pesos, using the same scale">
+                        <svg class="analytics-line-svg" viewBox="0 0 640 240" preserveAspectRatio="none" role="img" aria-label="Monthly sales, expenses, and tax in Philippine pesos, using the same scale">
                             <defs>
                                 <linearGradient id="trendSalesGrad" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stop-color="#2366dd" stop-opacity="0.18" />
@@ -204,6 +205,7 @@
                             <g id="analyticsTrendAreas"></g>
                             <path id="analyticsSalesLine" class="analytics-trend-line-sales" d=""></path>
                             <path id="analyticsExpensesLine" class="analytics-trend-line-expenses" d=""></path>
+                            <path id="analyticsTaxLine" class="analytics-trend-line-tax" d=""></path>
                         </svg>
                         <div class="analytics-month-labels" id="analyticsMonthLabels"></div>
                     </div>
@@ -217,50 +219,15 @@
         <!-- Tab 2: Predictive Forecasting -->
         <div class="tab-pane fade" id="forecasting-tab-pane" role="tabpanel" aria-labelledby="forecasting-tab" tabindex="0">
             <div class="row g-3 analytics-forecasting-row">
-                <div class="col-12 col-xl-5">
-                    <article class="dashboard-card dashboard-fade-up analytics-forecast-card analytics-predictive-card" style="--delay: 0.34s;">
-                        <div class="dashboard-card-head">
-                            <h2>Forecasting Insight</h2>
-                        </div>
-                        <p class="dashboard-panel-hint">Mathematical forecast for the upcoming period based on your historical financial data.</p>
-                        <p class="analytics-predictive-period" id="analyticsPredictivePeriod">Next period: --</p>
-                        <p class="analytics-timeframe-caption" id="analyticsPredictiveHistory" hidden></p>
-                        <div class="analytics-predictive-grid" aria-label="Predictive analytics forecast summary">
-                            <div class="analytics-predictive-item">
-                                <span class="analytics-predictive-label">Projected Sales</span>
-                                <strong class="analytics-predictive-value" id="analyticsPredictiveSalesValue">PHP --</strong>
-                                <span class="analytics-predictive-subtext" id="analyticsPredictiveSalesNote">Needs historical data</span>
-                            </div>
-                            <div class="analytics-predictive-item">
-                                <span class="analytics-predictive-label">Projected Expenses</span>
-                                <strong class="analytics-predictive-value" id="analyticsPredictiveExpensesValue">PHP --</strong>
-                                <span class="analytics-predictive-subtext" id="analyticsPredictiveExpensesNote">Needs historical data</span>
-                            </div>
-                            <div class="analytics-predictive-item">
-                                <span class="analytics-predictive-label">Projected Tax</span>
-                                <strong class="analytics-predictive-value" id="analyticsPredictiveTaxValue">PHP --</strong>
-                                <span class="analytics-predictive-subtext" id="analyticsPredictiveTaxNote">Needs historical data</span>
-                            </div>
-                        </div>
-                        <div class="analytics-predictive-chart">
-                            <div class="analytics-predictive-chart-shell" aria-hidden="true">
-                                <svg class="analytics-predictive-spark" viewBox="0 0 240 84" preserveAspectRatio="none">
-                                    <polyline class="analytics-predictive-line" id="analyticsPredictiveLine" points=""></polyline>
-                                </svg>
-                                <p class="analytics-predictive-placeholder" id="analyticsPredictivePlaceholder">Forecast visualization will appear after enough data is available.</p>
-                            </div>
-                        </div>
-                    </article>
-                </div>
-
-                <div class="col-12 col-xl-7">
+                <div class="col-12">
                     <article class="dashboard-card dashboard-fade-up analytics-forecast-card analytics-predictive-report-card" style="--delay: 0.36s;">
                         <div class="dashboard-card-head analytics-predictive-report-head">
-                            <h2>Predictive Forecast Report</h2>
+                            <h2>Forecast Report</h2>
                             <span class="dashboard-tag analytics-method-tag">SARIMA</span>
                         </div>
-                        <p class="dashboard-section-hint">Data-driven future projections for the selected forecast horizon.</p>
-                        <div class="table-responsive analytics-predictive-report-scroll">
+                        <p class="analytics-predictive-period" id="analyticsPredictivePeriod">Next period: --</p>
+                        <p class="analytics-timeframe-caption" id="analyticsPredictiveHistory" hidden></p>
+                        <div class="table-responsive">
                             <table class="table table-hover align-middle dashboard-table analytics-predictive-report-table mb-0" id="predictiveForecastTable">
                                 <thead>
                                     <tr>
@@ -268,7 +235,7 @@
                                         <th>Projected Sales</th>
                                         <th>Projected Expenses</th>
                                         <th>Projected Tax</th>
-                                        <th scope="col">Net Value<span class="visually-hidden">: calculated sales minus expenses for matching periods, not a separate SARIMA forecast</span></th>
+                                        <th scope="col">Net Sales<span class="visually-hidden">: calculated sales minus expenses for matching periods, not a separate SARIMA forecast</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="predictiveForecastTableBody">
@@ -295,10 +262,10 @@
                             <span class="analytics-forecast-legend-item sales" data-forecast-series="sales"><i></i>Sales</span>
                             <span class="analytics-forecast-legend-item expenses" data-forecast-series="expenses"><i></i>Expenses</span>
                             <span class="analytics-forecast-legend-item tax" data-forecast-series="tax"><i></i>Tax</span>
-                            <span class="analytics-forecast-legend-item net" data-forecast-series="net"><i></i>Net Value</span>
+                            <span class="analytics-forecast-legend-item net" data-forecast-series="net"><i></i>Net Sales</span>
                         </div>
                         <div class="analytics-forecast-projection-shell">
-                            <svg class="analytics-forecast-projection-svg" viewBox="0 0 720 360" preserveAspectRatio="none" role="img" aria-label="Projected sales, expenses, tax, and net value across the forecast horizon">
+                            <svg class="analytics-forecast-projection-svg" viewBox="0 0 720 360" role="img" aria-label="Projected sales, expenses, tax, and net sales across the forecast horizon">
                                 <defs>
                                     <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stop-color="#2563d8" stop-opacity="0.18" />
@@ -349,9 +316,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/analytics_trend_tooltip.js' %}?v=1"></script>
-<script src="{% static 'js/analytics_tax_breakdown.js' %}?v=1"></script>
-<script src="{% static 'js/forecast_periods.js' %}?v=9"></script>
+<script src="{% static 'js/analytics_trend_tooltip.js' %}?v=2"></script>
+<script src="{% static 'js/analytics_tax_breakdown.js' %}?v=2"></script>
+<script src="{% static 'js/forecast_periods.js' %}?v=10"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -389,6 +356,7 @@
         const analyticsTrendGrid = document.getElementById("analyticsTrendGrid");
         const analyticsSalesLine = document.getElementById("analyticsSalesLine");
         const analyticsExpensesLine = document.getElementById("analyticsExpensesLine");
+        const analyticsTaxLine = document.getElementById("analyticsTaxLine");
         const analyticsMonthLabels = document.getElementById("analyticsMonthLabels");
 
         const analyticsRemarksBadge = document.getElementById("analyticsRemarksBadge");
@@ -401,14 +369,6 @@
 
         const analyticsPredictivePeriod = document.getElementById("analyticsPredictivePeriod");
         const analyticsPredictiveHistory = document.getElementById("analyticsPredictiveHistory");
-        const analyticsPredictiveSalesValue = document.getElementById("analyticsPredictiveSalesValue");
-        const analyticsPredictiveExpensesValue = document.getElementById("analyticsPredictiveExpensesValue");
-        const analyticsPredictiveTaxValue = document.getElementById("analyticsPredictiveTaxValue");
-        const analyticsPredictiveSalesNote = document.getElementById("analyticsPredictiveSalesNote");
-        const analyticsPredictiveExpensesNote = document.getElementById("analyticsPredictiveExpensesNote");
-        const analyticsPredictiveTaxNote = document.getElementById("analyticsPredictiveTaxNote");
-        const analyticsPredictiveLine = document.getElementById("analyticsPredictiveLine");
-        const analyticsPredictivePlaceholder = document.getElementById("analyticsPredictivePlaceholder");
         const analyticsForecastProjectionGrid = document.getElementById("analyticsForecastProjectionGrid");
         const analyticsForecastProjectionBridges = document.getElementById("analyticsForecastProjectionBridges");
         const analyticsForecastProjectionSalesLine = document.getElementById("analyticsForecastProjectionSalesLine");
@@ -617,16 +577,6 @@
             }
 
             return projectionCannotForecast(source, valueKey) ? "Cannot forecast" : "N/A";
-        };
-
-        const getProjectionMethodLabel = (source, categoryKey, valueKey) => {
-            if (!projectionHasValue(source, valueKey)) {
-                return projectionCannotForecast(source, valueKey)
-                    ? "Insufficient stable data"
-                    : "Not scheduled this period";
-            }
-
-            return String(source[`${categoryKey}_method`] || "SARIMA");
         };
 
         const formatTin = (value) => {
@@ -1337,13 +1287,14 @@
         };
 
         const renderTrend = (trendRows) => {
-            if (!analyticsSalesLine || !analyticsExpensesLine || !analyticsMonthLabels) {
+            if (!analyticsSalesLine || !analyticsExpensesLine || !analyticsTaxLine || !analyticsMonthLabels) {
                 return;
             }
 
             const rows = Array.isArray(trendRows) ? trendRows : [];
             const salesValues = rows.map((row) => Number(row.sales || 0));
             const expenseValues = rows.map((row) => Number(row.expenses || 0));
+            const taxValues = rows.map((row) => Number(row.tax || 0));
 
             const width = 640;
             const height = 240;
@@ -1355,15 +1306,17 @@
             };
 
             const pesoScale = {
-                min: Math.min(0, ...salesValues, ...expenseValues),
-                max: Math.max(1, ...salesValues, ...expenseValues),
+                min: Math.min(0, ...salesValues, ...expenseValues, ...taxValues),
+                max: Math.max(1, ...salesValues, ...expenseValues, ...taxValues),
             };
             const salesPoints = getXYPoints(salesValues, width, height, padding, pesoScale);
             const expensePoints = getXYPoints(expenseValues, width, height, padding, pesoScale);
-            window.SafeBooksTrendTooltip?.render(analyticsSalesLine.closest("svg"), rows, salesPoints, expensePoints);
+            const taxPoints = getXYPoints(taxValues, width, height, padding, pesoScale);
+            window.SafeBooksTrendTooltip?.render(analyticsSalesLine.closest("svg"), rows, salesPoints, expensePoints, taxPoints);
 
             analyticsSalesLine.setAttribute("d", getBezierPath(salesPoints));
             analyticsExpensesLine.setAttribute("d", getBezierPath(expensePoints));
+            analyticsTaxLine.setAttribute("d", getBezierPath(taxPoints));
 
             const areasContainer = document.getElementById("analyticsTrendAreas");
             if (areasContainer) {
@@ -1406,22 +1359,6 @@
             animatePolyline(analyticsForecastLine, { duration: 640, delay: 0 });
         };
 
-        const renderPredictiveSparkline = (values) => {
-            if (!analyticsPredictiveLine) {
-                return;
-            }
-
-            const points = buildPolylinePoints(values, 240, 84, {
-                left: 8,
-                right: 8,
-                top: 8,
-                bottom: 10,
-            });
-
-            analyticsPredictiveLine.setAttribute("points", points);
-            animatePolyline(analyticsPredictiveLine, { duration: 640, delay: 0 });
-        };
-
         const formatForecastHistory = (forecast) => {
             const source = forecast && typeof forecast === "object" ? forecast : {};
             const formatPeriod = (value) => {
@@ -1443,8 +1380,6 @@
                 analyticsPredictiveHistory.textContent = formatForecastHistory(safeForecast);
                 analyticsPredictiveHistory.hidden = !analyticsPredictiveHistory.textContent;
             }
-            const hasForecast = Boolean(safeForecast.has_forecast);
-            const hasPeriodRows = Array.isArray(safeForecast.future_projections) && safeForecast.future_projections.length > 0;
             const nextPeriodLabel = String(safeForecast.next_period_label || "").trim();
             const frequencyLabel = String(safeForecast.frequency_label || "").trim();
             const periodHasFrequency = /\bQ\d\b/.test(nextPeriodLabel) || /Annual/i.test(nextPeriodLabel);
@@ -1455,53 +1390,6 @@
                     ? `Next period: ${nextPeriodLabel}${frequencySuffix}`
                     : "Next period: --";
             }
-
-            if (analyticsPredictiveSalesValue) {
-                analyticsPredictiveSalesValue.textContent = hasForecast || hasPeriodRows
-                    ? formatProjectionCurrency(safeForecast, "expected_sales")
-                    : "PHP --";
-            }
-            if (analyticsPredictiveExpensesValue) {
-                analyticsPredictiveExpensesValue.textContent = hasForecast || hasPeriodRows
-                    ? formatProjectionCurrency(safeForecast, "expected_expenses")
-                    : "PHP --";
-            }
-            if (analyticsPredictiveTaxValue) {
-                analyticsPredictiveTaxValue.textContent = hasForecast || hasPeriodRows
-                    ? formatProjectionCurrency(safeForecast, "expected_tax")
-                    : "PHP --";
-            }
-
-            const forecastCardNote = (category, valueKey) => {
-                const period = String(safeForecast[`${category}_period_label`] || "");
-                if (projectionHasValue(safeForecast, valueKey)) {
-                    return period || getProjectionMethodLabel(safeForecast, category, valueKey);
-                }
-                const note = String(safeForecast[`${category}_readiness_note`] || "Needs historical data");
-                const shortNote = /^Review missing (monthly|quarterly) periods$/.test(note) ? note
-                    : /missing|irregular|coverage|align/i.test(note) ? "Review record periods"
-                    : /unsupported/i.test(note) ? "Unsupported frequency"
-                    : note.length > 50 ? "Needs more history" : note;
-                return period ? `${period} · ${shortNote}` : shortNote;
-            };
-            if (analyticsPredictiveSalesNote) {
-                analyticsPredictiveSalesNote.textContent = forecastCardNote("sales", "expected_sales");
-            }
-            if (analyticsPredictiveExpensesNote) {
-                analyticsPredictiveExpensesNote.textContent = forecastCardNote("expenses", "expected_expenses");
-            }
-            if (analyticsPredictiveTaxNote) {
-                analyticsPredictiveTaxNote.textContent = forecastCardNote("tax", "expected_tax");
-            }
-
-            if (analyticsPredictivePlaceholder) {
-                analyticsPredictivePlaceholder.textContent = hasForecast
-                    ? ((safeForecast.sparkline || []).filter(value => value != null).length < 2
-                        ? "One forecast period available." : "SARIMA forecast")
-                    : "More complete history is needed.";
-            }
-
-            renderPredictiveSparkline(safeForecast.sparkline || []);
         };
 
         const predictiveForecastTableBody = document.getElementById("predictiveForecastTableBody");
@@ -1619,7 +1507,7 @@
                 },
                 {
                     key: "expected_net",
-                    label: "Net Value",
+                    label: "Net Sales",
                     className: "net",
                     lineElement: analyticsForecastProjectionNetLine,
                 },
@@ -1647,19 +1535,17 @@
                 analyticsForecastProjectionEmpty.hidden = false;
             };
 
+            const svg = analyticsForecastProjectionGrid.ownerSVGElement;
+            const { width, height } = svg && window.SafeBooksForecastPeriods?.projectionViewport?.(
+                svg, () => renderForecastProjectionChart(futureProjections, frequencySeries)
+            ) || { width: 720, height: 360 };
+
             if (!rows.length) {
                 clearChart();
                 return;
             }
 
-            const width = 720;
-            const height = 360;
-            const padding = {
-                left: 94,
-                right: 24,
-                top: 20,
-                bottom: 20,
-            };
+            const padding = { left: 72, right: 32, top: 20, bottom: 20 };
             const laneGap = 16;
             const laneCount = series.length;
             const laneHeight = (height - padding.top - padding.bottom - laneGap * (laneCount - 1)) / laneCount;
@@ -1742,7 +1628,7 @@
 
             analyticsForecastProjectionEmpty.hidden = true;
             if (analyticsForecastProjectionHint) {
-                analyticsForecastProjectionHint.textContent = "Each lane keeps its labelled record frequency and peso scale. Net Value is calculated from matching Sales and Expenses.";
+                analyticsForecastProjectionHint.textContent = "Each lane keeps its labelled record frequency and peso scale. Net Sales is calculated from matching Sales and Expenses.";
             }
 
             // Draw card background rects, timeline vertical lines, category headers, and scales per lane
@@ -1826,18 +1712,12 @@
             }
 
             const dotMarkup = [];
-            plottedSeries.forEach((item, seriesIndex) => {
+            plottedSeries.forEach((item) => {
                 const lineD = item.segments.map(segment => getBezierPath(
                     segment.map(p => ({x: xForIndex(p.index), y: item.yForValue(p.value)})))).join(" ");
 
                 if (item.lineElement) {
                     item.lineElement.setAttribute("d", lineD);
-                    if (item.points.length > 1) {
-                        animatePolyline(item.lineElement, {
-                            duration: 720,
-                            delay: seriesIndex * 70,
-                        });
-                    }
                 }
 
                 item.points.forEach((point) => {
@@ -1937,8 +1817,6 @@
                 chartTitle.textContent = "Projection Graph" + (frequency ? ` · ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}` : "");
             }
             if (analyticsForecastProjectionLabels) analyticsForecastProjectionLabels.style.gridTemplateColumns = `repeat(${chartRows.length || 1}, minmax(0, 1fr))`;
-            const sparkShell = document.getElementById("analyticsPredictiveLine")?.closest?.(".analytics-predictive-chart-shell");
-            if (sparkShell) sparkShell.classList.toggle("is-sparse", (forecast.sparkline || []).length < 2);
         };
         const showForecastPayload = (forecast) => {
             renderForecastView(window.SafeBooksForecastPeriods

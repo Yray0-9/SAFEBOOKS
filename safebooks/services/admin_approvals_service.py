@@ -246,7 +246,7 @@ def approve_bookkeeper(admin_account, bookkeeper_id: int, *, proof_revision=None
         if not account.email_verified or proof is None or proof_reviewed is not True or str(proof.revision) != str(proof_revision):
             return {
                 "ok": False, "code": "proof_review_required", "refresh_required": True,
-                "message": "Download and review the current proof, then confirm your review before approving.",
+                "message": "View the current proof, then confirm your review before approving.",
             }
 
         account.status = BookkeeperAccount.STATUS_APPROVED

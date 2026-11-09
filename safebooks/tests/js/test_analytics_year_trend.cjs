@@ -21,10 +21,10 @@ for (const name of ['client_details', 'analytics']) {
     assert(yearSelect.includes('{% if analytics_year == analytics_current_year %} selected{% endif %}'));
     const node = () => ({attributes: {}, setAttribute(key, value) {this.attributes[key] = value;}});
     const page = {
-        window: { SafeBooksTrendTooltip: { render(svg, rows, salesPoints, expensePoints) {
-            page.tooltipRows = rows; page.tooltipPoints = { salesPoints, expensePoints };
+        window: { SafeBooksTrendTooltip: { render(svg, rows, salesPoints, expensePoints, taxPoints) {
+            page.tooltipRows = rows; page.tooltipPoints = { salesPoints, expensePoints, taxPoints };
         } } },
-        analyticsSalesLine: node(), analyticsExpensesLine: node(),
+        analyticsSalesLine: node(), analyticsExpensesLine: node(), analyticsTaxLine: node(),
         analyticsMonthLabels: {style: {setProperty(key, value) {this[key] = value;}}},
         analyticsTrendGrid: {}, analyticsSummaryTimeframeCaption: {}, analyticsTrendTimeframeCaption: {},
         currentClientProfile: {client_name: 'Synthetic Client'},
@@ -34,7 +34,7 @@ for (const name of ['client_details', 'analytics']) {
     page.analyticsSalesLine.closest = () => 'synthetic-svg';
     const captions = extract(template, '        const formatTrendEdgeLabel =', name === 'client_details' ? '        const getXYPoints =' : '        const syncAnalyticsUrlFromScope =');
     const geometry = extract(template, '        const getXYPoints =', '        const prefersReducedMotion =');
-    const render = extract(template, '        const renderTrendGrid =', name === 'client_details' ? '        const renderPredictiveSparkline =' : '        const renderForecastSparkline =');
+    const render = extract(template, '        const renderTrendGrid =', name === 'client_details' ? '        const formatForecastHistory =' : '        const renderForecastSparkline =');
     vm.runInContext(captions + geometry + render + '\nthis.draw = renderTrend; this.caption = applyTimeframeCaptions; this.points = getXYPoints;', page);
     const endpoints = line => {
         const values = line.attributes.d.match(/-?\d+(?:\.\d+)?/g).map(Number);
@@ -42,8 +42,8 @@ for (const name of ['client_details', 'analytics']) {
         for (let index = 2; index < values.length; index += 6) result.push({x: values[index + 4], y: values[index + 5]});
         return result;
     };
-    const assertSharedScale = (sales, expenses) => {
-        const rows = sales.map((value, index) => ({year: 2025, month: index + 1, month_label: months[index], sales: value, expenses: expenses[index]}));
+    const assertSharedScale = (sales, expenses, taxes = sales.map(() => 0)) => {
+        const rows = sales.map((value, index) => ({year: 2025, month: index + 1, month_label: months[index], sales: value, expenses: expenses[index], tax: taxes[index]}));
         const original = JSON.stringify(rows);
         page.draw(rows);
         assert.equal(JSON.stringify(rows), original, 'Rendering must not modify amounts or payload rows');
@@ -57,8 +57,8 @@ for (const name of ['client_details', 'analytics']) {
                     `${name}: label and guide must align at every viewport width`);
             }
         }
-        const low = Math.min(0, ...sales, ...expenses), high = Math.max(1, ...sales, ...expenses);
-        for (const [line, amounts] of [[page.analyticsSalesLine, sales], [page.analyticsExpensesLine, expenses]]) {
+        const low = Math.min(0, ...sales, ...expenses, ...taxes), high = Math.max(1, ...sales, ...expenses, ...taxes);
+        for (const [line, amounts] of [[page.analyticsSalesLine, sales], [page.analyticsExpensesLine, expenses], [page.analyticsTaxLine, taxes]]) {
             const plotted = endpoints(line);
             assert.equal(plotted.length, amounts.length);
             for (let index = 0; index < amounts.length; index++) {
@@ -73,6 +73,7 @@ for (const name of ['client_details', 'analytics']) {
     assertSharedScale([0, 0], [0, 0]);               // Zero remains a finite baseline.
     assertSharedScale([0.10, 0.25], [0.01, 0.25]);   // Centavo values.
     assertSharedScale([999999999999.99, 0], [1, 0]);  // Storage-limit magnitude.
+    assertSharedScale([100, 80], [50, 40], [200, 40]); // Tax sets the maximum and overlaps an equal expense.
     assertSharedScale([100], [10]);                  // Single-point history.
     assertSharedScale([-10, 10], [0, 5]);            // Existing negative history is not rewritten.
     const independent = page.points([10, 20], 640, 240, {left: 34, right: 18, top: 16, bottom: 34});
@@ -100,6 +101,7 @@ for (const name of ['client_details', 'analytics']) {
     assert.equal((page.analyticsSalesLine.attributes.d.match(/ C /g) || []).length, 5);
     page.draw([]);
     assert.equal(page.analyticsSalesLine.attributes.d, '');
+    assert.equal(page.analyticsTaxLine.attributes.d, '');
     assert.equal(page.analyticsMonthLabels.innerHTML, '');
 }
 for (const name of ['analytics', 'client_details']) {

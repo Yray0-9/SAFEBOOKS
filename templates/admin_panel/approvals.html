@@ -245,7 +245,7 @@
                             <section class="border rounded p-3 mb-3" aria-labelledby="approvalProofHeading">
                                 <h6 id="approvalProofHeading" class="fw-bold">Bookkeeping proof</h6>
                                 <p id="approvalProofSummary" class="small mb-2">Select a request.</p>
-                                <a id="approvalProofDownload" class="btn dashboard-action-btn outline" download data-no-skeleton hidden>Download proof</a>
+                                <button type="button" id="approvalProofPreview" class="btn dashboard-action-btn outline" hidden>View proof (new tab)</button>
                             </section>
                             <h6 class="text-muted small fw-bold mb-2">Notification Decision Message</h6>
                             <div class="d-flex align-items-center justify-content-between gap-2 mb-2" id="approvalEmailDeliveryRow" hidden>
@@ -284,7 +284,7 @@
                 <p class="mb-3" id="approvalsActionModalMessage">Confirm this action.</p>
                 <div id="approvalProofReviewWrap" class="form-check mb-3" hidden>
                     <input id="approvalProofReviewed" type="checkbox" class="form-check-input">
-                    <label for="approvalProofReviewed" class="form-check-label">I downloaded and reviewed this applicant's current proof.</label>
+                    <label for="approvalProofReviewed" class="form-check-label">I reviewed this applicant's current proof.</label>
                 </div>
                 <div id="approvalsActionReasonWrap" hidden>
                     <label class="form-label" for="approvalsActionReasonInput">Rejection reason</label>
@@ -312,5 +312,5 @@
         },
     };
 </script>
-<script src="{% static 'js/admin_approvals_page.js' %}?v=20261102-delivery-status"></script>
+<script src="{% static 'js/admin_approvals_page.js' %}?v=20261109-proof-preview"></script>
 {% endblock %}

@@ -21,6 +21,7 @@ const dateValidation = extract("        const parseIsoDateParts =", "        con
 const payloadValidation = extract("        const validateEntryPayload =", "        const setFormSubmitState =");
 const worksheetHelpers = extract("        const WORKSHEET_AMOUNT_FIELDS =", "        const suggestLineDescription =");
 const coverageContext = { window: {} };
+vm.runInNewContext(fs.readFileSync(path.join(root, 'static/js/transaction_code_labels.js'), 'utf8'), coverageContext);
 vm.runInNewContext(fs.readFileSync(path.join(root, 'static/js/financial_coverage.js'), 'utf8'), coverageContext);
 const validator = { window: coverageContext.window };
 vm.runInNewContext(worksheetHelpers + dateValidation + payloadValidation + "\nthis.validate = validateEntryPayload;", validator);
@@ -417,6 +418,8 @@ assert(detailRows[2].includes('Expenses') && detailRows[2].includes('October–D
 const taxOnlyDetails = detailContext.render({ ...detailEntry, line_items: [
     { type_code: 'BIR Form 1603', description: 'QR', amount: '500' },
 ] });
+assert.match(taxOnlyDetails, />1603<\/td>/);
+assert(!taxOnlyDetails.includes('BIR Form'));
 assert(!taxOnlyDetails.includes('December 2026'), 'Do not assign Sales/Expenses coverage to a tax form');
 assert(!template.includes('<th>Coverage</th>'));
 assert(!template.includes('data-label="Coverage"'));

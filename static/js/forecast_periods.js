@@ -1,7 +1,29 @@
 (function (root) {
     "use strict";
     const labelCleanups = new WeakMap();
+    const projectionObservers = new WeakMap();
     root.SafeBooksForecastPeriods = {
+        projectionViewport(svg, redraw) {
+            const width = svg.clientWidth || 720;
+            const height = svg.clientHeight || 360;
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+            if (typeof root.ResizeObserver === "function") {
+                let state = projectionObservers.get(svg);
+                if (!state) {
+                    state = {};
+                    const observer = new root.ResizeObserver(() => {
+                        if (svg.clientWidth && svg.clientHeight
+                            && (svg.clientWidth !== state.width || svg.clientHeight !== state.height)) {
+                            state.redraw();
+                        }
+                    });
+                    projectionObservers.set(svg, state);
+                    observer.observe(svg);
+                }
+                Object.assign(state, { width, height, redraw });
+            }
+            return { width, height };
+        },
         alignLabels(labels, svg, positions) {
             if (!labels) return;
             labelCleanups.get(labels)?.();
