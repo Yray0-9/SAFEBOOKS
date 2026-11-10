@@ -402,6 +402,7 @@
 }
 
 .reports-ledger-grid-table td {
+    overflow-wrap: anywhere;
     height: 26px;
     font-weight: 700;
 }

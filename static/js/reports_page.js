@@ -990,7 +990,7 @@
             return "";
         }
 
-        const client = getClientForReport(report);
+        const client = report.printClient || getClientForReport(report);
         const clientName = toDisplayText(client && client.client_name ? client.client_name : report.scopeLabel, "Selected client");
         const clientTin = toDisplayText(client && formatTin(client.tin_number));
         const tradeName = toDisplayText(client && client.trade_name);
@@ -998,8 +998,6 @@
         const permitNumber = toDisplayText(client && client.permit_number);
         const birthday = client && client.birthday ? formatClientBirthday(client.birthday) : "-";
         const email = toDisplayText(client && client.email);
-        const orusAccount = toDisplayText(client && client.orus_account);
-        const customFields = client && Array.isArray(client.custom_fields) ? client.custom_fields : [];
 
         const reportTypeLabel = toDisplayText(report.reportLabel, "Client Report");
         const generatedLabel = formatGeneratedDateTime(report.generatedAt);
@@ -1055,8 +1053,6 @@
                 permitNumber,
                 birthday,
                 email,
-                orusAccount,
-                customFields,
             },
             table: {
                 columns,
@@ -1132,7 +1128,7 @@
                     <title>${escapeHtml(reportLabel)} - Print</title>
                     <style>
                         @page {
-                            size: A4 portrait;
+                            size: A4 ${report.reportType === "financial_summary" ? "landscape" : "portrait"};
                             margin: 0;
                         }
 
@@ -1259,6 +1255,11 @@
                         .reports-ledger-grid-table td {
                             height: 24px;
                             font-weight: 700;
+                        }
+
+                        .reports-ledger-grid-table th,
+                        .reports-ledger-grid-table td {
+                            overflow-wrap: anywhere;
                         }
 
                         .reports-ledger-note {
@@ -2177,6 +2178,10 @@
                     }
                 }
                 generatedReport = buildFinancialSummaryReport(analyticsPayload, filters, worksheet);
+                if (worksheet?.client && safeNumber(worksheet.client.id) === filters.clientId) {
+                    const { id, client_name, tin_number, trade_name, location, permit_number, birthday, email } = worksheet.client;
+                    generatedReport.printClient = { id, client_name, tin_number, trade_name, location, permit_number, birthday, email };
+                }
             } else if (filters.reportType === "compliance_snapshot") {
                 const dashboardPayload = await fetchJsonOrThrow(
                     String(urls.dashboardSummaryApi || ""),

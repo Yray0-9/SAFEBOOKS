@@ -1342,3 +1342,7 @@ body.theme-dark .analytics-nav-tabs .nav-link.active,
     border-color: #2b3c5a #2b3c5a #101b2f !important;
     font-weight: 700;
 }
+
+.forecast-current-year-only > :not([data-forecast-year-notice]) {
+    display: none !important;
+}

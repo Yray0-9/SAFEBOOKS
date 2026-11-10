@@ -16,7 +16,7 @@ const makePage = () => {
         forecasts: [], graphTitle: {},
         CLIENT_ID: 7, ANALYTICS_SUMMARY_API_URL: "/api/analytics/summary/", URLSearchParams, AbortController,
         analyticsEmptyMessage: {}, analyticsEmptyState: {hidden: true}, analyticsDataPanels: {hidden: true},
-        dashboardNotice: {hidden: true},
+        dashboardNotice: {hidden: true}, forecastYearNotice: {hidden: true},
         analyticsScopeHint: {}, analyticsYearFilter: {value: "2024", disabled: false}, analyticsHorizonFilter: {value: "3"},
         analyticsTotalSalesValue: {}, analyticsTotalExpensesValue: {}, analyticsTotalTaxValue: {}, analyticsNetValueValue: {},
         analyticsForecastProjectionLabels: {style: {}},
@@ -29,6 +29,10 @@ const makePage = () => {
         setAnalyticsLoadingState: loading => { page.loading = loading; if (loading) page.analyticsEmptyState.hidden = true; },
         error: {hidden: true}, requests: [], toasts: [], redirects: [],
         document: {getElementById: id => id === "analyticsForecastProjectionTitle" ? page.graphTitle
+            : id === "forecasting-tab-pane" ? {
+                querySelector: () => page.forecastYearNotice,
+                classList: {toggle: (name, enabled) => { page.historicalForecastHidden = enabled; }},
+            }
             : id === "analyticsDashboardEmptyNotice" ? page.dashboardNotice : id === "analyticsPredictiveLine" ? null : page.error},
         window: {location: {pathname: "/clients/7/", search: "", assign: url => page.redirects.push(url)}},
         showToast: (message, type) => page.toasts.push({message, type}),
@@ -51,6 +55,8 @@ const makePage = () => {
     const page = makePage();
     await page.load();
     assert.equal(page.requests[0].get("year"), "2024");
+    assert.equal(page.forecastYearNotice.hidden, false);
+    assert.equal(page.historicalForecastHidden, true);
     assert.equal(page.analyticsEmptyState.hidden, false);
     assert.equal(page.analyticsDataPanels.hidden, true);
     assert(page.analyticsEmptyMessage.textContent.includes("for 2024"));
@@ -58,6 +64,12 @@ const makePage = () => {
     assert(!page.analyticsEmptyMessage.textContent.includes("All Time"));
     assert(!page.analyticsEmptyMessage.textContent.includes("no saved records"));
     assert.equal(page.analyticsYearFilter.disabled, false);
+
+    const currentYearPage = makePage();
+    currentYearPage.analyticsYearFilter.value = "{{ analytics_current_year }}";
+    await currentYearPage.load();
+    assert.equal(currentYearPage.forecastYearNotice.hidden, true);
+    assert.equal(currentYearPage.historicalForecastHidden, false);
 
     page.apply({...payload(false), predictive_forecast: {history_start: "2024-01", history_end: "2025-12", has_forecast: true}});
     assert.equal(page.analyticsDataPanels.hidden, false, "Earlier forecast history must remain accessible in an empty selected year");

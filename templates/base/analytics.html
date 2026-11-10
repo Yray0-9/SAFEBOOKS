@@ -11,7 +11,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/analytics_trend_tooltip.css' %}?v=2">
 <link rel="stylesheet" href="{% static 'css/analytics_tax_breakdown.css' %}?v=2">
-<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.10">
+<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.11">
 {% endblock %}
 
 {% block skeleton %}
@@ -218,6 +218,7 @@
 
         <!-- Tab 2: Predictive Forecasting -->
         <div class="tab-pane fade" id="forecasting-tab-pane" role="tabpanel" aria-labelledby="forecasting-tab" tabindex="0">
+                    <p class="analytics-card p-3 mt-3" data-forecast-year-notice role="status" hidden>Select the current year to view upcoming forecasts.</p>
             <div class="row g-3 analytics-forecasting-row">
                 <div class="col-12">
                     <article class="dashboard-card dashboard-fade-up analytics-forecast-card analytics-predictive-report-card" style="--delay: 0.36s;">
@@ -2067,6 +2068,11 @@
         };
 
         const loadAnalyticsSummaryFromApi = async (clientId) => {
+            const forecastPane = document.getElementById("forecasting-tab-pane");
+            const forecastNotice = forecastPane?.querySelector("[data-forecast-year-notice]");
+            const showCurrentYearNotice = Boolean(analyticsYearFilter && analyticsYearFilter.value !== "{{ analytics_current_year }}");
+            forecastPane?.classList.toggle("forecast-current-year-only", showCurrentYearNotice);
+            if (forecastNotice) forecastNotice.hidden = !showCurrentYearNotice;
             const requestToken = ++analyticsRequestToken;
             if (analyticsAbortController) {
                 analyticsAbortController.abort();
