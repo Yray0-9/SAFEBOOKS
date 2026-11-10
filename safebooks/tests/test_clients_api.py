@@ -62,7 +62,10 @@ class ClientsApiTests(TestCase):
             ledger = Client.objects.get(pk=saved["id"])
             self.assertEqual(ledger.tax_registration, registration)
             page = self.client.get(reverse("client_details", args=[ledger.id]))
-            self.assertContains(page, f'<option value="{registration}" selected>')
+            expected_option = f'<option value="{registration}" selected>'
+            if not registration:
+                expected_option = '<option value="" disabled selected>Select tax registration</option>'
+            self.assertContains(page, expected_option)
             detail_url = reverse("api_client_detail", args=[ledger.id])
             # Older editors omit this field; they must preserve its saved classification.
             old_payload = self._client_payload(f"registration-{index}", tin=ledger.tin_number)

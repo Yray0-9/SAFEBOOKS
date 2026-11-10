@@ -281,6 +281,7 @@
             if (state.stage === LOCATION_STAGE.province) {
                 const province = selectItemByCode(state.provinces, value);
                 if (!province) return;
+                state.legacyValue = "";
                 state.selectedProvince = province;
                 state.selectedCity = null;
                 state.selectedBarangay = null;

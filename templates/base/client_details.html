@@ -511,12 +511,15 @@
                                 <input class="form-control client-form-input" id="editDetailsClientTradeName" name="trade_name" type="text" value="{{ client.trade_name }}" placeholder="Optional">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientTaxRegistration">Tax Registration</label>
-                                <select class="form-select client-form-input" id="editDetailsClientTaxRegistration" name="tax_registration">
-                                    <option value=""{% if client.tax_registration == "" %} selected{% endif %}>Not set</option>
-                                    <option value="vat"{% if client.tax_registration == "vat" %} selected{% endif %}>VAT</option>
-                                    <option value="non_vat"{% if client.tax_registration == "non_vat" %} selected{% endif %}>Non-VAT</option>
-                                </select>
+                                <label class="form-label client-form-label" for="editDetailsClientTaxRegistration">Tax Registration <span class="text-danger" aria-hidden="true">*</span></label>
+                                <div class="client-select-wrap">
+                                    <select class="form-select client-form-input client-select-input" id="editDetailsClientTaxRegistration" name="tax_registration" required>
+                                        <option value="" disabled{% if client.tax_registration == "" %} selected{% endif %}>Select tax registration</option>
+                                        <option value="vat"{% if client.tax_registration == "vat" %} selected{% endif %}>VAT</option>
+                                        <option value="non_vat"{% if client.tax_registration == "non_vat" %} selected{% endif %}>Non-VAT</option>
+                                    </select>
+                                    <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label client-form-label" for="editDetailsClientLocationSelect">Location</label>
