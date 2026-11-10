@@ -92,7 +92,7 @@ def _build_client_activity_payload(client, current_period_label: str, reference_
         current_period = current_period_label
 
     remarks = client.remarks or Client.REMARK_NEW
-    if remarks not in {Client.REMARK_NEW, Client.REMARK_ACTIVE, Client.REMARK_SEPARATED, Client.REMARK_CLOSED}:
+    if remarks not in {Client.REMARK_NEW, Client.REMARK_ACTIVE, Client.REMARK_CLOSED}:
         remarks = Client.REMARK_NEW
 
     deadline_date = deadline_date.isoformat() if deadline_date else ""
@@ -216,7 +216,6 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
 
     remark_new_count = sum(1 for client in clients if client.remarks == Client.REMARK_NEW)
     remark_active_count = sum(1 for client in clients if client.remarks == Client.REMARK_ACTIVE)
-    remark_separated_count = sum(1 for client in clients if client.remarks == Client.REMARK_SEPARATED)
     remark_closed_count = sum(1 for client in clients if client.remarks == Client.REMARK_CLOSED)
 
     filed_count = sum(1 for row in recent_client_activity if row["compliance"] == "filed")
@@ -237,7 +236,7 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
         "remarks_summary": {
             "new": remark_new_count,
             "active": remark_active_count,
-            "separated": remark_separated_count,
+            "separated": 0,  # Compatibility for older dashboard consumers.
             "closed": remark_closed_count,
         },
         "compliance_summary": {

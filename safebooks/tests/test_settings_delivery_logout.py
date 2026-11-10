@@ -211,22 +211,22 @@ class ClientStatusTests(TestCase):
         self.record(date(2026, 10, 1))
         self.assertEqual(client_service.resolve_client_remarks(self.ledger), "active")
 
-    def test_twelve_month_inactivity_takes_priority_over_historical_active_periods(self):
+    def test_historical_recorded_periods_keep_client_active(self):
         self.record(date(2025, 8, 1))
         self.record(date(2025, 10, 1))
         self.ledger.remarks = "active"
         self.ledger.save(update_fields=["remarks"])
-        self.assertEqual(client_service.resolve_client_remarks(self.ledger), "separated")
+        self.assertEqual(client_service.resolve_client_remarks(self.ledger), "active")
         self.record(date(2026, 12, 1))
-        self.assertEqual(client_service.resolve_client_remarks(self.ledger), "separated")
+        self.assertEqual(client_service.resolve_client_remarks(self.ledger), "active")
 
-    def test_calendar_month_threshold_registration_fallback_and_manual_remarks_are_preserved(self):
+    def test_old_registration_preserves_active_and_legacy_separated_without_records_resolves_new(self):
         Client.objects.filter(pk=self.ledger.pk).update(date_registered=date(2025, 11, 1), remarks="active")
         self.ledger.refresh_from_db()
         self.assertEqual(client_service.resolve_client_remarks(self.ledger), "active")
-        Client.objects.filter(pk=self.ledger.pk).update(date_registered=date(2025, 10, 31))
+        Client.objects.filter(pk=self.ledger.pk).update(date_registered=date(2025, 10, 31), remarks="separated")
         self.ledger.refresh_from_db()
-        self.assertEqual(client_service.resolve_client_remarks(self.ledger), "separated")
+        self.assertEqual(client_service.resolve_client_remarks(self.ledger), "new")
 
     def test_closed_clients_never_auto_reopen_and_foreign_owner_records_do_not_count(self):
         self.record(date(2026, 9, 1))
@@ -242,17 +242,18 @@ class ClientStatusTests(TestCase):
     def test_directory_dashboard_analytics_and_detail_reads_show_same_status_without_saving_client(self):
         self.record(date(2025, 8, 1))
         self.record(date(2025, 10, 1))
+        Client.objects.filter(pk=self.ledger.pk).update(remarks="separated")
         before = list(Client.objects.values())
         response = self.client.get(reverse("api_clients"))
-        self.assertEqual(response.json()["clients"][0]["remarks"], "separated")
+        self.assertEqual(response.json()["clients"][0]["remarks"], "active")
         self.assertEqual(list(Client.objects.values()), before)
         response = self.client.get(reverse("api_dashboard_summary"))
-        self.assertEqual(response.json()["remarks_summary"]["separated"], 1)
+        self.assertEqual(response.json()["remarks_summary"]["separated"], 0)
         self.assertEqual(list(Client.objects.values()), before)
         response = self.client.get(reverse("api_analytics_summary"), {"client_id": self.ledger.id})
-        self.assertEqual(response.json()["remarks_insight"]["level"], "separated")
+        self.assertEqual(response.json()["remarks_insight"]["level"], "active")
         response = self.client.get(reverse("client_details", args=[self.ledger.id]))
-        self.assertEqual(response.context["client"].remarks, "separated")
+        self.assertEqual(response.context["client"].remarks, "active")
         self.assertEqual(list(Client.objects.values()), before)
 
     def test_owned_explicit_client_and_financial_writes_persist_status_without_bulk_changes(self):
@@ -262,11 +263,11 @@ class ClientStatusTests(TestCase):
         result = client_service.update_client_for_bookkeeper(self.owner, self.ledger.id, data)
         self.assertTrue(result["ok"])
         self.ledger.refresh_from_db()
-        self.assertEqual(self.ledger.remarks, "separated")
+        self.assertEqual(self.ledger.remarks, "active")
         result = client_service.delete_client_for_bookkeeper(self.owner, self.ledger.id)
         self.assertEqual(result["client"]["remarks"], "closed")
         result = client_service.reopen_client_for_bookkeeper(self.owner, self.ledger.id)
-        self.assertEqual(result["client"]["remarks"], "separated")
+        self.assertEqual(result["client"]["remarks"], "active")
         response = self.client.post(reverse("api_financial_records", args=[self.ledger.id]), json.dumps({"date": "2026-10-01", "frequency": "monthly", "line_items": [{"type_code": "Sales", "description": "Synthetic", "amount": "100.00"}]}), content_type="application/json")
         self.assertEqual(response.status_code, 201)
         self.ledger.refresh_from_db()
@@ -288,7 +289,7 @@ class ClientStatusTests(TestCase):
         response = self.client.delete(route, json.dumps({"expected_revision": response.json()["record"]["revision"]}), content_type="application/json")
         self.assertEqual(response.status_code, 200)
         self.ledger.refresh_from_db()
-        self.assertEqual(self.ledger.remarks, "separated")
+        self.assertEqual(self.ledger.remarks, "active")
         self.assertEqual(BookkeeperAuditLog.objects.count(), 2)
 
 

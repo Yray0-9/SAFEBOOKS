@@ -7,31 +7,30 @@
     const REPORT_TYPE_META = {
         financial_summary: {
             label: "Financial Summary Report",
-            hint: "Sales, expenses, taxes, and monthly trend overview for the selected scope.",
+            hint: "Totals include the full bookkeeping months touched by the selected dates, within one year.",
             icon: "bi-cash-stack",
         },
         compliance_snapshot: {
-            label: "Compliance Status Snapshot",
-            hint: "Compliance distribution and client filing posture for the selected scope.",
+            label: "Record Status Report",
+            hint: "Current record status in SafeBooks, filtered by the client's latest entry date. Clients without entries are included.",
             icon: "bi-patch-check",
         },
         client_remarks_overview: {
-            label: "Client Remarks Overview",
-            hint: "Status-remarks distribution and client behavior visibility for the selected scope.",
+            label: "Client Status Overview",
+            hint: "Current client status for clients registered in SafeBooks during the selected dates.",
             icon: "bi-shield-check",
         },
     };
 
     const COMPLIANCE_LABELS = {
-        filed: "Filed",
-        pending: "Pending",
-        late: "Late",
+        filed: "Up to date",
+        pending: "Needs follow-up",
+        late: "No entries",
     };
 
     const REMARK_LABELS = {
         new: "New",
         active: "Active",
-        separated: "Separated",
         closed: "Closed",
     };
 
@@ -427,7 +426,7 @@
 
     const toComplianceLabel = (complianceValue) => {
         const key = String(complianceValue || "").toLowerCase();
-        return COMPLIANCE_LABELS[key] || "Pending";
+        return COMPLIANCE_LABELS[key] || "-";
     };
 
     const buildScopeLabel = (selectedClientId, fallbackLabel = "All clients") => {
@@ -613,12 +612,8 @@
             ? "Prepared from generated report values."
             : "No rows matched the selected date range. Blank lines are available for manual notes.";
 
-        const orderedColumns = window.SafeBooksReportsShared && typeof window.SafeBooksReportsShared.normalizeFinancialSummaryColumns === "function"
-            ? window.SafeBooksReportsShared.normalizeFinancialSummaryColumns(columns)
-            : columns;
-
         return {
-            columns: orderedColumns,
+            columns,
             rows: formattedRows,
             rowCount,
             rowHint,
@@ -668,10 +663,7 @@
             if (reportsDownloadButton) {
                 reportsDownloadButton.disabled = loading || !latestGeneratedReport.rows.length;
             }
-            reportsPrintButton.disabled = loading
-                || latestGeneratedReport.reportType !== "financial_summary"
-                || !isClientScopedReport(latestGeneratedReport)
-                || !latestGeneratedReport.printLayout;
+            reportsPrintButton.disabled = loading || !latestGeneratedReport.rows.length;
         }
     };
 
@@ -750,9 +742,22 @@
         }
     };
 
+    let historyPage = 1;
+    const historyPageSize = 3;
+    const historyPagination = document.getElementById("reportsHistoryPagination");
+    const historyPrevious = document.getElementById("reportsHistoryPrevious");
+    const historyNext = document.getElementById("reportsHistoryNext");
+    const historyPageLabel = document.getElementById("reportsHistoryPageLabel");
+
     const renderHistoryItems = (historyItems) => {
         const items = Array.isArray(historyItems) ? historyItems : [];
         reportsHistoryCountTag.textContent = `${items.length} item${items.length === 1 ? "" : "s"}`;
+        const pageCount = Math.max(1, Math.ceil(items.length / historyPageSize));
+        historyPage = Math.max(1, Math.min(historyPage, pageCount));
+        historyPagination.hidden = pageCount === 1;
+        historyPrevious.disabled = historyPage === 1;
+        historyNext.disabled = historyPage === pageCount;
+        historyPageLabel.textContent = `Page ${historyPage} of ${pageCount}`;
 
         if (!items.length) {
             reportsHistoryList.innerHTML = "";
@@ -761,14 +766,15 @@
         }
 
         reportsHistoryEmpty.hidden = true;
-        reportsHistoryList.innerHTML = items
+        const start = (historyPage - 1) * historyPageSize;
+        reportsHistoryList.innerHTML = items.slice(start, start + historyPageSize)
             .map((item) => {
                 const generatedLabel = formatGeneratedDateTime(item.generatedAt);
                 const rowCountLabel = `${formatCount(item.rowCount)} row${safeNumber(item.rowCount) === 1 ? "" : "s"}`;
                 return `
                     <li class="reports-history-item">
                         <div class="reports-history-meta">
-                            <strong>${escapeHtml(item.reportLabel || "Report")}</strong>
+                                <strong>${escapeHtml(REPORT_TYPE_META[item.reportType]?.label || item.reportLabel || "Report")}</strong>
                             <p>${escapeHtml(item.scopeLabel || "All clients")} | ${escapeHtml(item.dateFrom || "-")} to ${escapeHtml(item.dateTo || "-")} | ${escapeHtml(rowCountLabel)} | ${escapeHtml(generatedLabel)}</p>
                         </div>
                         <div class="reports-history-actions">
@@ -781,6 +787,15 @@
             })
             .join("");
     };
+
+    historyPrevious.addEventListener("click", () => {
+        historyPage -= 1;
+        renderHistoryItems(readHistoryItems());
+    });
+    historyNext.addEventListener("click", () => {
+        historyPage += 1;
+        renderHistoryItems(readHistoryItems());
+    });
 
     const appendHistoryItem = (report) => {
         if (!report) {
@@ -802,6 +817,7 @@
 
         const updatedItems = [nextItem, ...historyItems].slice(0, MAX_HISTORY_ITEMS);
         writeHistoryItems(updatedItems);
+        historyPage = 1;
         renderHistoryItems(updatedItems);
     };
 
@@ -863,6 +879,9 @@
 
         if (parsedFrom.getTime() > parsedTo.getTime()) {
             return "Date From cannot be later than Date To.";
+        }
+        if (filters.reportType === "financial_summary" && parsedFrom.getFullYear() !== parsedTo.getFullYear()) {
+            return "Choose dates within one bookkeeping year for the Financial Summary Report.";
         }
 
         return "";
@@ -1043,6 +1062,8 @@
                 columns,
                 rows,
                 minRows,
+                preserveColumnOrder: true,
+                totalOverrides: report.totalOverrides,
             },
             rowHint,
         });
@@ -1053,26 +1074,14 @@
             return;
         }
 
-        if (report.reportType !== "financial_summary") {
+        if (report.reportType !== "financial_summary" || !isClientScopedReport(report)) {
             reportsLedgerCard.hidden = true;
+            reportsLedgerSheet.innerHTML = "";
             reportsPrintButton.disabled = true;
             return;
         }
 
         reportsLedgerCard.hidden = false;
-
-        if (!isClientScopedReport(report)) {
-            reportsLedgerWrapper.hidden = true;
-            reportsLedgerEmpty.hidden = false;
-            if (reportsLedgerEmptyText) {
-                reportsLedgerEmptyText.textContent = "Select one client and generate a report to see this print format.";
-            }
-            reportsLedgerSheet.innerHTML = "";
-            reportsLedgerHint.textContent = "This familiar format appears when one client is selected.";
-            reportsLedgerMetaTag.textContent = "Client scope required";
-            reportsPrintButton.disabled = true;
-            return;
-        }
 
         const printLayout = report.printLayout || null;
         if (!printLayout) {
@@ -1273,28 +1282,43 @@
             return;
         }
 
-        if (latestGeneratedReport.reportType !== "financial_summary") {
-            showToast("Print layout is only available for Financial Summary reports.", "warning");
-            return;
-        }
+        const report = latestGeneratedReport;
+        if (!report.rows.length) return;
 
-        if (!isClientScopedReport(latestGeneratedReport)) {
-            showToast("Select one client to use this print-friendly format.", "warning");
-            return;
-        }
-
-        if (!latestGeneratedReport.printLayout) {
-            showToast("Print layout is not available yet. Generate the report again.", "warning");
-            return;
-        }
-
-        const sheetMarkup = String(reportsLedgerSheet.innerHTML || "").trim();
+        const sheetMarkup = report.printLayout
+            ? reportsLedgerSheet.innerHTML.trim() : buildSummaryPrintSheet(report);
         if (!sheetMarkup) {
             showToast("Print layout is not ready yet. Generate the report again.", "warning");
             return;
         }
 
-        const documentMarkup = buildLedgerPrintDocumentHtml(latestGeneratedReport, sheetMarkup);
+        printReportDocument(buildLedgerPrintDocumentHtml(report, sheetMarkup));
+    };
+
+    const buildSummaryPrintSheet = (report) => {
+        const heading = report.columns.map(({ label }) =>
+            `<th scope="col">${escapeHtml(window.SafeBooksTransactionCodeLabel(label))}</th>`).join("");
+        const rows = report.rows.map((row) => `<tr>${report.columns.map(({ key }) =>
+            `<td>${escapeHtml(toDisplayText(row[key]))}</td>`).join("")}</tr>`).join("");
+        const totals = report.summaryCards.map(({ label, value }) =>
+            `<span class="reports-ledger-meta-pill">${escapeHtml(label)} ${escapeHtml(value)}</span>`).join("");
+        return `
+            <div class="reports-ledger-sheet">
+                <header class="reports-ledger-heading">
+                    <h1 class="reports-ledger-title">${escapeHtml(report.reportLabel)}</h1>
+                    <p class="reports-ledger-date">${escapeHtml(report.scopeLabel)} · ${escapeHtml(report.dateFrom)} to ${escapeHtml(report.dateTo)}</p>
+                    <p class="reports-ledger-date">Generated ${escapeHtml(formatGeneratedDateTime(report.generatedAt))}</p>
+                </header>
+                <p class="reports-ledger-note">${escapeHtml(report.hint)}</p>
+                <div class="reports-ledger-meta-row">${totals}</div>
+                <table class="reports-ledger-grid-table">
+                    <thead><tr>${heading}</tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    };
+
+    const printReportDocument = (documentMarkup) => {
         const existingFrame = document.getElementById("reportsPrintFrame");
         if (existingFrame) {
             existingFrame.remove();
@@ -1366,7 +1390,7 @@
         if (reportsDownloadButton) {
             reportsDownloadButton.disabled = report.rows.length === 0;
         }
-        reportsPrintButton.disabled = report.reportType !== "financial_summary" || !isClientScopedReport(report) || !report.printLayout;
+        reportsPrintButton.disabled = !report.rows.length;
 
         if (report.printLayoutError) {
             showToast(report.printLayoutError, "warning");
@@ -1416,18 +1440,16 @@
         window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}`);
     };
 
-    const buildAnalyticsSummaryUrl = (clientId) => {
+    const buildAnalyticsSummaryUrl = (filters) => {
         const baseUrl = String(urls.analyticsSummaryApi || "");
         if (!baseUrl) {
             return "";
         }
 
-        if (!Number.isFinite(clientId) || clientId <= 0) {
-            return baseUrl;
+        const query = new URLSearchParams({ year: filters.dateFrom.slice(0, 4) });
+        if (Number.isFinite(filters.clientId) && filters.clientId > 0) {
+            query.set("client_id", String(filters.clientId));
         }
-
-        const query = new URLSearchParams();
-        query.set("client_id", String(clientId));
         return `${baseUrl}?${query.toString()}`;
     };
 
@@ -1439,8 +1461,9 @@
 
         const query = new URLSearchParams();
         query.set("client_id", String(filters.clientId));
-        query.set("date_from", String(filters.dateFrom || ""));
-        query.set("date_to", String(filters.dateTo || ""));
+        const end = parseDateInput(filters.dateTo);
+        query.set("date_from", `${filters.dateFrom.slice(0, 7)}-01`);
+        query.set("date_to", toDateInputValue(new Date(end.getFullYear(), end.getMonth() + 1, 0)));
         return `${baseUrl}?${query.toString()}`;
     };
 
@@ -1607,11 +1630,21 @@
         }
     };
 
-    const buildFinancialSummaryReport = (payload, filters) => {
-        const summary = payload && payload.summary ? payload.summary : {};
+    const buildFinancialSummaryReport = (payload, filters, worksheet = null) => {
+        const worksheetNetSales = worksheet?.worksheet_net_sales;
+        const supportingAmounts = worksheet ? reportsShared.summarizeWorksheetAmounts(worksheet.rows) : null;
+        const supportingColumns = worksheet ? [
+            { key: "mict", label: "MICT" },
+            { key: "cogs_cos", label: "COGS / COS" },
+            { key: "income_payments_2307", label: "Income Payments (2307)" },
+            { key: "tax_withheld", label: "Tax Withheld" },
+        ] : [];
         const trendRows = Array.isArray(payload && payload.monthly_trend)
             ? payload.monthly_trend.filter((row) => isTrendMonthWithinRange(row.year, row.month, filters))
             : [];
+        const sum = (key) => trendRows.reduce((total, row) => total + Math.round(safeNumber(row[key]) * 100), 0) / 100;
+        const netTotal = worksheetNetSales ? worksheetNetSales.total : sum("net_value");
+        const netTotalLabel = netTotal == null ? "-" : formatCurrency(netTotal);
 
         const rawTypeColumns = Array.isArray(payload && payload.type_columns)
             ? payload.type_columns.filter((value) => String(value || "").trim())
@@ -1621,26 +1654,10 @@
             : rawTypeColumns;
         const typeColumnMeta = typeColumns.map((label, index) => ({
             key: `type_${index}`,
-            label: String(label),
+            label: window.SafeBooksTransactionCodeLabel(label),
+            sourceLabel: String(label),
         }));
         const useTypeColumns = typeColumnMeta.length > 0;
-
-        const getTypeAmount = (typeBreakdown, label) => {
-            const normalizedLabel = String(label || "").trim().toLowerCase();
-            if (!normalizedLabel) {
-                return 0;
-            }
-
-            const directMatch = typeBreakdown && Object.prototype.hasOwnProperty.call(typeBreakdown, label)
-                ? Number(typeBreakdown[label] || 0)
-                : null;
-            if (Number.isFinite(directMatch)) {
-                return directMatch;
-            }
-
-            const fallbackKey = Object.keys(typeBreakdown || {}).find((key) => String(key || "").trim().toLowerCase() === normalizedLabel);
-            return Number(typeBreakdown && fallbackKey ? typeBreakdown[fallbackKey] : 0);
-        };
 
         const scope = payload && payload.scope ? payload.scope : {};
         const scopeLabel = Number.isFinite(filters.clientId) && filters.clientId > 0
@@ -1650,32 +1667,36 @@
         const rows = trendRows.map((row) => {
             const periodLabel = `${row.month_label || row.month || "-"} ${row.year || ""}`.trim();
             const typeBreakdown = row && row.type_breakdown ? row.type_breakdown : {};
-            const salesValue = useTypeColumns
-                ? getTypeAmount(typeBreakdown, "Sales")
-                : Number(row.sales || 0);
-            const expensesValue = useTypeColumns
-                ? getTypeAmount(typeBreakdown, "Expenses")
-                : Number(row.expenses || 0);
-            const netValue = salesValue - expensesValue;
+            const salesValue = Number(row.sales || 0);
+            const expensesValue = Number(row.expenses || 0);
+            const periodKey = `${row.year}-${String(row.month).padStart(2, "0")}`;
+            const monthTotals = supportingAmounts?.get(periodKey);
+            const supportingValues = Object.fromEntries(supportingColumns.map(({ key }) => [
+                key, monthTotals?.[key] == null ? "-" : reportsShared.formatWorksheetCents(monthTotals[key]),
+            ]));
+            const netValue = worksheetNetSales ? worksheetNetSales.periods[periodKey]?.amount : row.net_value;
+            const netLabel = netValue == null ? "-" : formatCurrency(netValue);
             if (!useTypeColumns) {
                 return {
                     period: periodLabel,
                     sales: formatCurrency(salesValue),
                     expenses: formatCurrency(expensesValue),
                     tax: formatCurrency(row.tax),
-                    net_value: formatCurrency(netValue),
+                    ...supportingValues,
+                    net_value: netLabel,
                 };
             }
 
             const typeValues = {};
             typeColumnMeta.forEach((column) => {
-                typeValues[column.key] = formatCurrency(typeBreakdown[column.label]);
+                typeValues[column.key] = formatCurrency(typeBreakdown[column.sourceLabel]);
             });
 
             return {
                 period: periodLabel,
                 ...typeValues,
-                net_value: formatCurrency(netValue),
+                ...supportingValues,
+                net_value: netLabel,
             };
         });
 
@@ -1688,29 +1709,30 @@
             generatedAt: new Date().toISOString(),
             clientId: Number.isFinite(filters.clientId) && filters.clientId > 0 ? filters.clientId : "all",
             scopeLabel,
+            totalOverrides: { "Net Sales": netTotalLabel },
             summaryCards: [
                 {
                     label: "Total Sales",
-                    value: formatCurrency(summary.total_sales),
+                    value: formatCurrency(sum("sales")),
                     note: "For selected scope",
                     icon: "bi-cash-stack",
                 },
                 {
                     label: "Total Expenses",
-                    value: formatCurrency(summary.total_expenses),
+                    value: formatCurrency(sum("expenses")),
                     note: "For selected scope",
                     icon: "bi-wallet2",
                 },
                 {
                     label: "Total Tax",
-                    value: formatCurrency(summary.total_tax),
+                    value: formatCurrency(sum("tax")),
                     note: "For selected scope",
                     icon: "bi-receipt",
                 },
                 {
                     label: "Net Sales",
-                    value: formatCurrency(summary.net_value),
-                    note: "Sales minus expenses",
+                    value: netTotalLabel,
+                    note: netTotal == null ? "No complete Net Sales total for this range" : "Sales minus expenses",
                     icon: "bi-graph-up-arrow",
                 },
             ],
@@ -1718,6 +1740,7 @@
                 ? [
                     { key: "period", label: "Period" },
                     ...typeColumnMeta,
+                    ...supportingColumns,
                     { key: "net_value", label: "Net Sales" },
                 ]
                 : [
@@ -1725,6 +1748,7 @@
                     { key: "sales", label: "Sales" },
                     { key: "expenses", label: "Expenses" },
                     { key: "tax", label: "Tax" },
+                    ...supportingColumns,
                     { key: "net_value", label: "Net Sales" },
                 ],
             rows,
@@ -1764,34 +1788,34 @@
             scopeLabel,
             summaryCards: [
                 {
-                    label: "Filed",
+                    label: COMPLIANCE_LABELS.filed,
                     value: formatCount(filedCount),
-                    note: "Clients marked filed",
+                    note: "Records are up to date",
                     icon: "bi-patch-check",
                 },
                 {
-                    label: "Pending",
+                    label: COMPLIANCE_LABELS.pending,
                     value: formatCount(pendingCount),
                     note: "Requires follow-up",
                     icon: "bi-hourglass-split",
                 },
                 {
-                    label: "Late",
+                    label: COMPLIANCE_LABELS.late,
                     value: formatCount(lateCount),
-                    note: "No recent submission",
+                    note: "No saved entries",
                     icon: "bi-clock-history",
                 },
                 {
-                    label: "Needs Attention",
+                    label: "Needs review",
                     value: formatCount(pendingCount + lateCount),
-                    note: "Pending and late combined",
+                    note: "Needs follow-up and no entries combined",
                     icon: "bi-exclamation-triangle",
                 },
             ],
             columns: [
                 { key: "client_name", label: "Client Name" },
                 { key: "tin_number", label: "TIN" },
-                { key: "compliance", label: "Compliance" },
+                { key: "compliance", label: "Record Status" },
                 { key: "last_entry_date", label: "Last Entry Date" },
                 { key: "current_period", label: "Current Period" },
                 { key: "remarks", label: "Remarks" },
@@ -1801,14 +1825,14 @@
     };
 
     const buildClientRemarksOverviewReport = (payload, filters) => {
-        const activityRows = filterActivityRows(payload && payload.recent_client_activity, filters);
+        const clients = Array.isArray(payload?.clients) ? payload.clients : [];
+        const activityRows = clients.filter((client) =>
+            (!filters.clientId || filters.clientId === "all" || safeNumber(client.id) === filters.clientId)
+            && isIsoDateWithinRange(client.date_registered, filters));
 
         const newCount = activityRows.filter((row) => String(row.remarks || "").toLowerCase() === "new").length;
         const activeCount = activityRows.filter((row) => String(row.remarks || "").toLowerCase() === "active").length;
-        const separatedCount = activityRows.filter((row) => String(row.remarks || "").toLowerCase() === "separated").length;
         const closedCount = activityRows.filter((row) => String(row.remarks || "").toLowerCase() === "closed").length;
-
-        const totalRows = activityRows.length;
 
         const scopeLabel = Number.isFinite(filters.clientId) && filters.clientId > 0
             ? buildScopeLabel(filters.clientId, "Selected client")
@@ -1820,8 +1844,7 @@
                 const remarksOrder = {
                     new: 0,
                     active: 1,
-                    separated: 2,
-                    closed: 3,
+                    closed: 2,
                 };
                 const aRemarks = String(a.remarks || "new").toLowerCase();
                 const bRemarks = String(b.remarks || "new").toLowerCase();
@@ -1840,9 +1863,7 @@
                     client_name: String(row.client_name || "Client"),
                     tin_number: row.tin_number ? formatTin(row.tin_number) : "-",
                     remarks: toRemarkLabel(row.remarks),
-                    compliance: toComplianceLabel(row.compliance),
-                    last_entry_date: formatIsoDateForDisplay(row.last_entry_date),
-                    current_period: String(row.current_period || "-"),
+                    date_registered: formatIsoDateForDisplay(row.date_registered),
                 };
             });
 
@@ -1869,25 +1890,17 @@
                     icon: "bi-shield-check",
                 },
                 {
-                    label: "Separated",
-                    value: formatCount(separatedCount),
-                    note: "No current year activity",
-                    icon: "bi-shield",
-                },
-                {
                     label: "Closed",
                     value: formatCount(closedCount),
-                    note: "Business closed",
+                    note: "Closed by the bookkeeper",
                     icon: "bi-shield-slash",
                 },
             ],
             columns: [
                 { key: "client_name", label: "Client Name" },
                 { key: "tin_number", label: "TIN" },
-                { key: "remarks", label: "Remarks" },
-                { key: "compliance", label: "Compliance" },
-                { key: "last_entry_date", label: "Last Entry Date" },
-                { key: "current_period", label: "Current Period" },
+                { key: "date_registered", label: "Registered in SafeBooks" },
+                { key: "remarks", label: "Client Status" },
             ],
             rows,
         };
@@ -2120,6 +2133,7 @@
         const focusAfterGenerate = Boolean(options.focusAfterGenerate);
         const filters = collectFilters();
         const validationMessage = validateFilters(filters);
+        clearGeneratedPreview();
 
         if (validationMessage) {
             setFeedbackState("error", validationMessage);
@@ -2143,34 +2157,46 @@
 
             if (filters.reportType === "financial_summary") {
                 const analyticsPayload = await fetchJsonOrThrow(
-                    buildAnalyticsSummaryUrl(filters.clientId),
+                    buildAnalyticsSummaryUrl(filters),
                     generationAbortController.signal,
                     "Unable to load analytics data for financial summary."
                 );
                 if (requestToken !== generationRequestToken) {
                     return;
                 }
-                generatedReport = buildFinancialSummaryReport(analyticsPayload, filters);
+                let worksheet = null;
+                if (Number.isFinite(filters.clientId) && filters.clientId > 0) {
+                    worksheet = await fetchJsonOrThrow(
+                        buildPrintLayoutUrl(filters),
+                        generationAbortController.signal,
+                        "Unable to load coverage-aware Net Sales."
+                    );
+                    if (requestToken !== generationRequestToken) return;
+                    if (!worksheet.worksheet_net_sales?.periods || !Array.isArray(worksheet.rows)) {
+                        throw new Error("Client worksheet amounts are unavailable.");
+                    }
+                }
+                generatedReport = buildFinancialSummaryReport(analyticsPayload, filters, worksheet);
             } else if (filters.reportType === "compliance_snapshot") {
                 const dashboardPayload = await fetchJsonOrThrow(
                     String(urls.dashboardSummaryApi || ""),
                     generationAbortController.signal,
-                    "Unable to load compliance snapshot data."
+                    "Unable to load record status data."
                 );
                 if (requestToken !== generationRequestToken) {
                     return;
                 }
                 generatedReport = buildComplianceSnapshotReport(dashboardPayload, filters);
             } else if (filters.reportType === "client_remarks_overview") {
-                const dashboardPayload = await fetchJsonOrThrow(
-                    String(urls.dashboardSummaryApi || ""),
+                const directoryPayload = await fetchJsonOrThrow(
+                    String(urls.clientsApi || ""),
                     generationAbortController.signal,
-                    "Unable to load remarks overview data."
+                    "Unable to load client status data."
                 );
                 if (requestToken !== generationRequestToken) {
                     return;
                 }
-                generatedReport = buildClientRemarksOverviewReport(dashboardPayload, filters);
+                generatedReport = buildClientRemarksOverviewReport(directoryPayload, filters);
             } else {
                 throw new Error("Unsupported report type selected.");
             }

@@ -99,7 +99,7 @@
         </button>
         <button type="button" class="btn directory-tab-btn" id="tabClosed" aria-selected="false">
             <i class="bi bi-x-circle-fill"></i>
-            <span title="Clients marked Closed or Separated">Inactive</span>
+            <span title="Clients marked Closed">Inactive</span>
         </button>
     </div>
 
@@ -166,13 +166,26 @@
                     <div class="client-form-section-head">
                         <h3>Client Information</h3>
                     </div>
+                    <p class="small text-muted mb-2">Fields marked with * are required.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientName">Client Name</label>
-                            <input class="form-control client-form-input" id="addClientName" name="client_name" type="text" required>
+                            <label class="form-label client-form-label" for="addClientLastName">Last Name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="addClientLastName" type="text" autocomplete="section-client family-name" pattern=".*\S.*" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientTin">TIN</label>
+                            <label class="form-label client-form-label" for="addClientFirstName">First Name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="addClientFirstName" type="text" autocomplete="section-client given-name" pattern=".*\S.*" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label client-form-label" for="addClientMiddleName">Middle Name</label>
+                            <input class="form-control client-form-input" id="addClientMiddleName" type="text" autocomplete="section-client additional-name" placeholder="Optional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label client-form-label" for="addClientSuffix">Suffix</label>
+                            <input class="form-control client-form-input" id="addClientSuffix" type="text" autocomplete="section-client honorific-suffix" placeholder="Optional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label client-form-label" for="addClientTin">TIN <span class="text-danger" aria-hidden="true">*</span></label>
                             <input class="form-control client-form-input" id="addClientTin" name="tin" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="000-000-000-000" maxlength="15" autocomplete="off" required>
                         </div>
                         <div class="col-md-6">
@@ -188,7 +201,7 @@
                                 </select>
                             </div>
                         <div class="col-12">
-                            <label class="form-label client-form-label" for="addClientLocationSelect">Location</label>
+                            <label class="form-label client-form-label" for="addClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                             <input id="addClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
                                 <select class="form-select client-form-input client-select-input" id="addClientLocationSelect" aria-label="Select province" required>
@@ -211,8 +224,8 @@
                             <input class="form-control client-form-input" id="addClientPermitNumber" name="permit_number" type="text" placeholder="Optional">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientBirthday">Birthday</label>
-                            <input class="form-control client-form-input" id="addClientBirthday" name="birthday" type="date">
+                            <label class="form-label client-form-label" for="addClientBirthday">Birthdate <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="addClientBirthday" name="birthday" type="date" required>
                         </div>
                     </div>
                 </section>
@@ -528,7 +541,7 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=20261109-tax-code-labels-2"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261110-worksheet-tax-codes"></script>
 {% if client_details_access_target %}
 {{ client_details_access_target|json_script:"clientDetailsAccessTarget" }}
 {% endif %}
@@ -2143,9 +2156,9 @@
                 const remarksVal = normalize(row.dataset.remarks || "");
                 let matchesRemarksTab = false;
                 if (directoryTabFilter === "active") {
-                    matchesRemarksTab = remarksVal !== "closed" && remarksVal !== "separated";
+                    matchesRemarksTab = remarksVal !== "closed";
                 } else {
-                    matchesRemarksTab = remarksVal === "closed" || remarksVal === "separated";
+                    matchesRemarksTab = remarksVal === "closed";
                 }
                 const matchesRemarks = matchesRemarksTab && (activeRemarksFilter === "all" || remarksVal === activeRemarksFilter);
                 const isVisible = matchesQuery && matchesRemarks;
@@ -2344,8 +2357,8 @@
                     const matchesQuery = !query || normalize(row.dataset.clientName).includes(query) || matchesTin;
                     const remarksVal = normalize(row.dataset.remarks || "");
                     const matchesRemarksTab = directoryTabFilter === "active"
-                        ? (remarksVal !== "closed" && remarksVal !== "separated")
-                        : (remarksVal === "closed" || remarksVal === "separated");
+                        ? (remarksVal !== "closed")
+                        : (remarksVal === "closed");
                     return matchesQuery && matchesRemarksTab && (activeRemarksFilter === "all" || remarksVal === activeRemarksFilter);
                 }).length;
                 const totalPages = Math.ceil(matchingCount / CLIENTS_PAGE_SIZE) || 1;
@@ -2398,8 +2411,13 @@
                     return;
                 }
 
+                const lastName = document.getElementById("addClientLastName").value.trim();
+                const givenNames = ["addClientFirstName", "addClientMiddleName", "addClientSuffix"]
+                    .map((id) => document.getElementById(id).value.trim())
+                    .filter(Boolean)
+                    .join(" ");
                 const payload = {
-                    client_name: document.getElementById("addClientName") ? document.getElementById("addClientName").value.trim() : "",
+                    client_name: lastName + ", " + givenNames,
                     tin_number: addClientTinInput ? normalizeDigits(addClientTinInput.value) : "",
                     trade_name: document.getElementById("addClientTradeName") ? document.getElementById("addClientTradeName").value.trim() : "",
                     tax_registration: document.getElementById("addClientTaxRegistration").value,
@@ -2756,7 +2774,7 @@
             const clientsListHeading = document.getElementById("clientsListHeading");
             if (clientsListHeading) {
                 if (directoryTabFilter === "closed") {
-                    clientsListHeading.textContent = "Inactive Clients (Closed or Separated)";
+                    clientsListHeading.textContent = "Inactive Clients";
                 } else {
                     clientsListHeading.textContent = "Registered Clients";
                 }
@@ -2794,9 +2812,9 @@
         }
 
         const requestedRemarksFilter = normalize(urlParams.get("remark") || "all");
-        if (requestedRemarksFilter === "new" || requestedRemarksFilter === "active" || requestedRemarksFilter === "separated" || requestedRemarksFilter === "closed") {
+        if (requestedRemarksFilter === "new" || requestedRemarksFilter === "active" || requestedRemarksFilter === "closed") {
             activeRemarksFilter = requestedRemarksFilter;
-            if (requestedRemarksFilter === "closed" || requestedRemarksFilter === "separated") {
+            if (requestedRemarksFilter === "closed") {
                 directoryTabFilter = "closed";
                 if (tabActiveDirectory && tabClosed) {
                     tabClosed.classList.add("active");

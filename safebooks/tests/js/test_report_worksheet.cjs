@@ -9,12 +9,20 @@ vm.runInNewContext(fs.readFileSync(path.join(root, 'static/js/transaction_code_l
 vm.runInContext(fs.readFileSync(path.join(root, 'static/js/reports_shared.js'), 'utf8'), context);
 const template = fs.readFileSync(path.join(root, 'templates/base/financial_records_client.html'), 'utf8');
 const extract = (start, end) => template.slice(template.indexOf(start), template.indexOf(end, template.indexOf(start)));
-vm.runInContext(extract('        const BIR_FORMS_LIST =', '        const body =')
-    + extract('        const isListedTaxForm =', '        const getReadyAmountsMode =')
-    + extract('        const classifyModalReportLine =', '        const getModalReportRowYear =')
-    + extract('        const buildModalReportData =', '        const buildModalLedgerSheetHtml =')
+vm.runInContext(extract('        const buildModalReportData =', '        const buildModalLedgerSheetHtml =')
     + '\nthis.build = buildModalReportData;', context);
 const shared = context.window.SafeBooksReportsShared;
+const monthlySupporting = shared.summarizeWorksheetAmounts([
+    { entry_date: '2026-06-01', type_code: 'BIR Form 2550M', tax_withheld: '1750.00', cogs_cos: '100.01' },
+    { entry_date: '2026-06-30', type_code: '1701Q', cogs_cos: '50.02', mict: '0.00' },
+    { entry_date: '2026-06-30', type_code: 'Purchased', cogs_cos: '999.00' },
+    { entry_date: '2026-09-01', type_code: '2550M', tax_withheld: '18789.00' },
+]);
+assert.equal(monthlySupporting.get('2026-06').tax_withheld, 175000n);
+assert.equal(monthlySupporting.get('2026-06').cogs_cos, 15003n);
+assert.equal(monthlySupporting.get('2026-06').mict, 0n);
+assert.equal(monthlySupporting.get('2026-06').income_payments_2307, undefined);
+assert.equal(monthlySupporting.get('2026-09').tax_withheld, 1878900n);
 const formatCode = context.window.SafeBooksTransactionCodeLabel;
 assert.equal(formatCode('BIR Form 2550Qv2024'), '2550Qv2024');
 assert.equal(formatCode('0619E'), '0619E');
@@ -126,9 +134,9 @@ assert.match(januaryMarkup, /<td>₱25\.00<\/td>/);
 assert(!januaryMarkup.includes('₱75.00'));
 assert(!januaryMarkup.includes('₱321,312.00'));
 assert.match(januaryMarkup, /Paid<div>Custom note<small[^>]*>2307<\/small>/);
-assert(!januaryMarkup.includes('₱0.00'));
+assert(januaryMarkup.includes('₱0.00'));
 assert.match(customHtml, /<th scope="col">2307<\/th>/);
-assert.match(customHtml, /reports-worksheet-custom-amount"><\/td>/);
+assert.match(customHtml, /reports-worksheet-custom-amount">₱0\.00<\/td>/);
 assert.match(customHtml, /reports-ledger-totals-row[\s\S]*3,973\.00/);
 assert(!customHtml.includes('Other year only'));
 
@@ -177,12 +185,12 @@ assert(render(incompleteReport).includes('title="Incomplete Sales coverage"'));
 const zeroQuarter = JSON.parse(quarterlyBefore);
 zeroQuarter.worksheet_net_sales.periods['2026-03'].amount = '0.00';
 zeroQuarter.worksheet_net_sales.total = '0.00';
-assert(!render(context.build(zeroQuarter, '2026')).includes('₱0.00'));
+assert(render(context.build(zeroQuarter, '2026')).includes('₱0.00'));
 // The actual modal must pass these annotations and totals to the preview that is printed.
 assert.match(extract('        const buildModalLedgerSheetHtml =', '        const renderModalReportForSelectedYear ='), /cellAnnotations: report.cellAnnotations/);
 assert.match(extract('        const buildModalLedgerSheetHtml =', '        const renderModalReportForSelectedYear ='), /totalOverrides: report.totalOverrides/);
 
-// Saved zeros stay numeric in data and calculations, but print as truly blank worksheet cells.
+// Saved zeros stay numeric in data and calculations, and display as zero in worksheet cells.
 const blankAndZero = context.build({ rows: [
     { entry_date: '2026-01-01', type_code: 'BIR Form 0619E', description: 'TW', amount: '500' },
     { entry_date: '2026-02-01', type_code: 'Sales', description: 'Sales', amount: '0' },
@@ -195,9 +203,9 @@ for (const key of ['sales', 'expenses', 'net_value']) assert.match(blankAndZero.
 const zeroDataBefore = JSON.stringify(blankAndZero);
 const zeroMonthMarkup = Array.from(render(blankAndZero).matchAll(/<tr class="reports-worksheet-month-row">([\s\S]*?)<\/tr>/g))[1][1];
 const zeroMonthCells = Array.from(zeroMonthMarkup.matchAll(/<td>(.*?)<\/td>/g), match => match[1]);
-assert.equal(zeroMonthCells[4], '');
-assert.equal(zeroMonthCells[6], '');
-assert.equal(zeroMonthCells[8], '');
+assert.equal(zeroMonthCells[4], '₱0.00');
+assert.equal(zeroMonthCells[6], '₱0.00');
+assert.equal(zeroMonthCells[8], '₱0.00');
 assert.equal(JSON.stringify(blankAndZero), zeroDataBefore);
 assert.equal(blankAndZero.rows[2].expenses, '');
 assert.match(blankAndZero.rows[2].net_value, /100\.00/);
@@ -224,10 +232,9 @@ const allZeroReport = context.build({ rows: [
     { entry_date: '2026-01-01', type_code: 'BIR Form 0619E', description: '0', amount: '0', mict: '0', cogs_cos: '0', income_payments_2307: '0', tax_withheld: '0', remarks: '0' },
 ] }, '2026');
 const allZeroHtml = render(allZeroReport);
-assert(!allZeroHtml.includes('₱0.00'));
 const allZeroMonth = allZeroHtml.match(/<tr class="reports-worksheet-month-row">([\s\S]*?)<\/tr>/)[1];
 const allZeroCells = Array.from(allZeroMonth.matchAll(/<td>(.*?)<\/td>/g), match => match[1]);
-for (let index = 4; index <= 11; index++) assert.equal(allZeroCells[index], '', 'Every zero monetary column should print blank');
+for (let index = 4; index <= 11; index++) assert.equal(allZeroCells[index], '₱0.00');
 assert.equal(allZeroCells[1], '0', 'Do not suppress descriptions or remarks containing zero');
 assert.equal(allZeroCells[12], '0');
 assert.equal(allZeroCells[3], '1');
@@ -337,7 +344,7 @@ context.modalLatestReport = allZeroReport;
 context.modalReportSheet = { innerHTML: allZeroHtml };
 vm.runInContext('printModalLedgerLayout();', context);
 assert(printed.includes(allZeroHtml.trim()));
-assert(!printed.includes('₱0.00'));
+assert(printed.includes('₱0.00'));
 context.modalLatestReport = quarterly;
 context.modalReportSheet = { innerHTML: quarterlyHtml };
 vm.runInContext('printModalLedgerLayout();', context);

@@ -1794,7 +1794,7 @@
             const description = String((remarksInsight && remarksInsight.description) || "This client actively pays and files their compliance regularly.");
 
             analyticsRemarksBadge.classList.remove("new", "active", "separated", "closed");
-            if (["new", "active", "separated", "closed"].includes(normalizedLevel)) {
+            if (["new", "active", "closed"].includes(normalizedLevel)) {
                 analyticsRemarksBadge.classList.add(normalizedLevel);
             } else {
                 analyticsRemarksBadge.classList.add("active");

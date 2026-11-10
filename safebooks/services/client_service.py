@@ -12,7 +12,7 @@ from safebooks.models import Client
 from safebooks.validators.data_validator import model_text_errors, normalize_nonnegative_decimal, parse_finite_decimal, text_value_error, valid_formatted_tin
 
 
-REMARKS_SET = {Client.REMARK_NEW, Client.REMARK_ACTIVE, Client.REMARK_SEPARATED, Client.REMARK_CLOSED}
+REMARKS_SET = {Client.REMARK_NEW, Client.REMARK_ACTIVE, Client.REMARK_CLOSED}
 
 
 def _client_write(operation):
@@ -229,33 +229,22 @@ def with_status_activity(queryset, *, today=None):
     today = today or timezone.localdate()
     recorded = Q(financial_records__bookkeeper_id=F("bookkeeper_id"), financial_records__entry_date__lte=today)
     return queryset.annotate(
-        status_last_entry=Max("financial_records__entry_date", filter=recorded),
         status_recorded_periods=Count("financial_records__period", filter=recorded, distinct=True),
     )
 
 
 def resolve_client_remarks(client, *, today=None):
-    """Read-only status: closed wins, then 12-month inactivity, then two recorded periods.
-
-    Empty/future periods do not prove filing. Where no automatic threshold applies,
-    retain the existing manual remark rather than silently redefining that setting.
-    """
+    """Keep closed clients closed and resolve open status from recorded periods."""
     if client.remarks == Client.REMARK_CLOSED:
         return Client.REMARK_CLOSED
     today = today or timezone.localdate()
-    if hasattr(client, "status_last_entry") and hasattr(client, "status_recorded_periods"):
-        last_entry = client.status_last_entry
+    if hasattr(client, "status_recorded_periods"):
         recorded_periods = client.status_recorded_periods
     else:
         activity = client.financial_records.filter(bookkeeper_id=client.bookkeeper_id, entry_date__lte=today).aggregate(
-            last_entry=Max("entry_date"), recorded_periods=Count("period", distinct=True),
+            recorded_periods=Count("period", distinct=True),
         )
-        last_entry = activity["last_entry"]
         recorded_periods = activity["recorded_periods"]
-    reference_date = last_entry or client.date_registered or today
-    months_inactive = (today.year - reference_date.year) * 12 + today.month - reference_date.month
-    if months_inactive >= 12:
-        return Client.REMARK_SEPARATED
     if recorded_periods >= 2:
         return Client.REMARK_ACTIVE
     return client.remarks if client.remarks in REMARKS_SET else Client.REMARK_NEW

@@ -164,7 +164,7 @@ const stripTemplate = source => source.replace(/\{%\s*(?:url|static)\b[\s\S]*?%\
     const detail = { currentClientProfile: {}, document: { querySelector: selector => selector.includes("badge") ? badge : field },
         formatRemarksLabel: value => value.charAt(0).toUpperCase() + value.slice(1) };
     vm.runInNewContext(extract(read("templates/base/client_details.html"), "const updateClosedUiState =", '                const banner = document.getElementById("clientClosedNoticeBanner");') + "}; this.update = updateClosedUiState;", detail);
-    for (const remark of ["new", "active", "separated", "closed"]) {
+    for (const remark of ["new", "active", "closed"]) {
         detail.update({ remarks: remark });
         assert.equal(badge.textContent.toLowerCase(), remark);
         assert.equal(field.textContent.toLowerCase(), remark);

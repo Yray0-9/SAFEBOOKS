@@ -30,12 +30,15 @@ class ReportsPageTests(TestCase):
         self.assertIn(reverse("login"), response.url)
         self.assertIn("next=", response.url)
 
-    def test_reports_page_redirects_authenticated_bookkeeper_to_clients(self):
+    def test_authenticated_bookkeeper_can_reach_live_reports_from_dashboard(self):
         account = self._create_bookkeeper("active")
         self._login_as(account)
 
-        response = self.client.get(reverse("reports"))
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertContains(dashboard, f'href="{reverse("reports")}"')
 
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(reverse("clients")))
-        self.assertIn("report_scope=client", response.url)
+        response = self.client.get(reverse("reports"))
+        self.assertTemplateUsed(response, "base/reports.html")
+        self.assertContains(response, "Client status overview")
+        self.assertContains(response, "Print / Save PDF")
+        self.assertNotContains(response, "clientRecordsSummaryPreview")

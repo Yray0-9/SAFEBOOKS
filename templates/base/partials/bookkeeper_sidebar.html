@@ -18,6 +18,7 @@
         <a href="{% url 'dashboard' %}" class="dashboard-nav-item{% if active_nav == 'dashboard' %} active{% endif %}"{% if active_nav == 'dashboard' %} aria-current="page"{% endif %}><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
         <a href="{% url 'clients' %}" class="dashboard-nav-item{% if active_nav == 'clients' %} active{% endif %}"{% if active_nav == 'clients' %} aria-current="page"{% endif %}><i class="bi bi-people"></i><span>Clients</span></a>
         <a href="{% url 'financial_records' %}" class="dashboard-nav-item{% if active_nav == 'financial_records' %} active{% endif %}"{% if active_nav == 'financial_records' %} aria-current="page"{% endif %}><i class="bi bi-journal-text"></i><span>Financial Records</span></a>
+        <a href="{% url 'reports' %}" class="dashboard-nav-item{% if active_nav == 'reports' %} active{% endif %}"{% if active_nav == 'reports' %} aria-current="page"{% endif %}><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a>
         <a href="{% url 'bookkeeper_audit_log' %}" class="dashboard-nav-item{% if active_nav == 'audit_log' %} active{% endif %}"{% if active_nav == 'audit_log' %} aria-current="page"{% endif %}><i class="bi bi-journal-check"></i><span>Audit Log</span></a>
         <a href="{% url 'settings' %}" class="dashboard-nav-item{% if active_nav == 'settings' %} active{% endif %}"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><i class="bi bi-gear"></i><span>Settings</span></a>
     </nav>

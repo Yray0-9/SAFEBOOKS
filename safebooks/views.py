@@ -1056,10 +1056,9 @@ def client_details_page_view(request, client_id):
 @require_bookkeeper_auth
 @ensure_csrf_cookie
 def reports_page_view(request):
-    query = urlencode({
-        "report_scope": "client",
-    })
-    return redirect(f"{reverse('clients')}?{query}")
+    context = _build_user_context(request.bookkeeper_account)
+    context["active_nav"] = "reports"
+    return render(request, "base/reports.html", context)
 
 
 @require_bookkeeper_auth

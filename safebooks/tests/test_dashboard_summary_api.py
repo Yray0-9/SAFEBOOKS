@@ -158,11 +158,11 @@ class DashboardSummaryApiTests(TestCase):
         self.assertEqual(payload["metrics"]["total_clients"], 3)
         self.assertEqual(payload["metrics"]["total_entries_this_month"], 1)
         self.assertEqual(payload["metrics"]["pending_compliance"], 1)
-        self.assertEqual(payload["metrics"]["new_clients"], 1)
+        self.assertEqual(payload["metrics"]["new_clients"], 2)
 
-        self.assertEqual(payload["remarks_summary"]["new"], 1)
+        self.assertEqual(payload["remarks_summary"]["new"], 2)
         self.assertEqual(payload["remarks_summary"]["active"], 0)
-        self.assertEqual(payload["remarks_summary"]["separated"], 1)
+        self.assertEqual(payload["remarks_summary"]["separated"], 0)
         self.assertEqual(payload["remarks_summary"]["closed"], 1)
 
         self.assertEqual(payload["compliance_summary"]["filed"]["count"], 1)

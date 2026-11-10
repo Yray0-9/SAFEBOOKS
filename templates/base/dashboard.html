@@ -128,7 +128,7 @@
             <article class="dashboard-stat-card dashboard-fade-up is-clickable dashboard-delay-15" data-nav-target="{% url 'financial_records' %}" tabindex="0" role="button" aria-label="Open Financial Records page for compliance follow-up">
                 <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
                 <div>
-                    <p class="stat-label">Needs Follow-up</p>
+                    <p class="stat-label">Needs Review</p>
                     <h3 id="pendingComplianceValue">0</h3>
                     <p class="stat-note">Clients needing record attention</p>
                 </div>
@@ -176,9 +176,9 @@
                     <div class="dashboard-table-filters">
                         <div class="dashboard-filter-chips" role="group" aria-label="Filter recent client activity">
                             <button type="button" class="dashboard-filter-chip is-active" data-filter="all" aria-pressed="true">All</button>
-                            <button type="button" class="dashboard-filter-chip" data-filter="updated" aria-pressed="false">Filed</button>
-                            <button type="button" class="dashboard-filter-chip" data-filter="no-entries" aria-pressed="false">No Entries</button>
-                            <button type="button" class="dashboard-filter-chip" data-filter="needs-attention" aria-pressed="false">Follow-up</button>
+                            <button type="button" class="dashboard-filter-chip" data-filter="updated" aria-pressed="false">Up to date</button>
+                            <button type="button" class="dashboard-filter-chip" data-filter="no-entries" aria-pressed="false">No entries</button>
+                            <button type="button" class="dashboard-filter-chip" data-filter="needs-attention" aria-pressed="false">Needs follow-up</button>
                         </div>
                     </div>
                 </div>
@@ -292,11 +292,6 @@
                         <strong>Active</strong>
                         <span class="insight-value" id="remarkActiveCount">0</span>
                     </li>
-                    <li class="insight-item remark-separated-item">
-                        <span class="insight-dot"></span>
-                        <strong>Separated</strong>
-                        <span class="insight-value" id="remarkSeparatedCount">0</span>
-                    </li>
                     <li class="insight-item remark-closed-item">
                         <span class="insight-dot"></span>
                         <strong>Closed</strong>
@@ -314,35 +309,36 @@
                         Record Status
                         <span class="safebooks-tooltip-wrap">
                             <i class="bi bi-info-circle" aria-hidden="true"></i>
-                            <span class="safebooks-tooltip-content">Based on latest client record activity.</span>
+                            <span class="safebooks-tooltip-content">Shows open clients grouped by saved entries and record schedules in SafeBooks.</span>
                         </span>
                     </h2>
                 </div>
                 <div class="compliance-meters">
                     <div class="compliance-row">
                         <div class="compliance-meta">
-                            <span>Filed</span>
+                            <span>Up to date</span>
                             <strong id="complianceFiledPct">0%</strong>
                         </div>
                         <div class="progress"><div class="progress-bar filed dashboard-progress-zero" id="complianceFiledBar"></div></div>
                     </div>
                     <div class="compliance-row">
                         <div class="compliance-meta">
-                            <span>Pending</span>
+                            <span>Needs follow-up</span>
                             <strong id="compliancePendingPct">0%</strong>
                         </div>
                         <div class="progress"><div class="progress-bar pending dashboard-progress-zero" id="compliancePendingBar"></div></div>
                     </div>
                     <div class="compliance-row">
                         <div class="compliance-meta">
-                            <span>Late</span>
+                            <span>No entries</span>
                             <strong id="complianceLatePct">0%</strong>
                         </div>
                         <div class="progress"><div class="progress-bar late dashboard-progress-zero" id="complianceLateBar"></div></div>
                     </div>
                 </div>
-                <div class="dashboard-card-footer">
+                <div class="dashboard-card-footer flex-wrap gap-2">
                     <a href="{% url 'financial_records' %}" class="dashboard-card-link">Open Records</a>
+                    <a href="{% url 'reports' %}?report_type=compliance_snapshot&amp;client_id=all&amp;force_scope=1" class="dashboard-card-link">Open Record Status Report</a>
                 </div>
             </article>
 
@@ -450,7 +446,6 @@
 
         const remarkNewCount = document.getElementById("remarkNewCount");
         const remarkActiveCount = document.getElementById("remarkActiveCount");
-        const remarkSeparatedCount = document.getElementById("remarkSeparatedCount");
         const remarkClosedCount = document.getElementById("remarkClosedCount");
 
 
@@ -476,7 +471,6 @@
             remarks: {
                 new: 0,
                 active: 0,
-                separated: 0,
                 closed: 0,
             },
             compliancePct: {
@@ -488,24 +482,24 @@
 
         const STATUS_META = {
             updated: {
-                label: "Updated",
+                label: "Up to date",
                 badgeClass: "status-updated"
             },
             "no-entries": {
-                label: "No Entries",
+                label: "No entries",
                 badgeClass: "status-no-entries"
             },
             "needs-attention": {
-                label: "Needs Attention",
+                label: "Needs follow-up",
                 badgeClass: "status-needs-attention"
             }
         };
 
         const CLIENT_FILTER_LABELS = {
             all: "All",
-            updated: "Updated",
-            "no-entries": "No Entries",
-            "needs-attention": "Needs Attention"
+            updated: "Up to date",
+            "no-entries": "No entries",
+            "needs-attention": "Needs follow-up"
         };
 
         const normalize = (value) => String(value || "").trim().toLowerCase();
@@ -1154,7 +1148,6 @@
         const updateRemarksSummary = () => {
             const newRemarks = DASHBOARD_METRICS.remarks.new || 0;
             const activeRemarks = DASHBOARD_METRICS.remarks.active || 0;
-            const separatedRemarks = DASHBOARD_METRICS.remarks.separated || 0;
             const closedRemarks = DASHBOARD_METRICS.remarks.closed || 0;
 
             if (remarkNewCount) {
@@ -1162,9 +1155,6 @@
             }
             if (remarkActiveCount) {
                 remarkActiveCount.textContent = String(activeRemarks);
-            }
-            if (remarkSeparatedCount) {
-                remarkSeparatedCount.textContent = String(separatedRemarks);
             }
             if (remarkClosedCount) {
                 remarkClosedCount.textContent = String(closedRemarks);
@@ -1274,7 +1264,6 @@
                 remarks: {
                     new: 0,
                     active: 0,
-                    separated: 0,
                     closed: 0,
                 },
                 compliancePct: {
@@ -1342,7 +1331,6 @@
                     remarks: {
                         new: Number.parseInt(remarksSummary.new || 0, 10) || 0,
                         active: Number.parseInt(remarksSummary.active || 0, 10) || 0,
-                        separated: Number.parseInt(remarksSummary.separated || 0, 10) || 0,
                         closed: Number.parseInt(remarksSummary.closed || 0, 10) || 0,
                     },
                     compliancePct: {

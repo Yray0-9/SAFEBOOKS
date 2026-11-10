@@ -66,8 +66,6 @@
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1-5 client-details-status-badge">New</span>
             {% elif client.remarks == 'active' %}
             <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1-5 client-details-status-badge">Active</span>
-            {% elif client.remarks == 'separated' %}
-            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1-5 client-details-status-badge">Separated</span>
             {% elif client.remarks == 'closed' %}
             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1-5 client-details-status-badge">Closed</span>
             {% endif %}
@@ -196,7 +194,6 @@
                     <strong class="client-details-val" data-client-profile-field="remarks">
                         {% if client.remarks == 'new' %}New
                         {% elif client.remarks == 'active' %}Active
-                        {% elif client.remarks == 'separated' %}Separated
                         {% elif client.remarks == 'closed' %}Closed
                         {% else %}{{ client.remarks }}{% endif %}
                     </strong>
@@ -949,7 +946,6 @@
             const normalized = String(value || "").trim().toLowerCase();
             if (normalized === "new") return "New";
             if (normalized === "active") return "Active";
-            if (normalized === "separated") return "Separated";
             if (normalized === "closed") return "Closed";
             return displayValue(value);
         };
@@ -2346,7 +2342,7 @@
                 const remark = String(clientData && clientData.remarks || "new");
                 currentClientProfile.remarks = remark;
                 const statusLabel = formatRemarksLabel(remark);
-                const statusColors = { new: "info", active: "success", separated: "warning", closed: "secondary" };
+                const statusColors = { new: "info", active: "success", closed: "secondary" };
                 const statusColor = statusColors[remark] || "info";
                 const titleBadge = document.querySelector(".client-details-status-badge");
                 if (titleBadge) {

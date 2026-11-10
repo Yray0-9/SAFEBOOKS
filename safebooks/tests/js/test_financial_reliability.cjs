@@ -54,7 +54,8 @@ const manualDescription = (value = '') => {
     context.choose = code => context.change({ target: { value: code } });
     return context;
 };
-const offeredCodes = [...template.matchAll(/\{ code: "(BIR Form [^"]+)"/g)].map(match => match[1]);
+const reportSource = fs.readFileSync(path.join(root, "static/js/reports_shared.js"), "utf8");
+const offeredCodes = [...reportSource.matchAll(/\{ code: "(BIR Form [^"]+)"/g)].map(match => match[1]);
 assert(offeredCodes.length > 60);
 const firstTax = manualDescription();
 for (const code of offeredCodes) {
@@ -430,7 +431,8 @@ for (const mode of ['add', 'edit']) {
     assert(!template.includes(`for="${mode}EntryNotes"`));
     assert(!template.includes(`id="${mode}EntryRemarksSuggestions"`));
 }
-assert(template.includes('id="taxFormRemarksSuggestions"'));
+assert.match(template, /<select[^>]*aria-label="Tax detail remarks"/);
+assert(template.includes('["Paid", "Pending", "Submitted"]'));
 
 assert.equal(coverage.validate('quarterly', '2026-03-31'), '');
 assert.notEqual(coverage.validate('quarterly', '2026-02-28'), '');

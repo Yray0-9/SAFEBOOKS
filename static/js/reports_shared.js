@@ -151,9 +151,124 @@
         return cents < 0n ? `-${amount}` : amount;
     };
 
+    const BIR_FORMS_LIST = [
+        { code: "BIR Form 0605", desc: "Payment Form" },
+        { code: "BIR Form 0619E", desc: "Monthly Remittance Form for Creditable Income Taxes Withheld (Expanded)" },
+        { code: "BIR Form 0619F", desc: "Monthly Remittance Form for Final Income Taxes Withheld" },
+        { code: "BIR Form 1600", desc: "Monthly Remittance Return of Value-Added Tax and Other Percentage Taxes Withheld" },
+        { code: "BIR Form 1600PTv2018", desc: "Monthly Remittance Return of Other Percentage Taxes Withheld" },
+        { code: "BIR Form 1600VTv2018", desc: "Monthly Remittance Return of Value-Added Tax Withheld" },
+        { code: "BIR Form 1600WP", desc: "Remittance Return of Percentage Tax on Winnings and Prizes..." },
+        { code: "BIR Form 1601C", desc: "Monthly Remittance Return of Income Taxes Withheld on Compensation" },
+        { code: "BIR Form 1601Cv2018", desc: "Monthly Remittance Return of Income Taxes Withheld on Compensation (NEW)" },
+        { code: "BIR Form 1601E", desc: "Monthly Remittance Return of Creditable Income Taxes Withheld (Expanded)" },
+        { code: "BIR Form 1601EQ", desc: "Quarterly Remittance Return of Creditable Income Taxes Withheld (Expanded)" },
+        { code: "BIR Form 1601F", desc: "Monthly Remittance Return of Final Income Taxes Withheld" },
+        { code: "BIR Form 1601FQ", desc: "Quarterly Remittance Return of Final Income Tax Withheld" },
+        { code: "BIR Form 1602", desc: "Monthly Remittance Return of Final Income Taxes Withheld" },
+        { code: "BIR Form 1602Qv2018", desc: "Quarterly Remittance Return of Final Taxes Withheld on Interest Paid on Deposits Substitutes/Trusts/Etc. (NEW)" },
+        { code: "BIR Form 1603", desc: "Quarterly Remittance Return of Final Income Taxes Withheld" },
+        { code: "BIR Form 1603Qv2018", desc: "Quarterly Remittance Return of Final Income Taxes Withheld on Fringe Benefits Paid to Employees Other Than Rank and File (NEW)" },
+        { code: "BIR Form 1604C", desc: "Annual Information Return of Income Taxes Withheld on Compensation" },
+        { code: "BIR Form 1604CF", desc: "Annual Information Return of Income Taxes Withheld on Compensation" },
+        { code: "BIR Form 1604F", desc: "Annual Information Return of Income Payments Subjected to Final Withholding Taxes" },
+        { code: "BIR Form 1604E", desc: "Annual Information Return of Creditable Income Taxes Withheld" },
+        { code: "BIR Form 1604Ev2018", desc: "Annual Information Return of Creditable Income Taxes Withheld (NEW)" },
+        { code: "BIR Form 1606", desc: "ONETT Withholding Tax Return" },
+        { code: "BIR Form 1700", desc: "Annual Income Tax Return" },
+        { code: "BIR Form 1700v2018", desc: "Annual Income Tax Return (NEW)" },
+        { code: "BIR Form 1701", desc: "Annual Income Tax Return" },
+        { code: "BIR Form 1701A", desc: "Annual Income Tax Return (NEW)" },
+        { code: "BIR Form 1701MS", desc: "Annual Income Tax Return For Individuals Classified as MICRO or SMALL Taxpayers" },
+        { code: "BIR Form 1701v2018", desc: "Annual Income Tax Return (NEW)" },
+        { code: "BIR Form 1701Q", desc: "Quarterly Income Tax Return For Self-Employed Individuals, Estates and Trusts" },
+        { code: "BIR Form 1701Qv2018", desc: "Quarterly Income Tax Return For Self-Employed Individuals, Estates and Trusts (NEW)" },
+        { code: "BIR Form 1702EX", desc: "Annual Income Tax Return (EXEMPT)" },
+        { code: "BIR Form 1702EXv2018", desc: "Annual Income Tax Return (EXEMPT)" },
+        { code: "BIR Form 1702EXv2018C", desc: "Annual Income Tax Return (EXEMPT)" },
+        { code: "BIR Form 1702MX", desc: "Annual Income Tax Return (MIXED)" },
+        { code: "BIR Form 1702MXv2018", desc: "Annual Income Tax Return (MIXED)" },
+        { code: "BIR Form 1702MXv2018C", desc: "Annual Income Tax Return (MIXED)" },
+        { code: "BIR Form 1702RT", desc: "Annual Income Tax Return (REGULAR)" },
+        { code: "BIR Form 1702RTv2018", desc: "Annual Income Tax Return (REGULAR)" },
+        { code: "BIR Form 1702RTv2018C", desc: "Annual Income Tax Return (REGULAR)" },
+        { code: "BIR Form 1702Q", desc: "Quarterly income Tax Return" },
+        { code: "BIR Form 1702Qv2008C", desc: "Quarterly income Tax Return" },
+        { code: "BIR Form 1702Qv2018C", desc: "Quarterly income Tax Return" },
+        { code: "BIR Form 1704", desc: "Improperly Accumulated Earnings Tax Return" },
+        { code: "BIR Form 1706", desc: "ONETT Capital Gains Tax Return (Capital Asset)" },
+        { code: "BIR Form 1707", desc: "ONETT Capital Gains Tax Return (Shares of Stock Not Traded Through LSE)" },
+        { code: "BIR Form 1707v2018", desc: "ONETT Capital Gains Tax Return (Shares of Stock Not Traded Through LSE)" },
+        { code: "BIR Form 1707v2021", desc: "ONETT Capital Gains Tax Return (Shares of Stock Not Traded Through LSE)" },
+        { code: "BIR Form 1707A", desc: "Annual Capital Gains Tax Return (For Winnings/Stocks W/out Exchange...)" },
+        { code: "BIR Form 1707Av2021", desc: "Annual Capital Gains Tax Return" },
+        { code: "BIR Form 1800", desc: "ONETT Donor's Tax Return" },
+        { code: "BIR Form 1800v2018", desc: "Donor's Tax Return" },
+        { code: "BIR Form 1801", desc: "ONETT Estate Tax Return" },
+        { code: "BIR Form 1801v2018", desc: "ONETT Estate Tax Return" },
+        { code: "BIR Form 2000", desc: "Documentary Stamp Tax Declaration/Return" },
+        { code: "BIR Form 2000v2018", desc: "Monthly Documentary Stamp Tax Declaration/Return (NEW)" },
+        { code: "BIR Form 2000OT", desc: "Documentary Stamp Tax Declaration/Return (One-Time Transactions)" },
+        { code: "BIR Form 2000OTv2018", desc: "Documentary Stamp Tax Declaration/Return (One-Time Transactions)" },
+        { code: "BIR Form 2200A", desc: "Excise Tax Return for Alcohol Products" },
+        { code: "BIR Form 2200Av2020", desc: "Excise Tax Return for Alcohol Products" },
+        { code: "BIR Form 2200AN", desc: "Excise Tax Return for Automobiles and Non-Essential Goods" },
+        { code: "BIR Form 2200ANv2018", desc: "Excise Tax Return for Automobiles and Non-Essential Goods" },
+        { code: "BIR Form 2200Cv2018", desc: "Excise Tax Return for Cosmetic Procedures" },
+        { code: "BIR Form 2200M", desc: "Excise Tax Return for Mineral Products" },
+        { code: "BIR Form 2200Mv2018", desc: "Excise Tax Return for Mineral Products" },
+        { code: "BIR Form 2200P", desc: "Excise Tax Return for Petroleum Products" },
+        { code: "BIR Form 2200Pv2020", desc: "Excise Tax Return for Petroleum Products" },
+        { code: "BIR Form 2200S", desc: "Excise Tax Return for Sweetened Beverages" },
+        { code: "BIR Form 2200T", desc: "Excise Tax Return for Tobacco Products" },
+        { code: "BIR Form 2200Tv2020", desc: "Excise Tax Return for Tobacco Products" },
+        { code: "BIR Form 2550M", desc: "Monthly Value-Added Tax Declaration" },
+        { code: "BIR Form 2550Q", desc: "Quarterly Value-Added Tax Return" },
+        { code: "BIR Form 2550Qv2024", desc: "Quarterly Value-Added (VAT) Tax Return" },
+        { code: "BIR Form 2551Q", desc: "Quarterly Percentage Tax Return" },
+        { code: "BIR Form 2551Qv2018", desc: "Quarterly Percentage Tax Return" },
+        { code: "BIR Form 2551M", desc: "Monthly Percentage Tax Return" },
+        { code: "BIR Form 2552", desc: "Percentage Tax Return on Stocks" },
+        { code: "BIR Form 2552v2018", desc: "Percentage Tax Return on Stocks" },
+        { code: "BIR Form 2553", desc: "Percentage Tax Payable Under Special Laws" }
+    ];
+
+    const isListedTaxForm = (code) => {
+        const key = (value) => String(value || "").trim().toLowerCase().replace(/^bir\s*form\s*/, "");
+        return Boolean(code) && BIR_FORMS_LIST.some((form) => key(form.code) === key(code));
+    };
+
+    const classifyWorksheetLine = (typeCode) => {
+        const code = String(typeCode || "").trim().toLowerCase();
+        if (code === "sales" || code === "expenses") return code;
+        const formCode = code.replace(/^bir\s*form\s*/, "").replace(/[\s-]+/g, "");
+        // Keep known legacy BIR codes that are no longer in the picker.
+        if (isListedTaxForm(formCode) || /^(1602q|1603q|1702)$/.test(formCode)
+            || /^(tax|taxes|vat|withholding|wht)$/.test(code)) return "tax";
+        return "custom";
+    };
+
+    const supportingKeys = ["mict", "cogs_cos", "income_payments_2307", "tax_withheld"];
+
+    const summarizeWorksheetAmounts = (rows) => {
+        const totals = new Map();
+        for (const row of rows) {
+            if (classifyWorksheetLine(row.type_code) === "custom") continue;
+            const month = row.entry_date.slice(0, 7);
+            for (const key of supportingKeys) {
+                const decimal = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(row[key] ?? ""));
+                if (!decimal) continue;
+                const cents = BigInt(decimal[1] + decimal[2] + (decimal[3] || "").padEnd(2, "0"));
+                const monthTotals = totals.get(month) ?? {};
+                monthTotals[key] = (monthTotals[key] ?? 0n) + cents;
+                totals.set(month, monthTotals);
+            }
+        }
+        return totals;
+    };
+
     const buildWorksheetTable = (transactionRows, { yearFilter, classifyLine, netSales }) => {
         const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const supportingKeys = ["mict", "cogs_cos", "income_payments_2307", "tax_withheld"];
         const columns = [
             { key: "type_code", label: "Type / Code" }, { key: "description", label: "Description" },
             { key: "period", label: "Period" }, { key: "quarter", label: "Quarter" },
@@ -429,21 +544,20 @@
             }
             const cellsMarkup = finalColumns
                 .map((column, columnIndex) => {
-                    // Leave zero amounts writable on the worksheet without changing data or totals.
+                    // Recorded zero amounts are visible. Keep the worksheet's blank zero footer.
                     const customAmount = columnIndex >= firstCustomColumn;
                     const cellTag = customAmount ? '<td class="reports-worksheet-custom-amount">' : "<td>";
                     const isWorksheetMoney = worksheet && (customAmount || worksheetMoneyColumns.has(column.toLowerCase().replace(/[^a-z0-9]/g, "")));
-                    const isZero = isWorksheetMoney && parseNumericValue(rowCells[columnIndex]) === 0;
+                    const isZeroTotal = isTotalsRow && isWorksheetMoney && parseNumericValue(rowCells[columnIndex]) === 0;
                     const annotation = !isTotalsRow && table.cellAnnotations && table.cellAnnotations[rowIndex] && table.cellAnnotations[rowIndex][columnIndex];
                     if (annotation && annotation.entries) {
-                        const mainValue = isZero ? "" : toDisplayText(rowCells[columnIndex], "");
+                        const mainValue = toDisplayText(rowCells[columnIndex], "");
                         const extraValues = annotation.entries
-                            .filter(({ value }) => !isWorksheetMoney || parseNumericValue(value) !== 0)
                             .map(({ label, value }) => `<div>${escapeHtml(value)}<small style="display:block;white-space:normal">${escapeHtml(label)}</small></div>`)
                             .join("");
                         return `${cellTag}${escapeHtml(mainValue)}${extraValues}</td>`;
                     }
-                    if (isZero) return `${cellTag}</td>`;
+                    if (isZeroTotal) return `${cellTag}</td>`;
                     if (annotation) {
                         const label = annotation.label ? `<small style="display:block;white-space:normal">${escapeHtml(annotation.label)}</small>` : "";
                         return `<td title="${escapeHtml(annotation.title)}">${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}${label}</td>`;
@@ -549,5 +663,9 @@
         buildReportSheetHtml,
         normalizeFinancialSummaryColumns,
         buildWorksheetTable,
+        taxCodes: BIR_FORMS_LIST,
+        classifyWorksheetLine,
+        summarizeWorksheetAmounts,
+        formatWorksheetCents,
     };
 })();

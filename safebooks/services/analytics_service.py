@@ -131,28 +131,24 @@ def _contains_keyword(normalized_text: str, normalized_keyword: str) -> bool:
 REMARK_TO_LABEL = {
     Client.REMARK_NEW: "New",
     Client.REMARK_ACTIVE: "Active",
-    Client.REMARK_SEPARATED: "Separated",
     Client.REMARK_CLOSED: "Closed",
 }
 
 REMARK_TO_TITLE = {
     Client.REMARK_NEW: "New Client",
     Client.REMARK_ACTIVE: "Active Client",
-    Client.REMARK_SEPARATED: "Separated Client",
     Client.REMARK_CLOSED: "Closed Client",
 }
 
 REMARK_TO_DESCRIPTION = {
     Client.REMARK_NEW: "This client is newly registered and is in their first bookkeeping month.",
     Client.REMARK_ACTIVE: "This client actively pays and files their compliance regularly.",
-    Client.REMARK_SEPARATED: "This client did not file/pay compliance for the year and is separated for the new bookkeeping year.",
     Client.REMARK_CLOSED: "This client has closed their business.",
 }
 
 ALL_CLIENTS_REMARK_DESCRIPTIONS = {
     Client.REMARK_NEW: "Most clients are newly registered in their onboarding phase.",
     Client.REMARK_ACTIVE: "Most clients actively pay and file their compliance regularly.",
-    Client.REMARK_SEPARATED: "Multiple clients are separated due to missing filing activity for the year.",
     Client.REMARK_CLOSED: "Some clients have closed their business.",
 }
 
@@ -301,7 +297,6 @@ def _resolve_all_clients_remarks(clients: list[Client]) -> str:
     remark_counts = {
         Client.REMARK_NEW: 0,
         Client.REMARK_ACTIVE: 0,
-        Client.REMARK_SEPARATED: 0,
     }
 
     for client in clients:
@@ -310,8 +305,6 @@ def _resolve_all_clients_remarks(clients: list[Client]) -> str:
         level = client.remarks if client.remarks in remark_counts else Client.REMARK_NEW
         remark_counts[level] += 1
 
-    if remark_counts[Client.REMARK_SEPARATED] > 0:
-        return Client.REMARK_SEPARATED
     if remark_counts[Client.REMARK_ACTIVE] > 0:
         return Client.REMARK_ACTIVE
     return Client.REMARK_NEW
