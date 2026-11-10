@@ -387,7 +387,7 @@ assert(!legacyQuarter.includes('value="quarterly"'), 'An untouched legacy anchor
 const labelsContext = {};
 vm.runInNewContext(extract('        const formatFrequencyLabel =', '        const getActiveMonthLabel =') +
     extract('        const getReadyAmountKey =', '        const isListedTaxForm =') +
-    extract('        const entryCoverageLabel =', '        const getPayloadTotal =') + '\nthis.label = entryCoverageLabel;', labelsContext);
+    extract('        const entryCoverageLabel =', '        const getEntryById =') + '\nthis.label = entryCoverageLabel;', labelsContext);
 assert.equal(labelsContext.label({ frequency: 'monthly', line_items: [{ type_code: 'BIR Form 1603', amount: '500' }] }), '', 'Tax-only entries have no Sales/Expenses coverage label');
 assert.equal(labelsContext.label({ frequency: 'quarterly', line_items: [{ type_code: 'Other fee', amount: '10' }] }), '');
 assert.equal(labelsContext.label({ frequency: 'quarterly', line_items: [{ type_code: 'Sales', coverage_frequency: 'monthly', amount: '0' }] }), 'Monthly');
@@ -480,7 +480,8 @@ const makeContext = (response) => {
         editEntryPeriodChange: { hidden: true }, editEntryPeriodChangeLabel: { textContent: '' },
         editEntryConfirmPeriodChange: { checked: false, disabled: true, required: false, dataset: {}, focus() { this.focused = true; } },
         editEntryFrequency: { value: "monthly" }, editEntryStatus: { hidden: true },
-        deleteEntryStatus: { hidden: true }, addEntryDate: { value: "2026-04-15" },
+        deleteEntryStatus: { hidden: true }, deleteEntryUndoNotice: {hidden: true},
+        cancelDeleteEntryBtn: {textContent: "Cancel", focus() { this.focused = true; }}, addEntryDate: { value: "2026-04-15" },
         addEntryNotes: { value: "Unsaved new draft" }, addEntryFrequency: { value: "monthly" },
     };
     const form = (name) => ({
@@ -488,6 +489,12 @@ const makeContext = (response) => {
         checkValidity: () => true, reportValidity() { this.reportedInvalid = true; },
     });
     const context = {
+        cancelDeleteCountdown: null,
+        window: {
+            addEventListener() {},
+            setInterval(callback) { context.countdownTick = callback; return 1; },
+            clearInterval() { context.countdownTick = null; },
+        },
         document: { getElementById: name => nodes[name] || null },
         addEntryForm: form("add"), editEntryForm: form("edit"), confirmDeleteEntryBtn: form("delete"),
         addLineItemsBody: {}, editLineItemsBody: {}, activeMonth: 4, activeYear: 2026,
@@ -500,7 +507,7 @@ const makeContext = (response) => {
         getEntryLineItems: entry => entry.line_items || [], resetLineItemsBody() {}, updateDuplicateEntryWarning() {}, refreshCoverageChoices() {},
         parseJsonSafe: async res => res.payload,
         setFormSubmitState: (target, busy) => { target.busy = busy; },
-        syncActivePeriodToDate: () => false, getActivePeriodLabel: () => "April 2026", showFinancialSaveSummary() {},
+        syncActivePeriodToDate: () => false, getActivePeriodLabel: () => "April 2026",
         loadRecordsFromApi: async () => { context.reloads = (context.reloads || 0) + 1; },
         showToast: message => { context.messages.push(message); }, messages: [], requests: [],
         redirectToLogin: () => { context.redirected = true; },
@@ -527,7 +534,14 @@ const makeContext = (response) => {
         extract("        const getSourcePeriodLabel =", "        const handleReuseLastPeriod =") +
         formFunctions + feedback + submits + closing + "\nthis.populate = populateEditForm; this.build = buildPayloadFromForm; this.syncMove = syncEditPeriodChange; this.resetMove = resetEditPeriodChange;", context);
     context.nodes = nodes;
-    context.submit = type => listeners[`${type}:${type === "delete" ? "click" : "submit"}`]({ preventDefault() {} });
+    context.beginDelete = () => listeners["delete:click"]({ preventDefault() {} });
+    context.submit = type => {
+        const result = listeners[`${type}:${type === "delete" ? "click" : "submit"}`]({ preventDefault() {} });
+        if (type === "delete") {
+            for (let tick = 0; tick < 10 && context.countdownTick; tick++) context.countdownTick();
+        }
+        return result;
+    };
     context.close = (type, eventName = "hide.bs.modal") => {
         const event = { prevented: false, preventDefault() { this.prevented = true; } };
         (modalListeners[`${type}:${eventName}`] || []).forEach(callback => callback(event));
@@ -539,6 +553,19 @@ const makeContext = (response) => {
 const successResponse = { status: 200, ok: true, payload: { ok: true, message: "Saved", record: { revision: "new-revision" } } };
 
 (async () => {
+    const undoDelete = makeContext(successResponse);
+    const pendingDelete = undoDelete.beginDelete();
+    assert.equal(undoDelete.requests.length, 0);
+    assert.equal(undoDelete.nodes.cancelDeleteEntryBtn.textContent, "Undo");
+    await undoDelete.beginDelete();
+    assert.equal(undoDelete.requests.length, 0, "Repeated clicks must not start another deletion");
+    undoDelete.close("delete");
+    await pendingDelete;
+    assert.equal(undoDelete.countdownTick, null);
+    assert.equal(undoDelete.requests.length, 0, "Undo must cancel the write");
+    assert.equal(undoDelete.nodes.deleteEntryUndoNotice.hidden, true);
+    assert.equal(undoDelete.confirmDeleteEntryBtn.disabled, false);
+
     const editor = makeContext(successResponse);
     editor.populate({ id: 7, revision: "selected-revision", date: "2026-04-15", notes: "Selected", frequency: "quarterly" });
     assert.equal(editor.nodes.editEntryRevision.value, "selected-revision");
@@ -631,6 +658,7 @@ const successResponse = { status: 200, ok: true, payload: { ok: true, message: "
         const saved = makeContext(successResponse);
         await saved.submit(type);
         assert.equal(saved.requests.length, 1);
+        assert.equal(saved.messages.length, 1, "A confirmed write shows one success notification");
         const options = saved.requests[0].options;
         assert.equal(options.headers["X-CSRFToken"], "synthetic-csrf");
         assert.equal(options.credentials, "same-origin");
@@ -671,6 +699,7 @@ const successResponse = { status: 200, ok: true, payload: { ok: true, message: "
         let resolve;
         const pending = makeContext(() => new Promise(done => { resolve = done; }));
         const inFlight = pending.submit(type);
+        await Promise.resolve();
         assert.equal(pending.close(type).prevented, true, "An in-flight write allowed the modal to reset/close");
         await pending.submit(type);
         assert.equal(pending.requests.length, 1, "Repeated click sent a duplicate mutation");

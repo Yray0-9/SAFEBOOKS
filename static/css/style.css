@@ -780,81 +780,6 @@ p {
     color: #1d4ed8;
 }
 
-.stats-band {
-    position: relative;
-    overflow: hidden;
-    background: #0f172a;
-    color: #ffffff;
-    padding: 4rem 0;
-}
-
-.stats-glow {
-    position: absolute;
-    width: 24rem;
-    height: 24rem;
-    border-radius: 999px;
-    opacity: 0.1;
-    filter: blur(64px);
-}
-
-.stats-glow-blue {
-    top: -5rem;
-    left: -5rem;
-    background: #2563eb;
-}
-
-.stats-glow-indigo {
-    right: -5rem;
-    bottom: -5rem;
-    background: #4f46e5;
-}
-
-.stats-band-content {
-    position: relative;
-    z-index: 1;
-}
-
-.stats-block {
-    padding: 1.5rem;
-}
-
-.stats-block-middle {
-    border-left: 1px solid #1e293b;
-    border-right: 1px solid #1e293b;
-}
-
-.stats-value {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: clamp(2.25rem, 4vw, 3rem);
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: 0.5rem;
-}
-
-.stats-value-blue {
-    color: #60a5fa;
-}
-
-.stats-value-indigo {
-    color: #818cf8;
-}
-
-.stats-label {
-    color: #cbd5e1;
-    font-size: 0.875rem;
-    font-weight: 800;
-    letter-spacing: 0.025em;
-    margin-bottom: 0;
-    text-transform: uppercase;
-}
-
-.stats-note {
-    color: #94a3b8;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin: 0.25rem 0 0;
-}
-
 .faq-section {
     background: #f8fafc;
     border-top: 1px solid #f1f5f9;
@@ -1012,12 +937,6 @@ p {
         text-align: center;
     }
 
-    .stats-block-middle {
-        border-left: 0;
-        border-right: 0;
-        border-top: 1px solid #1e293b;
-        border-bottom: 1px solid #1e293b;
-    }
 }
 
 .dashboard-preview-section {

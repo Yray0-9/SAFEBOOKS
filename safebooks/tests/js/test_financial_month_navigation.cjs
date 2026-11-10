@@ -23,8 +23,6 @@ const context = {
     getActivePeriodLabel: () => `${context.MONTH_NAMES[context.activeMonth]} ${context.activeYear}`,
     loadRecordsFromApi: async () => { context.loads.push([context.activeMonth, context.activeYear]); },
     updateDuplicateEntryWarning() {}, showToast: message => context.messages.push(message),
-    financialSaveSummary: { hidden: true }, financialSaveSummaryTitle: {}, financialSaveSummaryMeta: {},
-    financialSaveSummaryDismiss: button(), financialSaveSummaryTimer: null,
     timers: new Map(), timerId: 0,
     window: {
         clearTimeout: id => context.timers.delete(id),
@@ -35,11 +33,9 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(extract('        const parseIsoDateParts =', '        const normalizeFrequencyValue =') +
-    extract('        const getPayloadTotal =', '        const getEntryById =') +
     extract('        const getDefaultDateForActivePeriod =', '        const syncActivePeriodToDate =') +
     extract('        const getAdjacentMonth =', '        if (financialPrevPage) {') +
-    extract('        if (financialSaveSummaryDismiss && financialSaveSummary) {', '        if (addEntryForm) {') +
-    '\nthis.updateNavigation = updateMonthNavigation; this.showSaved = showFinancialSaveSummary;', context);
+    '\nthis.updateNavigation = updateMonthNavigation;', context);
 
 context.updateNavigation();
 assert.equal(context.financialPeriodYear.textContent, '2026');
@@ -119,55 +115,6 @@ context.updateNavigation();
 assert(context.financialPreviousMonth.disabled && context.financialNextMonth.disabled);
 assert.equal(context.financialYearSelector.disabled, true);
 console.log('Month controls passed: selected month/date, dropdown, empty months, year transitions, supported limits, All Periods, and draft preservation.');
-
-// Saved/updated banners belong to the displayed period, even if a save refresh is delayed.
-context.activeClientId = 1;
-context.activeMonth = 6;
-context.activeYear = 2026;
-context.updateNavigation();
-const juneEntry = { date: '2026-06-01', line_items: [{ amount: '100' }] };
-context.showSaved('add', juneEntry);
-assert.equal(context.financialSaveSummary.hidden, false);
-assert.equal(context.financialSaveSummaryTitle.textContent, 'Entry saved');
-assert.equal(context.timers.size, 1);
-assert.equal([...context.timers.values()][0].delay, 7000, 'Retain existing banner duration');
-context.financialNextMonth.click();
-assert.equal(context.financialSaveSummary.hidden, true);
-assert.equal(context.timers.size, 0, 'Navigation cancels the old banner timer');
-context.showSaved('edit', juneEntry);
-assert.equal(context.financialSaveSummary.hidden, true, 'Delayed June confirmation cannot reappear in July');
-const julyEntry = { date: '2026-07-01', line_items: [{ amount: '200' }] };
-context.showSaved('edit', julyEntry);
-assert.equal(context.financialSaveSummary.hidden, false);
-assert.equal(context.financialSaveSummaryTitle.textContent, 'Entry updated');
-context.showSaved('edit', juneEntry);
-assert(context.financialSaveSummaryMeta.textContent.includes('2026-07-01'), 'An older confirmation cannot replace a matching newer one');
-context.financialPreviousMonth.click();
-assert.equal(context.financialSaveSummary.hidden, true);
-context.showSaved('edit', juneEntry);
-context.periodSelector.change({ target: { value: 'all' } });
-assert.equal(context.financialSaveSummary.hidden, true, 'All Periods clears the old banner too');
-context.showSaved('add', juneEntry);
-assert.equal(context.financialSaveSummary.hidden, false, 'All Periods can confirm a newly saved entry');
-context.financialSaveSummaryDismiss.click();
-assert.equal(context.financialSaveSummary.hidden, true);
-assert.equal(context.timers.size, 0);
-context.periodSelector.change({ target: { value: '6' } });
-context.showSaved('edit', juneEntry);
-context.periodSelector.change({ target: { value: '7' } });
-assert.equal(context.financialSaveSummary.hidden, true, 'Direct month selection clears the banner');
-context.activeMonth = 6;
-context.showSaved('edit', juneEntry);
-context.financialYearSelector.change({ target: { value: '2027' } });
-assert.equal(context.financialSaveSummary.hidden, true, 'Changing only the year also clears the banner');
-context.showSaved('edit', juneEntry);
-assert.equal(context.financialSaveSummary.hidden, true, 'A matching month in another year is a different period');
-context.activeYear = 2026;
-context.showSaved('edit', juneEntry);
-[...context.timers.values()][0].callback();
-assert.equal(context.financialSaveSummary.hidden, true);
-assert.equal(context.timers.size, 0);
-console.log('Save banners passed: Add/Edit, next/previous/dropdown/All Periods, timer cleanup, delayed refresh, year isolation, dismissal, and normal expiry.');
 
 // Exercise the actual read loader with response bodies resolved out of order.
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };

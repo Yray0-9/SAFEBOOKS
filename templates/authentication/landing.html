@@ -310,38 +310,6 @@
             </div>
         </section>
 
-        <!-- Stats Counter Section -->
-        <section class="stats-band scroll-reveal">
-            <!-- Background glow effect -->
-            <div class="stats-glow stats-glow-blue"></div>
-            <div class="stats-glow stats-glow-indigo"></div>
-            
-            <div class="container stats-band-content">
-                <div class="row g-4 text-center">
-                    <div class="col-md-4">
-                        <div class="stats-block">
-                            <h3 class="stats-value stats-value-blue" id="statAccuracy" data-target="99.8">0%</h3>
-                            <p class="stats-label">Filing Compliance Accuracy</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stats-block stats-block-middle">
-                            <h3 class="stats-value stats-value-indigo" id="statClients" data-target="500">0</h3>
-                            <p class="stats-label">Monitored Client Accounts</p>
-                            <p class="stats-note">Across all registered bookkeepers</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stats-block">
-                            <h3 class="stats-value stats-value-blue" id="statRevenue" data-target="42">₱0M+</h3>
-                            <p class="stats-label">Total Revenue Analyzed</p>
-                            <p class="stats-note">Enabling predictive risk forecasting</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <section id="about" class="section-spacing how-it-works-section">
             <div class="container">
                 <div class="section-heading text-center scroll-reveal">
@@ -691,57 +659,6 @@
             });
         })();
 
-        // Dynamic Stats Counter Script
-        (() => {
-            const stats = [
-                { id: "statAccuracy", target: 99.8, suffix: "%", decimals: 1 },
-                { id: "statClients", target: 500, suffix: "+", decimals: 0 },
-                { id: "statRevenue", target: 42, prefix: "₱", suffix: "M+", decimals: 0 }
-            ];
-
-            const animateValue = (el, start, end, duration, prefix = "", suffix = "", decimals = 0) => {
-                let startTimestamp = null;
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                    const currentVal = progress * (end - start) + start;
-                    el.textContent = prefix + currentVal.toFixed(decimals) + suffix;
-                    if (progress < 1) {
-                        window.requestAnimationFrame(step);
-                    }
-                };
-                window.requestAnimationFrame(step);
-            };
-
-            const runStats = (entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        stats.forEach(stat => {
-                            const el = document.getElementById(stat.id);
-                            if (el && !el.dataset.animated) {
-                                el.dataset.animated = "true";
-                                animateValue(
-                                    el, 
-                                    0, 
-                                    stat.target, 
-                                    1500, 
-                                    stat.prefix || "", 
-                                    stat.suffix || "", 
-                                    stat.decimals
-                                );
-                            }
-                        });
-                        observer.unobserve(entry.target);
-                    }
-                });
-            };
-
-            const statsSection = document.getElementById("statAccuracy")?.closest("section");
-            if (statsSection) {
-                const statsObserver = new IntersectionObserver(runStats, { threshold: 0.15 });
-                statsObserver.observe(statsSection);
-            }
-        })();
     </script>
 </body>
 </html>

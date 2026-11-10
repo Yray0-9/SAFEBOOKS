@@ -75,7 +75,7 @@
         <div class="clients-action-bar">
             <label class="dashboard-table-search clients-page-search" aria-label="Search clients by name or TIN">
                 <i class="bi bi-search"></i>
-                <input type="search" id="clientsSearchInput" placeholder="Search by client name or TIN" autocomplete="off">
+                <input type="search" id="clientsSearchInput" placeholder="Search by client name, trade name or TIN" aria-label="Search by client name, trade name or TIN" autocomplete="off">
             </label>
             <select id="clientsSortSelect" class="form-select dashboard-filter-select" aria-label="Sort clients list">
                 <option value="recent-activity">Recent Activity</option>
@@ -1894,7 +1894,7 @@
             }
 
             setClientAccessLoading(true);
-            setClientAccessStatus("Checking password...", "success");
+            setClientAccessStatus("Checking password...", "");
 
             try {
                 const csrfToken = getCookieValue("csrftoken");
@@ -2152,7 +2152,8 @@
             rows.forEach((row) => {
                 const tinDigits = normalizeDigits(row.dataset.tinRaw || row.dataset.tin || "");
                 const matchesTin = queryDigits ? tinDigits.includes(queryDigits) : false;
-                const matchesQuery = !query || normalize(row.dataset.clientName).includes(query) || matchesTin;
+                const matchesQuery = !query || normalize(row.dataset.clientName).includes(query)
+                    || normalize(row.dataset.tradeName).includes(query) || matchesTin;
                 const remarksVal = normalize(row.dataset.remarks || "");
                 let matchesRemarksTab = false;
                 if (directoryTabFilter === "active") {
@@ -2354,7 +2355,8 @@
                 const matchingCount = rows.filter((row) => {
                     const tinDigits = normalizeDigits(row.dataset.tinRaw || row.dataset.tin || "");
                     const matchesTin = queryDigits ? tinDigits.includes(queryDigits) : false;
-                    const matchesQuery = !query || normalize(row.dataset.clientName).includes(query) || matchesTin;
+                    const matchesQuery = !query || normalize(row.dataset.clientName).includes(query)
+                        || normalize(row.dataset.tradeName).includes(query) || matchesTin;
                     const remarksVal = normalize(row.dataset.remarks || "");
                     const matchesRemarksTab = directoryTabFilter === "active"
                         ? (remarksVal !== "closed")

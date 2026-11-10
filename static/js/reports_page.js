@@ -407,6 +407,7 @@
         const optionExists = Array.from(reportsClientSelect.options)
             .some((optionItem) => optionItem.value === targetClientValue);
         reportsClientSelect.value = optionExists ? targetClientValue : "all";
+        syncSearchInputForClientId(reportsClientSelect.value);
     };
 
     const toReportTypeLabel = (reportType) => {
@@ -1998,6 +1999,7 @@
         if (dropdown) {
             dropdown.style.display = "none";
         }
+        syncSearchInputForClientId(reportsClientSelect?.value || "all");
         if (toggleIcon) {
             toggleIcon.style.transform = "translateY(-50%)";
         }
@@ -2021,9 +2023,10 @@
         }
 
         const matchedClient = availableClients.find((c) => String(c.id) === String(clientId));
+        reportsClientSearchInput.placeholder = clientId === "all" ? "All Clients" : "Search client by name or TIN";
         reportsClientSearchInput.value = matchedClient && matchedClient.tin_number
             ? formatTin(matchedClient.tin_number)
-            : "";
+            : matchedClient?.client_name || "";
     };
 
     const loadOptionsAndClients = async () => {

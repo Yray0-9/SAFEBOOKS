@@ -100,7 +100,7 @@
                 <div class="reports-filter-field">
                     <label class="reports-control-label" for="reportsClientSearchInput">Client Scope</label>
                     <div class="reports-tin-search-input-wrap">
-                        <input type="text" id="reportsClientSearchInput" class="form-control reports-control-input" placeholder="Search client by name or TIN" aria-label="Select client scope" autocomplete="off" style="padding-right: 2.2rem;">
+                        <input type="text" id="reportsClientSearchInput" class="form-control reports-control-input" placeholder="All Clients" aria-label="Search clients by name or TIN" autocomplete="off" style="padding-right: 2.2rem;">
                         <span class="reports-dropdown-toggle-icon" id="reportsDropdownToggleIcon" title="Toggle client list"><i class="bi bi-chevron-down"></i></span>
                         <div id="reportsCustomDropdown" class="reports-custom-dropdown" style="display: none;"></div>
                     </div>
@@ -279,5 +279,5 @@
     };
 </script>
 <script src="{% static 'js/reports_shared.js' %}?v=20261110-worksheet-tax-codes"></script>
-<script src="{% static 'js/reports_page.js' %}?v=20261111-print-layout"></script>
+<script src="{% static 'js/reports_page.js' %}?v=20261111-client-scope"></script>
 {% endblock %}

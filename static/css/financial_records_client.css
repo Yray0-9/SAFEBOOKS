@@ -183,72 +183,6 @@ body.financial-records-page .financial-month-navigation .financial-month-button 
     font-weight: 600;
 }
 
-.financial-save-summary {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    margin: 0.75rem 0 0.9rem;
-    padding: 0.72rem 0.82rem;
-    border: 1px solid #baf0d6;
-    border-radius: 12px;
-    background: #f0fff8;
-    color: #103a2a;
-}
-
-.financial-save-summary[hidden] {
-    display: none;
-}
-
-.financial-save-summary-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    flex: 0 0 34px;
-    border-radius: 10px;
-    background: #dcfce7;
-    color: #11835b;
-}
-
-.financial-save-summary-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    min-width: 0;
-}
-
-.financial-save-summary-copy strong {
-    color: #0f2e23;
-    font-size: 0.92rem;
-}
-
-.financial-save-summary-copy span {
-    color: #4b6b5c;
-    font-size: 0.82rem;
-    font-weight: 600;
-    line-height: 1.35;
-}
-
-.financial-save-summary-dismiss {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin-left: auto;
-    padding: 0;
-    border: 1px solid transparent;
-    color: #38634f;
-}
-
-.financial-save-summary-dismiss:hover,
-.financial-save-summary-dismiss:focus {
-    border-color: #baf0d6;
-    background: #ffffff;
-    color: #0f5f42;
-}
-
 .financial-summary-grid {
     grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.4fr);
 }
@@ -756,36 +690,6 @@ body.theme-dark .financial-page-ellipsis {
     color: #64748b;
 }
 
-body.theme-dark .financial-save-summary {
-    background: #0d261b;
-    border-color: #1b4d36;
-    color: #6ee7b7;
-}
-
-body.theme-dark .financial-save-summary-icon {
-    background: #133827;
-    color: #34d399;
-}
-
-body.theme-dark .financial-save-summary-copy strong {
-    color: #a7f3d0;
-}
-
-body.theme-dark .financial-save-summary-copy span {
-    color: #6ee7b7;
-}
-
-body.theme-dark .financial-save-summary-dismiss {
-    color: #6ee7b7;
-}
-
-body.theme-dark .financial-save-summary-dismiss:hover,
-body.theme-dark .financial-save-summary-dismiss:focus {
-    border-color: #1b4d36;
-    background: #133827;
-    color: #a7f3d0;
-}
-
 body.theme-dark .financial-entry-warning {
     background: #2a1e12;
     border-color: #5c3c1e;
@@ -960,8 +864,6 @@ body.theme-dark .financial-entry-warning-icon {
     body.financial-records-page .financial-breakdown-item strong { margin-left: auto; overflow-wrap: anywhere; }
     body.financial-records-page .financial-empty-state { padding: 0.85rem; }
     body.financial-records-page .financial-empty-state .btn { width: 100%; min-height: 44px; white-space: normal; }
-    body.financial-records-page .financial-save-summary-copy { overflow-wrap: anywhere; }
-    body.financial-records-page .financial-save-summary-dismiss { flex: 0 0 44px; height: 44px; }
 
     body.financial-records-page .financial-manage-modal .modal-dialog { margin: 0.5rem; max-width: none; min-height: calc(100% - 1rem); }
     body.financial-records-page .financial-manage-modal .modal-content { max-height: calc(100vh - 1rem); max-height: calc(100dvh - 1rem); }
