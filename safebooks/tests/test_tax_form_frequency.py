@@ -33,7 +33,7 @@ class TaxFormFrequencyTests(SimpleTestCase):
             coverage_frequency=coverage, record=SimpleNamespace(frequency=frequency))
 
     def test_every_offered_form_has_explicit_metadata_and_ignores_description(self):
-        source = (Path(settings.BASE_DIR) / "templates/base/financial_records_client.html").read_text(encoding="utf-8")
+        source = (Path(settings.BASE_DIR) / "static/js/reports_shared.js").read_text(encoding="utf-8")
         choices = re.findall(r'\{ code: "(BIR Form [^"]+)", desc: "([^"]+)" \}', source)
         self.assertGreater(len(choices), 60)
         for code, default_description in choices:

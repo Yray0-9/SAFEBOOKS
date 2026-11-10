@@ -1190,7 +1190,12 @@
                 <summary>Other worksheet amounts <span>Enter when applicable</span></summary>
                 <p class="financial-ready-amounts-hint">Supporting information only. These amounts are not added to totals.</p>
                 <div class="financial-worksheet-grid">${WORKSHEET_AMOUNT_FIELDS.map(([name, label]) => `
-                    <label>${label}<input type="text" class="form-control financial-form-input" data-worksheet-field="${name}" inputmode="decimal" pattern="(?:[0-9]+(?:[.][0-9]{0,2})?|[.][0-9]{1,2})" placeholder="Not recorded" value="${escapeHtml(lineItem[name] == null ? "" : String(lineItem[name]))}"></label>
+                    <label>${label}
+                        <span class="financial-ready-money-input">
+                            <span aria-hidden="true">&#8369;</span>
+                            <input type="text" class="form-control financial-form-input" data-worksheet-field="${name}" inputmode="decimal" pattern="(?:[0-9]+(?:[.][0-9]{0,2})?|[.][0-9]{1,2})" placeholder="Not recorded" value="${escapeHtml(lineItem[name] == null ? "" : String(lineItem[name]))}">
+                        </span>
+                    </label>
                 `).join("")}</div>
             </details></td>`;
             worksheetRow.querySelectorAll("[data-worksheet-field]").forEach((input) => {

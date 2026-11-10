@@ -503,7 +503,7 @@ body.theme-dark .financial-ready-amounts-hint { color: #9eb0d3; }
 .financial-worksheet-fields summary:focus-visible { outline: 3px solid #8fb8ff; outline-offset: 2px; border-radius: 6px; }
 .financial-worksheet-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; gap: 0.65rem; margin-top: 0.75rem; }
 .financial-worksheet-grid label { min-width: 0; color: #315b9f; font-size: 0.74rem; font-weight: 600; }
-.financial-worksheet-grid input { margin-top: 0.35rem; }
+.financial-worksheet-grid .financial-ready-money-input { display: block; margin-top: 0.35rem; }
 .financial-worksheet-values { display: grid; gap: 0.2rem; margin-top: 0.5rem; font-size: 0.75rem; color: #61749a; }
 body.theme-dark .financial-worksheet-fields { border-color: #334155; background: #0f1c33; }
 body.theme-dark .financial-worksheet-fields summary,

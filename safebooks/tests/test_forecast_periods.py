@@ -161,7 +161,7 @@ class ForecastPeriodTests(TestCase):
         from pathlib import Path
         from types import SimpleNamespace
         from django.conf import settings
-        source = (Path(settings.BASE_DIR) / 'templates/base/financial_records_client.html').read_text(encoding='utf-8')
+        source = (Path(settings.BASE_DIR) / 'static/js/reports_shared.js').read_text(encoding='utf-8')
         choices = re.findall(r'\{ code: "(BIR Form [^"]+)", desc: "([^"]+)" \}', source)
         self.assertGreater(len(choices), 20)
         for code, description in [('tax', 'sales adjustment'), ('TAXES', 'expense payment'), *choices]:
