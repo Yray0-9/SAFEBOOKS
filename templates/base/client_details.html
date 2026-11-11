@@ -497,13 +497,14 @@
                         <div class="client-form-section-head">
                             <h3>Basic Information</h3>
                         </div>
-                        <div class="row g-3">
+                        <p class="small text-muted mb-2">Fields marked with * are required.</p>
+                    <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientName">Client Name</label>
+                                <label class="form-label client-form-label" for="editDetailsClientName">Client Name <span class="text-danger" aria-hidden="true">*</span></label>
                                 <input class="form-control client-form-input" id="editDetailsClientName" name="client_name" type="text" value="{{ client.client_name }}" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientTin">TIN</label>
+                                <label class="form-label client-form-label" for="editDetailsClientTin">TIN <span class="text-danger" aria-hidden="true">*</span></label>
                                 <input class="form-control client-form-input" id="editDetailsClientTin" name="tin_number" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="000-000-000-000" maxlength="15" value="{{ client.tin_number }}" autocomplete="off" required>
                             </div>
                             <div class="col-md-6">
@@ -522,7 +523,7 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label client-form-label" for="editDetailsClientLocationSelect">Location</label>
+                                <label class="form-label client-form-label" for="editDetailsClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                                 <input id="editDetailsClientLocation" name="location" type="hidden" value="{{ client.location }}">
                                 <div class="client-select-wrap">
                                     <select class="form-select client-form-input client-select-input" id="editDetailsClientLocationSelect" aria-label="Select province" required>
@@ -545,8 +546,8 @@
                                 <input class="form-control client-form-input" id="editDetailsClientPermitNumber" name="permit_number" type="text" value="{{ client.permit_number }}" placeholder="Optional">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientBirthday">Birthday</label>
-                                <input class="form-control client-form-input" id="editDetailsClientBirthday" name="birthday" type="date" value="{{ client.birthday|date:'Y-m-d' }}">
+                                <label class="form-label client-form-label" for="editDetailsClientBirthday">Birthdate <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input class="form-control client-form-input" id="editDetailsClientBirthday" name="birthday" type="date" value="{{ client.birthday|date:'Y-m-d' }}" required>
                             </div>
                         </div>
                     </section>

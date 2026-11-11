@@ -356,13 +356,14 @@
                     <div class="client-form-section-head">
                         <h3>Client Information</h3>
                     </div>
+                    <p class="small text-muted mb-2">Fields marked with * are required.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientName">Client Name</label>
+                            <label class="form-label client-form-label" for="editClientName">Client Name <span class="text-danger" aria-hidden="true">*</span></label>
                             <input class="form-control client-form-input" id="editClientName" name="client_name" type="text" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientTin">TIN</label>
+                            <label class="form-label client-form-label" for="editClientTin">TIN <span class="text-danger" aria-hidden="true">*</span></label>
                             <input class="form-control client-form-input" id="editClientTin" name="tin" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="000-000-000-000" maxlength="15" autocomplete="off" required>
                         </div>
                         <div class="col-md-6">
@@ -381,7 +382,7 @@
                                 </div>
                             </div>
                         <div class="col-12">
-                            <label class="form-label client-form-label" for="editClientLocationSelect">Location</label>
+                            <label class="form-label client-form-label" for="editClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                             <input id="editClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
                                 <select class="form-select client-form-input client-select-input" id="editClientLocationSelect" aria-label="Select province" required>
@@ -404,8 +405,8 @@
                             <input class="form-control client-form-input" id="editClientPermitNumber" name="permit_number" type="text" placeholder="Optional">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientBirthday">Birthday</label>
-                            <input class="form-control client-form-input" id="editClientBirthday" name="birthday" type="date">
+                            <label class="form-label client-form-label" for="editClientBirthday">Birthdate <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="editClientBirthday" name="birthday" type="date" required>
                         </div>
                     </div>
                 </section>
