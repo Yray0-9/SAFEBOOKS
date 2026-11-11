@@ -1295,7 +1295,7 @@ def get_analytics_summary_for_bookkeeper(
     if selected_year is not None:
         record_scope = record_scope.filter(period__year__lte=selected_year)
     try:
-        entry_metadata = bounded_list(record_scope.values(*WORKFLOW_ENTRY_FIELDS), MAX_RECORDS, "records")
+        entry_metadata = bounded_list(record_scope.values(*WORKFLOW_ENTRY_FIELDS, "notes"), MAX_RECORDS, "records")
         history_lines = bounded_list(
             base_lines_query.select_related("record", "record__period").defer("record__notes"),
             MAX_TRANSACTION_DETAILS, "transaction details",
@@ -1313,6 +1313,15 @@ def get_analytics_summary_for_bookkeeper(
 
     monthly_totals = {key: _empty_bucket() for key in slot_keys}
     monthly_type_totals = {key: defaultdict(lambda: Decimal("0.00")) for key in slot_keys}
+    monthly_record_ids = {key: set() for key in slot_keys}
+    monthly_recorded_types = {key: set() for key in slot_keys}
+    monthly_tax_remarks = {key: defaultdict(lambda: defaultdict(lambda: Decimal("0.00"))) for key in slot_keys}
+    entry_notes = {}
+    for entry in entry_metadata:
+        month_key = (entry["period__year"], entry["period__month"])
+        if month_key in monthly_record_ids:
+            monthly_record_ids[month_key].add(entry["id"])
+            entry_notes[entry["id"]] = entry["notes"] or ""
     monthly_net_totals = {key: Decimal("0.00") for key in slot_keys}
     grand_totals = _empty_bucket()
     total_net_value = Decimal("0.00")
@@ -1354,6 +1363,10 @@ def get_analytics_summary_for_bookkeeper(
             if type_label:
                 type_key = _normalize_type_code_key(line.type_code)
                 monthly_type_totals[month_key][type_key] += amount
+                monthly_recorded_types[month_key].add(type_key)
+                if category == "tax":
+                    remark = line.remarks if line.remarks is not None else entry_notes.get(line.record_id, "")
+                    monthly_tax_remarks[month_key][type_key][remark] += amount
                 if type_key not in type_label_map:
                     type_label_map[type_key] = type_label
                 if type_key not in type_category_map:
@@ -1400,6 +1413,19 @@ def get_analytics_summary_for_bookkeeper(
                 "tax": _to_money_number(totals["tax"]),
                 "net_value": _to_money_number(net_value),
                 "type_breakdown": type_breakdown,
+                "entry_count": len(monthly_record_ids[(year, month)]),
+                "recorded_types": [
+                    label for type_key, label in type_pairs
+                    if type_key in monthly_recorded_types[(year, month)]
+                ],
+                "tax_remarks": {
+                    label: [
+                        {"remarks": remark, "amount": _to_money_number(amount)}
+                        for remark, amount in monthly_tax_remarks[(year, month)][type_key].items()
+                    ]
+                    for type_key, label in type_pairs
+                    if type_key in monthly_tax_remarks[(year, month)]
+                },
             }
         )
 

@@ -550,6 +550,11 @@
                     const isWorksheetMoney = worksheet && (customAmount || worksheetMoneyColumns.has(column.toLowerCase().replace(/[^a-z0-9]/g, "")));
                     const isZeroTotal = isTotalsRow && isWorksheetMoney && parseNumericValue(rowCells[columnIndex]) === 0;
                     const annotation = !isTotalsRow && table.cellAnnotations && table.cellAnnotations[rowIndex] && table.cellAnnotations[rowIndex][columnIndex];
+                    if (annotation && annotation.remarks) {
+                        const remarks = annotation.remarks.map((remark) =>
+                            `<span class="reports-summary-remark">${escapeHtml(remark)}</span>`).join("");
+                        return `${cellTag}${escapeHtml(toDisplayText(rowCells[columnIndex], "-"))}${remarks}</td>`;
+                    }
                     if (annotation && annotation.entries) {
                         const mainValue = toDisplayText(rowCells[columnIndex], "");
                         const extraValues = annotation.entries

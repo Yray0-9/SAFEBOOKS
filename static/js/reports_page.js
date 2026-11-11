@@ -616,10 +616,12 @@
         return {
             columns,
             rows: formattedRows,
+            cellAnnotations: rows.map((row) => columnMeta.map(({ key }) =>
+                row.__remarks?.[key]?.length ? { remarks: row.__remarks[key] } : null)),
             rowCount,
             rowHint,
             reportTitle: "SafeBooks Client Report Sheet",
-            minRows: 14,
+            minRows: 0,
         };
     };
 
@@ -968,13 +970,19 @@
             .map((row) => {
                 return `
                     <tr>
-                        ${safeColumns.map((column) => `<td>${escapeHtml(row[column.key])}</td>`).join("")}
+                        ${safeColumns.map((column) => `<td>${renderReportCell(row, column.key)}</td>`).join("")}
                     </tr>
                 `;
             })
             .join("");
 
         togglePreviewTableEmptyState(safeRows.length > 0);
+    };
+
+    const renderReportCell = (row, key) => {
+        const remarks = row.__remarks?.[key] || [];
+        return escapeHtml(toDisplayText(row[key])) + remarks.map((remark) =>
+            `<span class="reports-summary-remark">${escapeHtml(remark)}</span>`).join("");
     };
 
     const renderPreviewMeta = (report) => {
@@ -1061,6 +1069,7 @@
                 minRows,
                 preserveColumnOrder: true,
                 totalOverrides: report.totalOverrides,
+                cellAnnotations: printLayout?.cellAnnotations,
             },
             rowHint,
         });
@@ -1258,6 +1267,15 @@
                             font-weight: 700;
                         }
 
+                        .reports-summary-remark {
+                            display: block;
+                            margin-top: 4px;
+                            font-size: inherit;
+                            line-height: 1.4;
+                            font-weight: 400;
+                            white-space: normal;
+                        }
+
                         .reports-ledger-grid-table th,
                         .reports-ledger-grid-table td {
                             overflow-wrap: anywhere;
@@ -1301,7 +1319,7 @@
         const heading = report.columns.map(({ label }) =>
             `<th scope="col">${escapeHtml(window.SafeBooksTransactionCodeLabel(label))}</th>`).join("");
         const rows = report.rows.map((row) => `<tr>${report.columns.map(({ key }) =>
-            `<td>${escapeHtml(toDisplayText(row[key]))}</td>`).join("")}</tr>`).join("");
+            `<td>${renderReportCell(row, key)}</td>`).join("")}</tr>`).join("");
         const totals = report.summaryCards.map(({ label, value }) =>
             `<span class="reports-ledger-meta-pill">${escapeHtml(label)} ${escapeHtml(value)}</span>`).join("");
         return `
@@ -1640,9 +1658,16 @@
             { key: "cogs_cos", label: "COGS / COS" },
             { key: "income_payments_2307", label: "Income Payments (2307)" },
             { key: "tax_withheld", label: "Tax Withheld" },
-        ] : [];
+        ].filter(({ key }) => Array.from(supportingAmounts.values()).some((month) => month[key] != null)) : [];
         const trendRows = Array.isArray(payload && payload.monthly_trend)
-            ? payload.monthly_trend.filter((row) => isTrendMonthWithinRange(row.year, row.month, filters))
+            ? payload.monthly_trend.filter((row) => {
+                if (!isTrendMonthWithinRange(row.year, row.month, filters)) return false;
+                if (Number.isFinite(row.entry_count)) return row.entry_count > 0;
+                const periodKey = `${row.year}-${String(row.month).padStart(2, "0")}`;
+                return worksheet?.rows.some((line) => line.entry_date.slice(0, 7) === periodKey)
+                    || Object.values(row.type_breakdown || {}).some((amount) => Number(amount) !== 0)
+                    || [row.sales, row.expenses, row.tax].some((amount) => Number(amount || 0) !== 0);
+            })
             : [];
         const sum = (key) => trendRows.reduce((total, row) => total + Math.round(safeNumber(row[key]) * 100), 0) / 100;
         const netTotal = worksheetNetSales ? worksheetNetSales.total : sum("net_value");
@@ -1654,7 +1679,10 @@
         const typeColumns = window.SafeBooksReportsShared && typeof window.SafeBooksReportsShared.normalizeFinancialSummaryColumns === "function"
             ? window.SafeBooksReportsShared.normalizeFinancialSummaryColumns(rawTypeColumns)
             : rawTypeColumns;
-        const typeColumnMeta = typeColumns.map((label, index) => ({
+        const typeColumnMeta = typeColumns.filter((label) => trendRows.some((row) =>
+            Array.isArray(row.recorded_types) ? row.recorded_types.includes(label)
+                : Number(row.type_breakdown?.[label] || 0) !== 0
+        )).map((label, index) => ({
             key: `type_${index}`,
             label: window.SafeBooksTransactionCodeLabel(label),
             sourceLabel: String(label),
@@ -1690,8 +1718,14 @@
             }
 
             const typeValues = {};
+            const cellRemarks = {};
             typeColumnMeta.forEach((column) => {
-                typeValues[column.key] = formatCurrency(typeBreakdown[column.sourceLabel]);
+                const recorded = !Array.isArray(row.recorded_types) || row.recorded_types.includes(column.sourceLabel);
+                typeValues[column.key] = recorded ? formatCurrency(typeBreakdown[column.sourceLabel]) : "-";
+                const remarks = row.tax_remarks?.[column.sourceLabel] || [];
+                cellRemarks[column.key] = remarks.filter((item) => item.remarks).map((item) =>
+                    Math.round(Number(item.amount) * 100) === Math.round(Number(typeBreakdown[column.sourceLabel]) * 100)
+                        ? item.remarks : `${item.remarks} · ${formatCurrency(item.amount)}`);
             });
 
             return {
@@ -1699,6 +1733,7 @@
                 ...typeValues,
                 ...supportingValues,
                 net_value: netLabel,
+                __remarks: cellRemarks,
             };
         });
 

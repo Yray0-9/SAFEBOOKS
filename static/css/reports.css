@@ -982,3 +982,12 @@ body.theme-dark #formattedReportModal .client-report-year-bar p { color: #9eb0d3
     #formattedReportModal .modal-header, #formattedReportModal .modal-footer { padding: 0.75rem; }
     #formattedReportModal .client-report-modal-btn, #formattedReportModal .client-report-print-btn { min-height: 44px; }
 }
+.reports-summary-remark {
+    display: block;
+    margin-top: 4px;
+    font-size: inherit;
+    line-height: 1.4;
+    font-weight: 400;
+    white-space: normal;
+}
+

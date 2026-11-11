@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261111-print-layout">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261111-summary-remarks">
 {% endblock %}
 
 {% block skeleton %}
@@ -278,6 +278,6 @@
         defaultInitials: "{{ current_user_initials|default:'SB'|escapejs }}"
     };
 </script>
-<script src="{% static 'js/reports_shared.js' %}?v=20261110-worksheet-tax-codes"></script>
-<script src="{% static 'js/reports_page.js' %}?v=20261111-client-scope"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261111-summary-remarks"></script>
+<script src="{% static 'js/reports_page.js' %}?v=20261111-summary-remarks"></script>
 {% endblock %}
