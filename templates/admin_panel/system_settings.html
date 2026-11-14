@@ -65,7 +65,6 @@
         <!-- Sticky Navigation with clean, short labels -->
         <nav class="settings-nav admin-settings-nav" aria-label="System Settings Navigation">
             <a class="settings-nav-link is-active" href="#adminSettingsAppearance"><i class="bi bi-palette"></i><span>Appearance</span></a>
-            <a class="settings-nav-link" href="#adminSettingsNotifications"><i class="bi bi-bell"></i><span>Notifications</span></a>
             <a class="settings-nav-link" href="#adminSettingsSecurity"><i class="bi bi-shield-lock"></i><span>Security</span></a>
         </nav>
 
@@ -107,81 +106,7 @@
                 </div>
             </article>
 
-            <!-- 2. Notifications & Outgoing Mailer -->
-            <article class="dashboard-card admin-card settings-card dashboard-fade-up" id="adminSettingsNotifications" data-settings-section style="--delay: 0.08s;">
-                <div class="settings-card-head admin-settings-card-head-wrap">
-                    <div class="admin-settings-title-group">
-                        <span class="admin-settings-icon-bubble"><i class="bi bi-bell"></i></span>
-                        <div>
-                            <h2>Notifications & Mailer</h2>
-                        </div>
-                    </div>
-                    <span class="admin-settings-badge badge-active"><i class="bi bi-envelope-check-fill"></i>Connected</span>
-                </div>
-
-                <div class="admin-settings-overview-strip">
-                    <div class="admin-settings-overview-item">
-                        <i class="bi bi-send-check"></i>
-                        <div class="admin-settings-overview-meta">
-                            <small>Mailer</small>
-                            <strong>smtp.gmail.com:587</strong>
-                        </div>
-                    </div>
-                    <div class="admin-settings-overview-item">
-                        <i class="bi bi-shield-shaded"></i>
-                        <div class="admin-settings-overview-meta">
-                            <small>Security</small>
-                            <strong>TLS Encrypted</strong>
-                        </div>
-                    </div>
-                    <div class="admin-settings-overview-item">
-                        <i class="bi bi-envelope-at"></i>
-                        <div class="admin-settings-overview-meta">
-                            <small>Sender</small>
-                            <strong>SafeBooks &lt;no-reply&gt;</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-toggle-list">
-                    <div class="settings-toggle-row">
-                        <div>
-                            <p class="settings-field-label mb-0">Admin Approval Alert Notifications</p>
-                        </div>
-                        <label class="settings-switch">
-                            <input type="checkbox" id="settingNotifyAdminRegistration" checked aria-label="Notify admin on new registrations">
-                            <span class="settings-switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="settings-toggle-row">
-                        <div>
-                            <p class="settings-field-label mb-0">Account Deactivation Request Alerts</p>
-                        </div>
-                        <label class="settings-switch">
-                            <input type="checkbox" id="settingNotifyDeactivation" checked aria-label="Notify on deactivation requests">
-                            <span class="settings-switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="settings-toggle-row">
-                        <div>
-                            <p class="settings-field-label mb-0">Client Financial Record Change Emails</p>
-                        </div>
-                        <label class="settings-switch">
-                            <input type="checkbox" id="settingClientRecordNotification" checked aria-label="Client record notifications">
-                            <span class="settings-switch-slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="settings-section-footer">
-                    <div></div>
-                    <button type="button" class="btn dashboard-action-btn primary btn-save-settings">Save Changes</button>
-                </div>
-            </article>
-
-            <!-- 3. Security (Password & Authenticator) -->
+            <!-- 2. Security (Password & Authenticator) -->
             <article class="dashboard-card admin-card settings-card profile-card profile-two-factor-card dashboard-fade-up" id="adminSettingsSecurity" data-settings-section style="--delay: 0.12s;">
                 <div class="settings-card-head admin-settings-card-head-wrap">
                     <div class="admin-settings-title-group">
@@ -474,5 +399,5 @@
         },
     };
 </script>
-<script src="{% static 'js/admin_settings_page.js' %}?v=20260823-password-modal-v2"></script>
+<script src="{% static 'js/admin_settings_page.js' %}?v=20261110-admin-settings"></script>
 {% endblock %}

@@ -116,23 +116,42 @@
             .replace(/'/g, "&#39;");
     };
 
+    const activeToasts = new WeakMap();
     const showToast = (toastContainer, message, variantClass = "", options = {}) => {
         if (!toastContainer) {
             return;
         }
 
+        const text = String(message || "Action completed.");
+        const key = JSON.stringify([variantClass, text]);
+        let notifications = activeToasts.get(toastContainer);
+        if (!notifications) {
+            notifications = new Map();
+            activeToasts.set(toastContainer, notifications);
+        }
+        // Repeated validation clicks must not stack the same notice or restart its timer.
+        if (notifications.has(key)) return;
         const delay = Number.isFinite(options.delay) ? options.delay : 2800;
         const toastElement = document.createElement("div");
         toastElement.className = `toast safebooks-toast ${variantClass}`.trim();
+        if (toastElement.style && typeof toastElement.style.setProperty === "function") {
+            toastElement.style.setProperty("--safebooks-toast-duration", `${delay}ms`);
+        }
         toastElement.setAttribute("role", "status");
         toastElement.setAttribute("aria-live", "polite");
         toastElement.setAttribute("aria-atomic", "true");
-        toastElement.innerHTML = `<div class="toast-body">${escapeHtml(message || "Action completed.")}</div>`;
+        toastElement.innerHTML = `<div class="toast-body">${escapeHtml(text)}</div>`;
+        notifications.set(key, toastElement);
+        const removeToast = () => {
+            notifications.delete(key);
+            toastElement.remove();
+        };
         toastContainer.appendChild(toastElement);
 
         if (window.bootstrap && window.bootstrap.Toast) {
             toastElement.addEventListener("hidden.bs.toast", () => {
-                toastElement.remove();
+                removeToast();
+                toastInstance.dispose();
             });
 
             const toastInstance = new window.bootstrap.Toast(toastElement, {
@@ -143,12 +162,12 @@
             return;
         }
 
-        window.setTimeout(() => {
-            toastElement.remove();
-        }, delay);
+        // Bootstrap's CSS hides .toast without .show, even if its JS failed.
+        toastElement.classList.add("show");
+        window.setTimeout(removeToast, delay);
     };
 
-    const logoutCurrentUser = async (options) => {
+    const confirmLogout = async (options) => {
         const config = options || {};
         const logoutUrl = String(config.logoutUrl || "").trim();
         let redirectUrl = String(config.loginUrl || "").trim() || "/login/";
@@ -159,20 +178,30 @@
             headers["X-CSRFToken"] = csrfToken;
         }
 
-        if (logoutUrl) {
+        if (!logoutUrl) {
+            throw new Error("Logout is unavailable. Reload this page and try again.");
+        }
+        let response;
+        try {
+            response = await fetch(logoutUrl, {
+                method: "POST",
+                headers,
+                credentials: "same-origin",
+            });
+        } catch (requestError) {
+            throw new Error("Unable to confirm logout. Check your connection and retry; your session may still be active.");
+        }
+        const payload = await parseJsonSafe(response);
+        const alreadySignedOut = response.status === 401 && payload && payload.ok === false;
+        if (!alreadySignedOut && (!response.ok || !payload || payload.ok !== true)) {
+            throw new Error("Logout was not confirmed. Reload this page and try again; your session may still be active.");
+        }
+        if (!alreadySignedOut && typeof payload.redirect_url === "string" && payload.redirect_url.trim()) {
             try {
-                const response = await fetch(logoutUrl, {
-                    method: "POST",
-                    headers,
-                    credentials: "same-origin",
-                });
-
-                const payload = await parseJsonSafe(response);
-                if (payload && typeof payload.redirect_url === "string" && payload.redirect_url.trim()) {
-                    redirectUrl = payload.redirect_url.trim();
-                }
-            } catch (requestError) {
-                // Keep local cleanup + redirect behavior even on network failures.
+                const destination = new URL(payload.redirect_url, window.location.href);
+                if (destination.origin === window.location.origin) redirectUrl = destination.href;
+            } catch (error) {
+                // Logout succeeded; a malformed destination cannot undo it.
             }
         }
 
@@ -180,14 +209,24 @@
             if (config.authUserKey) {
                 window.localStorage.removeItem(config.authUserKey);
             }
-            if (config.loginWelcomeKey) {
-                window.sessionStorage.removeItem(config.loginWelcomeKey);
-            }
         } catch (storageError) {
-            // Ignore storage errors to avoid blocking logout flow.
+            // Server logout is confirmed even when browser storage is blocked.
+        }
+        try {
+            if (config.loginWelcomeKey) window.sessionStorage.removeItem(config.loginWelcomeKey);
+        } catch (storageError) {
+            // Independent cleanup: one blocked store must not skip the other.
         }
 
         return redirectUrl;
+    };
+
+    let pendingLogout = null;
+    const logoutCurrentUser = (options) => {
+        if (!pendingLogout) {
+            pendingLogout = confirmLogout(options).finally(() => { pendingLogout = null; });
+        }
+        return pendingLogout;
     };
 
     const THEME_STORAGE_KEY = "safebooks.ui.theme";
@@ -203,6 +242,7 @@
     const readThemePreference = () => {
         let theme = "light";
         let followSystem = false;
+        let storageAvailable = true;
 
         try {
             const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -212,9 +252,10 @@
         } catch (error) {
             theme = "light";
             followSystem = false;
+            storageAvailable = false;
         }
 
-        return { theme, followSystem };
+        return { theme, followSystem, storageAvailable };
     };
 
     const resolveSystemTheme = () => {
@@ -272,14 +313,20 @@
         const theme = normalizeTheme(themeValue);
         const followSystem = Boolean(followSystemValue);
 
+        let persisted = false;
         try {
             window.localStorage.setItem(THEME_STORAGE_KEY, theme);
             window.localStorage.setItem(THEME_FOLLOW_KEY, followSystem ? "1" : "0");
+            persisted = window.localStorage.getItem(THEME_STORAGE_KEY) === theme
+                && window.localStorage.getItem(THEME_FOLLOW_KEY) === (followSystem ? "1" : "0");
         } catch (error) {
-            // Ignore storage errors to keep UI responsive.
+            // Apply a temporary theme, but never claim this preference was saved.
         }
 
-        return applyStoredTheme();
+        const resolvedTheme = followSystem ? resolveSystemTheme() : theme;
+        applyThemeClass(resolvedTheme);
+        syncSystemThemeListener(followSystem);
+        return { theme: resolvedTheme, followSystem, persisted };
     };
 
     const getThemePreference = () => {

@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 
 from safebooks.models import AdminAuditLog, BookkeeperAccount
+from safebooks.services.bookkeeper_proof_service import proof_metadata
 from safebooks.services.approval_notification_service import (
     DELIVERY_FAILED,
     format_decision_result_message,
@@ -67,6 +68,7 @@ def _serialize_approval(account: BookkeeperAccount, email_delivery: dict | None 
         "last_login": account.last_login.isoformat() if account.last_login else "",
         "notification_preview": notification_preview,
         "email_delivery": email_delivery or {},
+        "proof": proof_metadata(getattr(account, "verification_proof", None), admin=True),
     }
 
 
@@ -146,7 +148,7 @@ def list_admin_approvals(
     search_value = str(search or "").strip()
     sort_value = _normalize_status(sort) or "newest"
 
-    queryset = BookkeeperAccount.objects.select_related("approved_by_admin")
+    queryset = BookkeeperAccount.objects.select_related("approved_by_admin", "verification_proof").defer("verification_proof__content")
 
     if status_value in VALID_APPROVAL_STATUSES:
         queryset = queryset.filter(status=status_value)
@@ -214,7 +216,7 @@ def list_admin_approvals(
     }
 
 
-def approve_bookkeeper(admin_account, bookkeeper_id: int) -> dict:
+def approve_bookkeeper(admin_account, bookkeeper_id: int, *, proof_revision=None, proof_reviewed=False) -> dict:
     with transaction.atomic():
         account = (
             BookkeeperAccount.objects
@@ -240,6 +242,13 @@ def approve_bookkeeper(admin_account, bookkeeper_id: int) -> dict:
                 "This account was updated by another admin and can no longer be approved from this request.",
             )
 
+        proof = getattr(account, "verification_proof", None)
+        if not account.email_verified or proof is None or proof_reviewed is not True or str(proof.revision) != str(proof_revision):
+            return {
+                "ok": False, "code": "proof_review_required", "refresh_required": True,
+                "message": "View the current proof, then confirm your review before approving.",
+            }
+
         account.status = BookkeeperAccount.STATUS_APPROVED
         account.approved_at = timezone.now()
         account.approved_by_admin = admin_account
@@ -258,6 +267,8 @@ def approve_bookkeeper(admin_account, bookkeeper_id: int) -> dict:
             AdminAuditLog.ACTION_BOOKKEEPER_APPROVED,
             f"Approved bookkeeper access for {account.full_name}.",
         )
+        audit_log.metadata.update({"proof_revision": str(proof.revision), "proof_sha256": proof.sha256})
+        audit_log.save(update_fields=["metadata"])
 
     delivery = send_approval_decision_email(account, AdminAuditLog.ACTION_BOOKKEEPER_APPROVED)
     saved_delivery = save_delivery_outcome(audit_log, delivery)

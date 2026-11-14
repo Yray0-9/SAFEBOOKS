@@ -242,6 +242,11 @@
                     <!-- Right Column: Email preview -->
                     <div class="col-md-6">
                         <div class="d-flex flex-column h-100">
+                            <section class="border rounded p-3 mb-3" aria-labelledby="approvalProofHeading">
+                                <h6 id="approvalProofHeading" class="fw-bold">Bookkeeping proof</h6>
+                                <p id="approvalProofSummary" class="small mb-2">Select a request.</p>
+                                <button type="button" id="approvalProofPreview" class="btn dashboard-action-btn outline" hidden>View proof (new tab)</button>
+                            </section>
                             <h6 class="text-muted small fw-bold mb-2">Notification Decision Message</h6>
                             <div class="d-flex align-items-center justify-content-between gap-2 mb-2" id="approvalEmailDeliveryRow" hidden>
                                 <span class="admin-status-chip inactive" id="approvalEmailDeliveryStatus">Not sent</span>
@@ -277,6 +282,10 @@
             </div>
             <div class="modal-body">
                 <p class="mb-3" id="approvalsActionModalMessage">Confirm this action.</p>
+                <div id="approvalProofReviewWrap" class="form-check mb-3" hidden>
+                    <input id="approvalProofReviewed" type="checkbox" class="form-check-input">
+                    <label for="approvalProofReviewed" class="form-check-label">I reviewed this applicant's current proof.</label>
+                </div>
                 <div id="approvalsActionReasonWrap" hidden>
                     <label class="form-label" for="approvalsActionReasonInput">Rejection reason</label>
                     <textarea class="form-control" id="approvalsActionReasonInput" rows="3" maxlength="255" placeholder="Example: Missing required identity details"></textarea>
@@ -303,5 +312,5 @@
         },
     };
 </script>
-<script src="{% static 'js/admin_approvals_page.js' %}?v=20260714-pagination"></script>
+<script src="{% static 'js/admin_approvals_page.js' %}?v=20261109-proof-preview"></script>
 {% endblock %}

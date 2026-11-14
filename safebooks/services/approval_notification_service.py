@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.utils import timezone
 
 from safebooks.models import AdminAuditLog, BookkeeperAccount
+from safebooks.services.email_delivery_service import email_count_confirmed, preview_only_email_backend
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ def send_approval_decision_email(account: BookkeeperAccount, action_type: str) -
     recipient_email = str(account.email or "").strip()
     if not recipient_email:
         return _delivery_result(DELIVERY_SKIPPED, "Bookkeeper email is not provided.")
+    if preview_only_email_backend():
+        return _delivery_result(DELIVERY_SKIPPED, "The local email backend does not send emails to inboxes.")
 
     display_name = str(account.full_name or account.username or "Bookkeeper").strip()
     if action_type == AdminAuditLog.ACTION_BOOKKEEPER_APPROVED:
@@ -60,15 +63,13 @@ def send_approval_decision_email(account: BookkeeperAccount, action_type: str) -
             [recipient_email],
             fail_silently=False,
         )
-    except Exception:
+    except Exception as error:
         logger.warning(
-            "Failed to send approval decision email for bookkeeper %s.",
-            account.id,
-            exc_info=True,
+            "Approval email failed (%s).", type(error).__name__,
         )
         return _delivery_result(DELIVERY_FAILED, "Email delivery failed.")
 
-    if sent_count < 1:
+    if not email_count_confirmed(sent_count):
         return _delivery_result(DELIVERY_FAILED, "The email backend did not confirm delivery.")
     return _delivery_result(DELIVERY_SENT)
 
@@ -99,7 +100,7 @@ def format_decision_result_message(base_message: str, delivery: dict) -> str:
     status = str(delivery.get("status") or "")
     reason = str(delivery.get("reason") or "").strip()
     if status == DELIVERY_SENT:
-        return f"{base_message} Decision email sent."
+        return f"{base_message} Decision email accepted for delivery."
     if status == DELIVERY_SKIPPED:
         return f"{base_message} Decision email skipped: {reason}"
     return f"{base_message} Decision saved, but email delivery failed."

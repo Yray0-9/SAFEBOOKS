@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261111-summary-remarks">
 {% endblock %}
 
 {% block skeleton %}
@@ -92,15 +92,15 @@
                     <label class="reports-control-label" for="reportsTypeSelect">Report Type</label>
                     <select id="reportsTypeSelect" class="form-select reports-control-select" aria-label="Select report type" required>
                         <option value="financial_summary">Financial summary report</option>
-                        <option value="compliance_snapshot">Compliance status snapshot</option>
-                        <option value="client_remarks_overview">Client remarks overview</option>
+                        <option value="compliance_snapshot">Record Status Report</option>
+                        <option value="client_remarks_overview">Client status overview</option>
                     </select>
                 </div>
 
                 <div class="reports-filter-field">
                     <label class="reports-control-label" for="reportsClientSearchInput">Client Scope</label>
                     <div class="reports-tin-search-input-wrap">
-                        <input type="text" id="reportsClientSearchInput" class="form-control reports-control-input" placeholder="Search client by name or TIN" aria-label="Select client scope" autocomplete="off" style="padding-right: 2.2rem;">
+                        <input type="text" id="reportsClientSearchInput" class="form-control reports-control-input" placeholder="All Clients" aria-label="Search clients by name or TIN" autocomplete="off" style="padding-right: 2.2rem;">
                         <span class="reports-dropdown-toggle-icon" id="reportsDropdownToggleIcon" title="Toggle client list"><i class="bi bi-chevron-down"></i></span>
                         <div id="reportsCustomDropdown" class="reports-custom-dropdown" style="display: none;"></div>
                     </div>
@@ -132,7 +132,7 @@
                 </button>
                 <button type="button" class="btn dashboard-action-btn outline reports-action-btn" id="reportsPrintButton" disabled>
                     <i class="bi bi-printer"></i>
-                    <span>Print Layout</span>
+                    <span>Print / Save PDF</span>
                 </button>
                 <button type="button" class="btn dashboard-action-btn outline reports-action-btn" id="reportsResetButton">
                     <i class="bi bi-arrow-clockwise"></i>
@@ -209,7 +209,7 @@
             <div class="dashboard-card-head reports-preview-head">
                 <div>
                     <h2>
-                        Client Print Layout Preview
+                        Financial Summary Print Preview
                         <span class="safebooks-tooltip-wrap">
                             <i class="bi bi-info-circle" aria-hidden="true"></i>
                             <span class="safebooks-tooltip-content" id="reportsLedgerHint">Familiar paper-style format for review and future printing.</span>
@@ -235,13 +235,20 @@
                 Recent Generated Reports
                 <span class="safebooks-tooltip-wrap">
                     <i class="bi bi-info-circle" aria-hidden="true"></i>
-                    <span class="safebooks-tooltip-content">Latest reports generated in this browser session.</span>
+                    <span class="safebooks-tooltip-content">Reuse report filters from this browser session.</span>
                 </span>
             </h2>
             <span class="dashboard-tag" id="reportsHistoryCountTag">0 items</span>
         </div>
 
         <ul class="reports-history-list" id="reportsHistoryList" aria-label="Generated reports history"></ul>
+        <nav class="mt-2" id="reportsHistoryPagination" aria-label="Recent report pages" hidden>
+            <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="reportsHistoryPrevious">Previous</button>
+                <span class="small" id="reportsHistoryPageLabel" aria-live="polite"></span>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="reportsHistoryNext">Next</button>
+            </div>
+        </nav>
         <div class="dashboard-data-empty reports-history-empty" id="reportsHistoryEmpty">
             <p>No generated reports yet in this session.</p>
         </div>
@@ -271,6 +278,6 @@
         defaultInitials: "{{ current_user_initials|default:'SB'|escapejs }}"
     };
 </script>
-<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
-<script src="{% static 'js/reports_page.js' %}?v=1.0.6"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261111-summary-remarks"></script>
+<script src="{% static 'js/reports_page.js' %}?v=20261112-client-status"></script>
 {% endblock %}

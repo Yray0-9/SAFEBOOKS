@@ -1,0 +1,18 @@
+.client-location-results {
+    max-height: 15rem;
+    margin-top: 0.35rem;
+}
+
+.client-location-results .list-group-item {
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+body.theme-dark .client-location-results {
+    --bs-list-group-bg: #0f1c33;
+    --bs-list-group-color: #e6edf7;
+    --bs-list-group-border-color: #25344f;
+    --bs-list-group-action-color: #e6edf7;
+    --bs-list-group-action-hover-color: #e6edf7;
+    --bs-list-group-action-hover-bg: #25344f;
+}

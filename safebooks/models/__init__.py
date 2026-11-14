@@ -1,5 +1,6 @@
 from .admin_model import AdminAccount, AdminAuditLog
 from .user_model import BookkeeperAccount
+from .bookkeeper_proof_model import BookkeeperProof
 from .client_model import Client
 from .period_model import Period
 from .financial_record_model import FinancialRecord
@@ -13,6 +14,7 @@ __all__ = [
 	"AdminAccount",
 	"AdminAuditLog",
 	"BookkeeperAccount",
+	"BookkeeperProof",
 	"BookkeeperDeactivationRequest",
 	"BookkeeperAuditLog",
 	"Client",

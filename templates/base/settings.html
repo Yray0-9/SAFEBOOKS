@@ -82,7 +82,7 @@
                             Appearance
                             <span class="safebooks-tooltip-wrap">
                                 <i class="bi bi-info-circle" aria-hidden="true"></i>
-                                <span class="safebooks-tooltip-content">Choose a theme that fits your workspace.</span>
+                                <span class="safebooks-tooltip-content">Theme preferences are saved only in this browser, not synced across devices.</span>
                             </span>
                         </h2>
                     </div>
@@ -157,15 +157,17 @@
                             <p class="settings-field-hint">Applies only when the client has an email address saved.</p>
                         </div>
                         <label class="settings-switch">
-                            <input type="checkbox" id="settingsClientRecordEmailsToggle" aria-label="Email client after a new record is added">
+                            <input type="checkbox" id="settingsClientRecordEmailsToggle" aria-label="Email client after a new record is added" {% if client_record_email_notifications_enabled %}checked{% endif %}>
                             <span class="settings-switch-slider"></span>
                         </label>
                     </div>
                 </div>
 
+                <p class="settings-field-hint">{{ email_delivery_hint }}</p>
+                {% if not client_record_email_service_enabled %}<p class="settings-field-hint">Client record emails are disabled for this environment. Your preference is saved but no email will be attempted.</p>{% endif %}
                 <div class="settings-section-footer">
                     <span class="settings-inline-status" id="settingsClientRecordEmailsFeedback" aria-live="polite"></span>
-                    <span class="settings-status-pill" id="settingsClientRecordEmailsStatus">On</span>
+                    <span class="settings-status-pill" id="settingsClientRecordEmailsStatus">{{ client_record_email_notifications_enabled|yesno:'On,Off' }}</span>
                 </div>
             </article>
 
@@ -220,7 +222,7 @@
                                     </span>
                                 </p>
                             </div>
-                            <span class="settings-status-pill" id="settingsLoginAlertsStatus">Off</span>
+                            <span class="settings-status-pill" id="settingsLoginAlertsStatus">{{ login_alerts_enabled|yesno:'On,Off' }}</span>
                         </div>
 
                         <div class="settings-toggle-row settings-login-alerts-row">
@@ -234,7 +236,7 @@
                                 </p>
                             </div>
                             <label class="settings-switch">
-                                <input type="checkbox" id="settingsLoginAlertsToggle" aria-label="Enable login alert emails">
+                                <input type="checkbox" id="settingsLoginAlertsToggle" aria-label="Enable login alert emails" {% if login_alerts_enabled %}checked{% endif %}>
                                 <span class="settings-switch-slider"></span>
                             </label>
                         </div>
@@ -242,6 +244,7 @@
                         <div class="settings-security-footer">
                             <span class="settings-inline-status" id="settingsLoginAlertsFeedback" aria-live="polite"></span>
                         </div>
+                        <p class="settings-field-hint">{{ email_delivery_hint }}</p>
                     </div>
 
                     <div class="settings-security-panel" id="settingsClientDetailsLockPanel" data-client-details-lock-enabled="{{ client_details_password_required|yesno:'true,false' }}">

@@ -67,16 +67,20 @@
                         authUserKey: "safebooks.authUser",
                         loginWelcomeKey: "safebooks.loginWelcome",
                     });
+                } else {
+                    throw new Error("Logout is unavailable. Reload this page and try again.");
                 }
+                window.location.assign(redirectUrl);
             } catch (logoutError) {
-                // Keep fallback redirect in place.
-            }
-
-            window.location.assign(redirectUrl);
-            action.dataset.logoutPending = "0";
-            action.removeAttribute("aria-disabled");
-            if (action.tagName === "BUTTON") {
-                action.disabled = false;
+                const message = logoutError.message || "Logout was not confirmed. Please retry.";
+                if (shared && shared.showToast) shared.showToast(uiToastContainer, message, "danger");
+                else window.alert(message);
+            } finally {
+                action.dataset.logoutPending = "0";
+                action.removeAttribute("aria-disabled");
+                if (action.tagName === "BUTTON") {
+                    action.disabled = false;
+                }
             }
         };
 

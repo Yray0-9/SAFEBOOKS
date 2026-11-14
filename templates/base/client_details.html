@@ -15,9 +15,12 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.2">
-<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=1.2">
-<link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=2.1">
+<link rel="stylesheet" href="{% static 'css/analytics_trend_tooltip.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/analytics_tax_breakdown.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261101-badge">
+<link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.11">
+<link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=2.7">
+<link rel="stylesheet" href="{% static 'css/client_location_selector.css' %}">
 {% endblock %}
 
 {% block skeleton %}
@@ -64,8 +67,6 @@
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1-5 client-details-status-badge">New</span>
             {% elif client.remarks == 'active' %}
             <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1-5 client-details-status-badge">Active</span>
-            {% elif client.remarks == 'separated' %}
-            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1-5 client-details-status-badge">Separated</span>
             {% elif client.remarks == 'closed' %}
             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1-5 client-details-status-badge">Closed</span>
             {% endif %}
@@ -73,12 +74,6 @@
         <div class="client-details-actions-panel" id="clientDetailsActionsPanel">
             <button type="button" class="btn dashboard-action-btn outline" id="editClientDetailsButton" data-bs-toggle="modal" data-bs-target="#editClientDetailsModal">
                 <i class="bi bi-pencil-square me-1"></i> Edit Details
-            </button>
-            <a href="{% url 'financial_records_client' %}?client_id={{ client.id }}&client={{ client.client_name|urlencode }}&tin={{ client.tin_number|urlencode }}&trade={{ client.trade_name|urlencode }}" class="btn dashboard-action-btn outline" id="clientDetailsRecordsLink">
-                <i class="bi bi-journal-text me-1"></i> Records
-            </a>
-            <button type="button" id="generateReportActionBtn" class="btn dashboard-action-btn outline">
-                <i class="bi bi-printer me-1"></i> Preview Report
             </button>
             {% if client.remarks != 'closed' %}
             <a href="{% url 'financial_records_client' %}?client_id={{ client.id }}&client={{ client.client_name|urlencode }}&tin={{ client.tin_number|urlencode }}&trade={{ client.trade_name|urlencode }}&action=add" class="btn dashboard-action-btn primary" id="clientDetailsAddEntryLink">
@@ -154,6 +149,10 @@
                     <strong class="client-details-val" data-client-profile-field="trade_name">{{ client.trade_name|default:"Not provided" }}</strong>
                 </div>
                 <div class="client-details-row">
+                    <span class="client-details-key">Tax Registration</span>
+                    <strong class="client-details-val" data-client-profile-field="tax_registration">{{ client.get_tax_registration_display|default:"Not set" }}</strong>
+                </div>
+                <div class="client-details-row">
                     <span class="client-details-key">Location</span>
                     <strong class="client-details-val" data-client-profile-field="location">{{ client.location }}</strong>
                 </div>
@@ -192,11 +191,10 @@
                     </div>
                 </div>
                 <div class="client-details-row">
-                    <span class="client-details-key">Status / Remarks</span>
+                    <span class="client-details-key">Client Status</span>
                     <strong class="client-details-val" data-client-profile-field="remarks">
                         {% if client.remarks == 'new' %}New
                         {% elif client.remarks == 'active' %}Active
-                        {% elif client.remarks == 'separated' %}Separated
                         {% elif client.remarks == 'closed' %}Closed
                         {% else %}{{ client.remarks }}{% endif %}
                     </strong>
@@ -239,10 +237,12 @@
                         <div class="analytics-control-item client-projections-control">
                             <label class="analytics-control-label" for="analyticsYearFilter">Year Range</label>
                             <select id="analyticsYearFilter" class="form-select analytics-select">
-                                <option value="all">All Time</option>
-                                <option value="2026">2026</option>
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
+                                {% for analytics_year in analytics_years %}
+                                <option value="{{ analytics_year }}"{% if analytics_year == analytics_current_year %} selected{% endif %}>{{ analytics_year }}</option>
+                                {% empty %}
+                                {% now "Y" as fallback_analytics_year %}
+                                <option value="{{ fallback_analytics_year }}" selected>{{ fallback_analytics_year }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="analytics-control-item client-projections-control">
@@ -257,27 +257,18 @@
                 </div>
             </article>
 
-            <article class="client-card dashboard-fade-up client-workflow-card client-delay-10" id="clientWorkflowCard">
+            <article class="client-card dashboard-fade-up client-workflow-card client-delay-10" id="clientWorkflowCard" aria-busy="true">
                 <div class="client-workflow-head">
                     <div>
                         <h2 class="client-details-name">Record Schedule Status</h2>
-                        <p class="client-workflow-subtitle">Checks each record frequency saved for this client.</p>
                     </div>
                     <span class="client-workflow-status-tag pending" id="clientPeriodReadinessTag">Checking</span>
                 </div>
                 <div class="client-workflow-readiness">
-                    <strong id="clientPeriodReadinessText">Checking current period...</strong>
-                    <span id="clientPeriodReadinessHint">SafeBooks will show the current period status after records load.</span>
+                    <strong class="visually-hidden" id="clientPeriodReadinessText">Checking current period...</strong>
+                    <span id="clientPeriodReadinessHint">Checking saved records...</span>
                 </div>
-                <div class="client-workflow-list" id="clientWorkflowScheduleList" aria-label="Record schedule status">
-                    <div class="client-workflow-item pending">
-                        <span class="client-workflow-icon"><i class="bi bi-calendar-check"></i></span>
-                        <div>
-                            <strong>Checking records</strong>
-                            <span>SafeBooks will show each active record frequency after records load.</span>
-                        </div>
-                    </div>
-                </div>
+                <div class="client-workflow-list" id="clientWorkflowScheduleList" aria-label="Record schedule status" hidden></div>
             </article>
 
             <!-- Tabs Navigation -->
@@ -307,6 +298,7 @@
             <div id="analyticsDataPanels" class="tab-content client-analytics-panels" hidden>
                 <!-- Tab 1: Dashboard -->
                 <div class="tab-pane fade show active" id="dashboard-tab-pane" role="tabpanel" aria-labelledby="dashboard-tab" tabindex="0">
+                    <p class="analytics-timeframe-caption" id="analyticsDashboardEmptyNotice" hidden></p>
                     <div class="row g-3 dashboard-stats-row mt-1">
                         <div class="col-sm-6 col-xl-3 d-flex">
                             <article class="dashboard-stat-card dashboard-fade-up w-100 h-100 client-stat-card client-delay-12">
@@ -339,27 +331,29 @@
                             <article class="dashboard-stat-card dashboard-fade-up w-100 h-100 client-stat-card client-delay-18">
                                 <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
                                 <div>
-                                    <p class="stat-label">Net Value</p>
+                                    <p class="stat-label">Net Sales</p>
                                     <h3 id="analyticsNetValueValue" class="client-stat-value">PHP 0.00</h3>
                                 </div>
                             </article>
                         </div>
                     </div>
 
-                    <!-- Monthly Trend Chart -->
+                    <!-- Financial Trends Chart -->
                     <div class="row g-3 mt-1">
                         <div class="col-12">
                             <article class="dashboard-card dashboard-fade-up client-analytics-card client-delay-22">
                                 <div class="dashboard-card-head">
-                                    <h2>Monthly Trend</h2>
+                                    <h2>Financial Trends</h2>
                                 </div>
+                                <p class="dashboard-section-hint">Monthly sales, expenses, and tax</p>
                                 <div class="analytics-trend-legend client-trend-legend" id="analyticsTrendLegend" aria-label="Trend legend">
                                     <span class="analytics-legend-item"><i class="analytics-legend-dot sales"></i>Sales</span>
                                     <span class="analytics-legend-item"><i class="analytics-legend-dot expenses"></i>Expenses</span>
+                                    <span class="analytics-legend-item"><i class="analytics-legend-dot tax"></i>Tax</span>
                                 </div>
                                 <p class="visually-hidden" id="analyticsTrendTimeframeCaption">Trend chart window: latest 6 months only.</p>
                                 <div class="analytics-trend-chart client-trend-chart">
-                                    <svg class="analytics-line-svg" viewBox="0 0 640 240" preserveAspectRatio="none" role="img" aria-label="Sales and expenses trend chart">
+                                    <svg class="analytics-line-svg" viewBox="0 0 640 240" preserveAspectRatio="none" role="img" aria-label="Monthly sales, expenses, and tax in Philippine pesos, using the same scale">
                                         <defs>
                                             <linearGradient id="trendSalesGrad" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="0%" stop-color="#2366dd" stop-opacity="0.18" />
@@ -374,58 +368,29 @@
                                         <g id="analyticsTrendAreas"></g>
                                         <path id="analyticsSalesLine" class="analytics-trend-line-sales" d=""></path>
                                         <path id="analyticsExpensesLine" class="analytics-trend-line-expenses" d=""></path>
+                                        <path id="analyticsTaxLine" class="analytics-trend-line-tax" d=""></path>
                                     </svg>
                                     <div class="analytics-month-labels" id="analyticsMonthLabels"></div>
                                 </div>
                             </article>
                         </div>
                     </div>
+                    {% include "base/includes/analytics_tax_breakdown.html" %}
                 </div>
 
                 <!-- Tab 2: Forecast -->
                 <div class="tab-pane fade" id="forecasting-tab-pane" role="tabpanel" aria-labelledby="forecasting-tab" tabindex="0">
+                    <p class="analytics-card p-3 mt-3" data-forecast-year-notice role="status" hidden>Select the current year to view upcoming forecasts.</p>
                     <div class="row g-3 analytics-forecasting-row mt-1">
-                        <div class="col-12 col-xl-5">
-                            <article class="dashboard-card dashboard-fade-up analytics-forecast-card analytics-predictive-card client-delay-25">
-                                <div class="dashboard-card-head">
-                                    <h2>Forecasting Insight</h2>
-                                </div>
-                                <p class="analytics-predictive-period" id="analyticsPredictivePeriod">Next period: --</p>
-                                <div class="analytics-predictive-grid" aria-label="Predictive analytics forecast summary">
-                                    <div class="analytics-predictive-item">
-                                        <span class="analytics-predictive-label">Projected Sales</span>
-                                        <strong class="analytics-predictive-value" id="analyticsPredictiveSalesValue">PHP --</strong>
-                                        <span class="analytics-predictive-subtext" id="analyticsPredictiveSalesNote">Needs historical data</span>
-                                    </div>
-                                    <div class="analytics-predictive-item">
-                                        <span class="analytics-predictive-label">Projected Expenses</span>
-                                        <strong class="analytics-predictive-value" id="analyticsPredictiveExpensesValue">PHP --</strong>
-                                        <span class="analytics-predictive-subtext" id="analyticsPredictiveExpensesNote">Needs historical data</span>
-                                    </div>
-                                    <div class="analytics-predictive-item">
-                                        <span class="analytics-predictive-label">Projected Tax</span>
-                                        <strong class="analytics-predictive-value" id="analyticsPredictiveTaxValue">PHP --</strong>
-                                        <span class="analytics-predictive-subtext" id="analyticsPredictiveTaxNote">Needs historical data</span>
-                                    </div>
-                                </div>
-                                <div class="analytics-predictive-chart">
-                                    <div class="analytics-predictive-chart-shell" aria-hidden="true">
-                                        <svg class="analytics-predictive-spark" viewBox="0 0 240 84" preserveAspectRatio="none">
-                                            <polyline class="analytics-predictive-line" id="analyticsPredictiveLine" points=""></polyline>
-                                        </svg>
-                                        <p class="analytics-predictive-placeholder" id="analyticsPredictivePlaceholder">Forecast visualization will appear after enough data is available.</p>
-                                    </div>
-                                </div>
-                            </article>
-                        </div>
-
-                        <div class="col-12 col-xl-7">
+                        <div class="col-12">
                             <article class="dashboard-card dashboard-fade-up analytics-forecast-card analytics-predictive-report-card client-delay-28">
                                 <div class="dashboard-card-head analytics-predictive-report-head">
                                     <h2>Forecast Report</h2>
                                     <span class="dashboard-tag analytics-method-tag">SARIMA</span>
                                 </div>
-                                <div class="table-responsive analytics-predictive-report-scroll">
+                                <p class="analytics-predictive-period" id="analyticsPredictivePeriod">Next period: --</p>
+                                <p class="analytics-timeframe-caption" id="analyticsPredictiveHistory" hidden></p>
+                                <div class="table-responsive">
                                     <table class="table table-hover align-middle dashboard-table analytics-predictive-report-table mb-0" id="predictiveForecastTable">
                                         <thead>
                                             <tr>
@@ -433,7 +398,7 @@
                                                 <th>Projected Sales</th>
                                                 <th>Projected Expenses</th>
                                                 <th>Projected Tax</th>
-                                                <th>Projected Net Value</th>
+                                                <th scope="col">Net Sales<span class="visually-hidden">: calculated sales minus expenses for matching periods, not a separate SARIMA forecast</span></th>
                                             </tr>
                                         </thead>
                                         <tbody id="predictiveForecastTableBody">
@@ -453,18 +418,18 @@
                             <article class="dashboard-card dashboard-fade-up analytics-forecast-projection-card client-analytics-card client-delay-32">
                                 <div class="dashboard-card-head analytics-forecast-projection-head">
                                     <div>
-                                        <h2>Projection Graph</h2>
-                                        <span class="visually-hidden" id="analyticsForecastProjectionHint">Sales, expenses, tax, and net value are shown together with separate scales.</span>
+                                        <h2 id="analyticsForecastProjectionTitle">Projection Graph</h2>
+                                        <span class="visually-hidden" id="analyticsForecastProjectionHint">Sales, expenses, tax, and net sales are shown together with separate scales.</span>
                                     </div>
                                 </div>
                                 <div class="analytics-forecast-projection-legend client-forecast-legend" aria-label="Forecast projection graph legend">
                                     <span class="analytics-forecast-legend-item sales" data-forecast-series="sales"><i></i>Sales</span>
                                     <span class="analytics-forecast-legend-item expenses" data-forecast-series="expenses"><i></i>Expenses</span>
                                     <span class="analytics-forecast-legend-item tax" data-forecast-series="tax"><i></i>Tax</span>
-                                    <span class="analytics-forecast-legend-item net" data-forecast-series="net"><i></i>Net Value</span>
+                                    <span class="analytics-forecast-legend-item net" data-forecast-series="net"><i></i>Net Sales</span>
                                 </div>
                                 <div class="analytics-forecast-projection-shell client-forecast-shell">
-                                    <svg class="analytics-forecast-projection-svg" viewBox="0 0 720 360" preserveAspectRatio="none" role="img" aria-label="Projected sales, expenses, tax, and net value across the forecast horizon">
+                                    <svg class="analytics-forecast-projection-svg" viewBox="0 0 720 360" role="img" aria-label="Projected sales, expenses, tax, and net sales across the forecast horizon">
                                         <defs>
                                             <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="0%" stop-color="#2563d8" stop-opacity="0.18" />
@@ -497,21 +462,6 @@
                                 </div>
                                 <div class="analytics-forecast-projection-labels" id="analyticsForecastProjectionLabels"></div>
 
-                                <!-- Forecast metadata -->
-                                <div class="client-panel-defense-labels">
-                                    <span>
-                                        <i class="bi bi-cpu text-primary"></i>
-                                        <span>Predictive Analytics</span>
-                                    </span>
-                                    <span>
-                                        <i class="bi bi-calculator text-primary"></i>
-                                        <span aria-label="Generated using Seasonal ARIMA">SARIMA</span>
-                                    </span>
-                                    <span>
-                                        <i class="bi bi-clock-history text-primary"></i>
-                                        <span>Historical movement</span>
-                                    </span>
-                                </div>
                             </article>
                         </div>
                     </div>
@@ -519,10 +469,11 @@
             </div>
 
             <!-- Empty State Card -->
+            <p class="text-danger" id="analyticsLoadError" role="alert" hidden></p>
             <article class="client-card analytics-empty-state" id="analyticsEmptyState" hidden>
                 <div class="dashboard-data-empty text-center py-5">
                     <i class="bi bi-file-earmark-bar-graph text-muted mb-3 client-details-empty-icon"></i>
-                    <p class="text-muted mb-3">No financial records yet for this client. Add records when this client's period is ready.</p>
+                    <p class="text-muted mb-3" id="analyticsEmptyMessage">No financial activity to display for this client. Review the financial records, or add records when the period is ready.</p>
                     <div class="dashboard-empty-actions">
                         <a href="{% url 'financial_records_client' %}?client_id={{ client.id }}&client={{ client.client_name|urlencode }}&tin={{ client.tin_number|urlencode }}&trade={{ client.trade_name|urlencode }}&action=add" class="btn dashboard-action-btn primary" id="clientDetailsEmptyAddRecordsLink">Add Financial Records</a>
                     </div>
@@ -547,13 +498,14 @@
                         <div class="client-form-section-head">
                             <h3>Basic Information</h3>
                         </div>
-                        <div class="row g-3">
+                        <p class="small text-muted mb-2">Fields marked with * are required.</p>
+                    <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientName">Client Name</label>
+                                <label class="form-label client-form-label" for="editDetailsClientName">Client Name <span class="text-danger" aria-hidden="true">*</span></label>
                                 <input class="form-control client-form-input" id="editDetailsClientName" name="client_name" type="text" value="{{ client.client_name }}" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientTin">TIN</label>
+                                <label class="form-label client-form-label" for="editDetailsClientTin">TIN <span class="text-danger" aria-hidden="true">*</span></label>
                                 <input class="form-control client-form-input" id="editDetailsClientTin" name="tin_number" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="000-000-000-000" maxlength="15" value="{{ client.tin_number }}" autocomplete="off" required>
                             </div>
                             <div class="col-md-6">
@@ -561,15 +513,28 @@
                                 <input class="form-control client-form-input" id="editDetailsClientTradeName" name="trade_name" type="text" value="{{ client.trade_name }}" placeholder="Optional">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientLocationSelect">Location</label>
-                                <input id="editDetailsClientLocation" name="location" type="hidden" value="{{ client.location }}">
+                                <label class="form-label client-form-label" for="editDetailsClientTaxRegistration">Tax Registration <span class="text-danger" aria-hidden="true">*</span></label>
                                 <div class="client-select-wrap">
-                                    <select class="form-select client-form-input client-select-input" id="editDetailsClientLocationSelect" aria-label="Select province" required>
-                                        <option value="">Select province</option>
+                                    <select class="form-select client-form-input client-select-input" id="editDetailsClientTaxRegistration" name="tax_registration" required>
+                                        <option value="" disabled{% if client.tax_registration == "" %} selected{% endif %}>Select tax registration</option>
+                                        <option value="vat"{% if client.tax_registration == "vat" %} selected{% endif %}>VAT</option>
+                                        <option value="non_vat"{% if client.tax_registration == "non_vat" %} selected{% endif %}>Non-VAT</option>
                                     </select>
                                     <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
                                 </div>
-                                <div class="form-text text-muted client-location-summary" id="editDetailsClientLocationSummary" hidden></div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label client-form-label" for="editDetailsClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input id="editDetailsClientLocation" name="location" type="hidden" value="{{ client.location }}">
+                                <div class="client-select-wrap">
+                                    <input type="text" class="form-control client-form-input client-select-input" id="editDetailsClientLocationSelect"
+                                        placeholder="Search Davao Region locations" autocomplete="off" spellcheck="false" required
+                                        role="combobox" aria-autocomplete="list" aria-expanded="false"
+                                        aria-controls="editDetailsClientLocationSelectResults" aria-describedby="editDetailsClientLocationSummary">
+                                    <i class="bi bi-search client-select-icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="list-group overflow-auto client-location-results" id="editDetailsClientLocationSelectResults" role="listbox" aria-label="Location results" hidden></div>
+                                <div class="form-text text-muted client-location-summary" id="editDetailsClientLocationSummary" role="status" hidden></div>
                             </div>
                         </div>
                     </section>
@@ -584,8 +549,8 @@
                                 <input class="form-control client-form-input" id="editDetailsClientPermitNumber" name="permit_number" type="text" value="{{ client.permit_number }}" placeholder="Optional">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label client-form-label" for="editDetailsClientBirthday">Birthday</label>
-                                <input class="form-control client-form-input" id="editDetailsClientBirthday" name="birthday" type="date" value="{{ client.birthday|date:'Y-m-d' }}">
+                                <label class="form-label client-form-label" for="editDetailsClientBirthday">Birthdate <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input class="form-control client-form-input" id="editDetailsClientBirthday" name="birthday" type="date" value="{{ client.birthday|date:'Y-m-d' }}" required>
                             </div>
                         </div>
                     </section>
@@ -656,56 +621,6 @@
                     <button type="submit" class="btn dashboard-action-btn primary" id="saveClientDetailsButton">Save Changes</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- Formatted Report Modal -->
-    <div class="modal fade client-manage-modal client-report-modal" id="formattedReportModal" tabindex="-1" aria-labelledby="formattedReportModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="modal-title font-weight-bold" id="formattedReportModalLabel">Client Financial Report Preview</h5>
-                        <p class="text-muted mb-0 client-report-modal-subtitle">Formatted print-ready layout for quick review and print handover</p>
-                    </div>
-                    <button type="button" class="btn-close client-report-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body client-report-modal-body">
-                    <div class="client-report-year-bar">
-                        <div class="client-report-year-field">
-                            <label for="modalReportYearFilter">Report Year</label>
-                            <select id="modalReportYearFilter" class="form-select" disabled>
-                                <option value="">Loading years...</option>
-                            </select>
-                        </div>
-                        <p id="modalReportYearHint">The preview and printed report will use the selected bookkeeping year.</p>
-                    </div>
-                    <!-- Loading state -->
-                    <div id="modalReportLoading" class="text-center py-5">
-                        <div class="spinner-border text-primary client-report-spinner" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-3 text-muted client-report-loading-text">Generating report preview...</p>
-                    </div>
-                    <!-- Error state -->
-                    <div id="modalReportError" class="text-center py-5" hidden>
-                        <i class="bi bi-exclamation-octagon text-danger client-report-error-icon"></i>
-                        <p class="mt-3 text-danger font-weight-semibold client-report-error-text" id="modalReportErrorMsg"></p>
-                    </div>
-                    <!-- Report content -->
-                    <div class="reports-ledger-wrapper client-report-wrapper" id="modalReportWrapper" hidden>
-                        <div class="reports-ledger-sheet client-report-sheet" id="modalReportSheet">
-                            <!-- Injected by JS -->
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn dashboard-action-btn outline client-report-modal-btn" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn dashboard-action-btn primary client-report-print-btn" id="modalPrintReportBtn">
-                        <i class="bi bi-printer"></i> Print / Save PDF
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -787,7 +702,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
+<script src="{% static 'js/analytics_trend_tooltip.js' %}?v=2"></script>
+<script src="{% static 'js/analytics_tax_breakdown.js' %}?v=2"></script>
+<script src="{% static 'js/forecast_periods.js' %}?v=10"></script>
 <script id="clientCustomFieldsData" type="application/json">
     [
         {% for field in client.custom_fields %}
@@ -799,11 +716,11 @@
         {% endfor %}
     ]
 </script>
+<script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
     (() => {
         const CLIENT_ID = Number("{{ client.id }}");
         const ANALYTICS_SUMMARY_API_URL = "{% url 'api_analytics_summary' %}";
-        const REPORTS_PRINT_LAYOUT_API_URL = "{% url 'api_reports_print_layout' %}";
         const CLIENT_DETAIL_API_URL = "{% url 'api_client_detail' client.id %}";
         const CLIENT_REOPEN_API_URL = "{% url 'api_client_reopen' client.id %}";
         const CLIENT_FORECAST_GROWTH_PERCENT = "{{ client.forecast_growth_percent|default:'0.00' }}";
@@ -829,6 +746,7 @@
             client_name: "{{ client.client_name|escapejs }}",
             tin_number: "{{ client.tin_number|escapejs }}",
             trade_name: "{{ client.trade_name|default:''|escapejs }}",
+            tax_registration: "{{ client.tax_registration|default:''|escapejs }}",
             location: "{{ client.location|escapejs }}",
             permit_number: "{{ client.permit_number|default:''|escapejs }}",
             birthday: "{{ client.birthday|date:'Y-m-d'|default:''|escapejs }}",
@@ -851,6 +769,7 @@
         const analyticsDataPanels = document.getElementById("analyticsDataPanels");
         const analyticsLoadingState = document.getElementById("analyticsLoadingState");
         const analyticsEmptyState = document.getElementById("analyticsEmptyState");
+        const analyticsEmptyMessage = document.getElementById("analyticsEmptyMessage");
         const clientPeriodReadinessTag = document.getElementById("clientPeriodReadinessTag");
         const clientPeriodReadinessText = document.getElementById("clientPeriodReadinessText");
         const clientPeriodReadinessHint = document.getElementById("clientPeriodReadinessHint");
@@ -864,17 +783,11 @@
         const analyticsTrendGrid = document.getElementById("analyticsTrendGrid");
         const analyticsSalesLine = document.getElementById("analyticsSalesLine");
         const analyticsExpensesLine = document.getElementById("analyticsExpensesLine");
+        const analyticsTaxLine = document.getElementById("analyticsTaxLine");
         const analyticsMonthLabels = document.getElementById("analyticsMonthLabels");
 
         const analyticsPredictivePeriod = document.getElementById("analyticsPredictivePeriod");
-        const analyticsPredictiveSalesValue = document.getElementById("analyticsPredictiveSalesValue");
-        const analyticsPredictiveExpensesValue = document.getElementById("analyticsPredictiveExpensesValue");
-        const analyticsPredictiveTaxValue = document.getElementById("analyticsPredictiveTaxValue");
-        const analyticsPredictiveSalesNote = document.getElementById("analyticsPredictiveSalesNote");
-        const analyticsPredictiveExpensesNote = document.getElementById("analyticsPredictiveExpensesNote");
-        const analyticsPredictiveTaxNote = document.getElementById("analyticsPredictiveTaxNote");
-        const analyticsPredictiveLine = document.getElementById("analyticsPredictiveLine");
-        const analyticsPredictivePlaceholder = document.getElementById("analyticsPredictivePlaceholder");
+        const analyticsPredictiveHistory = document.getElementById("analyticsPredictiveHistory");
         
         const analyticsForecastProjectionGrid = document.getElementById("analyticsForecastProjectionGrid");
         const analyticsForecastProjectionBridges = document.getElementById("analyticsForecastProjectionBridges");
@@ -1041,7 +954,6 @@
             const normalized = String(value || "").trim().toLowerCase();
             if (normalized === "new") return "New";
             if (normalized === "active") return "Active";
-            if (normalized === "separated") return "Separated";
             if (normalized === "closed") return "Closed";
             return displayValue(value);
         };
@@ -1250,6 +1162,10 @@
             setInputValueAndDefault("editDetailsClientName", currentClientProfile.client_name);
             setInputValueAndDefault("editDetailsClientTin", formatTin(currentClientProfile.tin_number));
             setInputValueAndDefault("editDetailsClientTradeName", currentClientProfile.trade_name);
+            const registration = document.getElementById("editDetailsClientTaxRegistration");
+            const registrationValue = currentClientProfile.tax_registration || "";
+            Array.from(registration.options).forEach(option => { option.defaultSelected = option.value === registrationValue; });
+            registration.value = registrationValue;
             applyLocationSelection(editDetailsLocationState, currentClientProfile.location);
             if (editDetailsClientLocationInput) {
                 editDetailsClientLocationInput.defaultValue = editDetailsClientLocationInput.value;
@@ -1275,8 +1191,6 @@
             const recordsUrl = `${baseUrl}?${params.toString()}`;
             const addUrl = `${recordsUrl}&action=add`;
 
-            const recordsLink = document.getElementById("clientDetailsRecordsLink");
-            if (recordsLink) recordsLink.href = recordsUrl;
             ["clientDetailsAddEntryLink", "clientDetailsEmptyAddRecordsLink"].forEach((id) => {
                 const link = document.getElementById(id);
                 if (link) link.href = addUrl;
@@ -1297,7 +1211,35 @@
             reminderList.innerHTML = missingItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
         };
 
+        const setClientWorkflowUnavailable = (isLoading = false) => {
+            latestClientWorkflowStatus = null;
+            const card = document.getElementById("clientWorkflowCard");
+            if (card) card.setAttribute("aria-busy", String(isLoading));
+            if (clientPeriodReadinessTag) {
+                clientPeriodReadinessTag.classList.remove("ready", "pending", "upcoming");
+                clientPeriodReadinessTag.classList.add("pending");
+                clientPeriodReadinessTag.textContent = isLoading ? "Checking" : "Not loaded";
+            }
+            if (clientPeriodReadinessText) clientPeriodReadinessText.textContent = isLoading ? "Checking records..." : "Record schedule could not be checked.";
+            if (clientPeriodReadinessHint) {
+                clientPeriodReadinessHint.hidden = false;
+                clientPeriodReadinessHint.textContent = isLoading
+                    ? "Checking saved records..."
+                    : "Records not checked. Retry or choose another year.";
+            }
+            if (clientWorkflowScheduleList) {
+                clientWorkflowScheduleList.hidden = true;
+                clientWorkflowScheduleList.innerHTML = "";
+            }
+        };
+
         const applyClientWorkflowStatus = (workflow) => {
+            if (!workflow || typeof workflow !== "object" || Array.isArray(workflow) || !Object.keys(workflow).length) {
+                setClientWorkflowUnavailable();
+                return;
+            }
+            const card = document.getElementById("clientWorkflowCard");
+            if (card) card.setAttribute("aria-busy", "false");
             const safeWorkflow = workflow && typeof workflow === "object" ? workflow : {};
             latestClientWorkflowStatus = safeWorkflow;
 
@@ -1351,27 +1293,29 @@
                 }
             }
             if (clientPeriodReadinessHint) {
+                clientPeriodReadinessHint.hidden = !missingItems.length && !upcomingItems.length;
                 clientPeriodReadinessHint.textContent = missingItems.length
-                    ? "Only the frequency marked as needing a record requires attention."
+                    ? "Review the missing records below."
                     : (upcomingItems.length
-                        ? "Upcoming periods are shown for awareness only; they are not due yet."
-                        : "Saved records match the expected frequencies for this client.");
+                        ? "Upcoming periods are not due yet."
+                        : "");
             }
 
             if (clientWorkflowScheduleList) {
+                clientWorkflowScheduleList.hidden = false;
                 clientWorkflowScheduleList.innerHTML = normalizedItems.map((item) => {
                     const stateClass = item.status === "ready" ? "complete" : (item.status === "upcoming" ? "upcoming" : "warning");
                     const icon = item.status === "ready" ? "bi-check2-circle" : (item.status === "upcoming" ? "bi-calendar-event" : "bi-calendar-plus");
                     const detailText = item.status === "ready"
-                        ? `${item.periodLabel}: ${item.entryCount} ${item.entryCount === 1 ? "record" : "records"} and ${item.detailCount} ${item.detailCount === 1 ? "transaction detail" : "transaction details"}.`
+                        ? `${item.periodLabel} · ${item.entryCount} ${item.entryCount === 1 ? "record" : "records"} · ${item.detailCount} ${item.detailCount === 1 ? "transaction detail" : "transaction details"}`
                         : (item.status === "upcoming"
-                            ? `${item.periodLabel} is upcoming, so no action is needed yet.`
-                            : `No ${item.frequencyLabel.toLowerCase()} record saved for ${item.periodLabel}.`);
+                            ? `${item.periodLabel} · Not due yet`
+                            : `${item.periodLabel} · No saved record`);
                     return `
                         <div class="client-workflow-item ${stateClass}">
                             <span class="client-workflow-icon"><i class="bi ${icon}"></i></span>
                             <div>
-                                <strong>${escapeHtml(item.frequencyLabel)} record</strong>
+                                <strong>${escapeHtml(item.frequencyLabel.toLowerCase() === "monthly" ? "Monthly entries" : `${item.frequencyLabel} record`)}</strong>
                                 <span>${escapeHtml(detailText)}</span>
                             </div>
                         </div>
@@ -1387,6 +1331,7 @@
                 client_name: String(source.client_name ?? currentClientProfile.client_name ?? ""),
                 tin_number: String(source.tin_number ?? currentClientProfile.tin_number ?? ""),
                 trade_name: String(source.trade_name ?? ""),
+                tax_registration: String(source.tax_registration ?? currentClientProfile.tax_registration ?? ""),
                 location: String(source.location ?? ""),
                 permit_number: String(source.permit_number ?? ""),
                 birthday: String(source.birthday ?? ""),
@@ -1410,6 +1355,7 @@
             updateProfileText("client_name", currentClientProfile.client_name);
             updateProfileText("tin_number", currentClientProfile.tin_number);
             updateProfileText("trade_name", currentClientProfile.trade_name);
+            updateProfileText("tax_registration", window.SafeBooksClientRegistration.label(currentClientProfile.tax_registration));
             updateProfileText("location", currentClientProfile.location);
             updateProfileText("permit_number", currentClientProfile.permit_number);
             updateProfileText("birthday", currentClientProfile.birthday);
@@ -1466,15 +1412,10 @@
             return projectionCannotForecast(source, valueKey) ? "Cannot forecast" : "N/A";
         };
 
-        const getProjectionMethodLabel = (source, categoryKey, valueKey) => {
-            if (!projectionHasValue(source, valueKey)) {
-                return projectionCannotForecast(source, valueKey) ? "Insufficient stable data" : "Not scheduled this period";
-            }
-            return String(source[`${categoryKey}_method`] || "SARIMA");
-        };
-
         const setAnalyticsLoadingState = (isLoading) => {
             isLoadingAnalytics = Boolean(isLoading);
+            if (isLoadingAnalytics) window.SafeBooksTrendTooltip?.clear(document.querySelector(".analytics-trend-chart svg"));
+            if (isLoadingAnalytics) window.SafeBooksTaxBreakdown?.state(document.getElementById("analyticsTaxBreakdown"), "Loading tax breakdown…");
             if (analyticsLoadingState) {
                 analyticsLoadingState.hidden = !isLoadingAnalytics;
             }
@@ -1483,6 +1424,7 @@
                 analyticsDataPanels.classList.toggle("is-loading", isLoadingAnalytics);
             }
             if (isLoadingAnalytics) {
+                setClientWorkflowUnavailable(true);
                 if (analyticsDataPanels) analyticsDataPanels.hidden = true;
                 if (analyticsEmptyState) analyticsEmptyState.hidden = true;
             }
@@ -1515,21 +1457,21 @@
             const startLabel = formatTrendEdgeLabel(rows[0]);
             const endLabel = formatTrendEdgeLabel(rows[rows.length - 1]);
             if (startLabel && endLabel && startLabel !== endLabel) {
-                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${startLabel} to ${endLabel} (latest 6 months).`;
+                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${startLabel} to ${endLabel}.`;
                 return;
             }
             if (endLabel) {
-                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${endLabel} (latest 6 months).`;
+                analyticsTrendTimeframeCaption.textContent = `Trend chart window: ${endLabel}.`;
                 return;
             }
             analyticsTrendTimeframeCaption.textContent = "Trend chart window: latest 6 months only.";
         };
 
-        const getXYPoints = (values, width, height, padding) => {
+        const getXYPoints = (values, width, height, padding, scale = null) => {
             const safeValues = Array.isArray(values) ? values.map((value) => Number(value || 0)) : [];
             if (!safeValues.length) return [];
-            const minValue = Math.min(...safeValues, 0);
-            const maxValue = Math.max(...safeValues, 1);
+            const minValue = scale ? scale.min : Math.min(...safeValues, 0);
+            const maxValue = scale ? scale.max : Math.max(...safeValues, 1);
             const plotWidth = width - padding.left - padding.right;
             const plotHeight = height - padding.top - padding.bottom;
             const xStep = safeValues.length > 1 ? plotWidth / (safeValues.length - 1) : 0;
@@ -1563,11 +1505,6 @@
             const first = points[0];
             const last = points[points.length - 1];
             return `${linePath} L ${last.x.toFixed(2)} ${baselineY.toFixed(2)} L ${first.x.toFixed(2)} ${baselineY.toFixed(2)} Z`;
-        };
-
-        const buildPolylinePoints = (values, width, height, padding) => {
-            const points = getXYPoints(values, width, height, padding);
-            return points.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
         };
 
         const prefersReducedMotion = () => {
@@ -1659,20 +1596,28 @@
         };
 
         const renderTrend = (trendRows) => {
-            if (!analyticsSalesLine || !analyticsExpensesLine || !analyticsMonthLabels) return;
+            if (!analyticsSalesLine || !analyticsExpensesLine || !analyticsTaxLine || !analyticsMonthLabels) return;
             const rows = Array.isArray(trendRows) ? trendRows : [];
             const salesValues = rows.map((row) => Number(row.sales || 0));
             const expenseValues = rows.map((row) => Number(row.expenses || 0));
+            const taxValues = rows.map((row) => Number(row.tax || 0));
 
             const width = 640;
             const height = 240;
             const padding = { left: 34, right: 18, top: 16, bottom: 34 };
 
-            const salesPoints = getXYPoints(salesValues, width, height, padding);
-            const expensePoints = getXYPoints(expenseValues, width, height, padding);
+            const pesoScale = {
+                min: Math.min(0, ...salesValues, ...expenseValues, ...taxValues),
+                max: Math.max(1, ...salesValues, ...expenseValues, ...taxValues),
+            };
+            const salesPoints = getXYPoints(salesValues, width, height, padding, pesoScale);
+            const expensePoints = getXYPoints(expenseValues, width, height, padding, pesoScale);
+            const taxPoints = getXYPoints(taxValues, width, height, padding, pesoScale);
+            window.SafeBooksTrendTooltip?.render(analyticsSalesLine.closest("svg"), rows, salesPoints, expensePoints, taxPoints);
 
             analyticsSalesLine.setAttribute("d", getBezierPath(salesPoints));
             analyticsExpensesLine.setAttribute("d", getBezierPath(expensePoints));
+            analyticsTaxLine.setAttribute("d", getBezierPath(taxPoints));
 
             const areasContainer = document.getElementById("analyticsTrendAreas");
             if (areasContainer) {
@@ -1688,21 +1633,38 @@
             animatePolyline(analyticsSalesLine, { duration: 760, delay: 0 });
             animatePolyline(analyticsExpensesLine, { duration: 760, delay: 80 });
 
+            analyticsMonthLabels.style.setProperty("--trend-month-count", String(rows.length || 6));
+            // Match labels to the SVG's exact x coordinates, including plot padding.
+            // Inline positioning also overrides a cached equal-column stylesheet.
+            analyticsMonthLabels.style.display = "block";
+            analyticsMonthLabels.style.position = "relative";
+            analyticsMonthLabels.style.height = "1.2rem";
             analyticsMonthLabels.innerHTML = rows
-                .map((row) => `<span>${escapeHtml(row.month_label || row.month || "-")}</span>`)
+                .map((row, index) => `<span style="position:absolute;left:${salesPoints[index].x / width * 100}%;transform:translateX(-50%)">${escapeHtml(row.month_label || row.month || "-")}</span>`)
                 .join("");
         };
 
-        const renderPredictiveSparkline = (values) => {
-            if (!analyticsPredictiveLine) return;
-            const points = buildPolylinePoints(values, 240, 84, { left: 8, right: 8, top: 8, bottom: 10 });
-            analyticsPredictiveLine.setAttribute("points", points);
-            animatePolyline(analyticsPredictiveLine, { duration: 640, delay: 0 });
+        const formatForecastHistory = (forecast) => {
+            const source = forecast && typeof forecast === "object" ? forecast : {};
+            const formatPeriod = (value) => {
+                const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(value || ""));
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return match ? `${months[Number(match[2]) - 1]} ${match[1]}` : "";
+            };
+            const start = formatPeriod(source.history_start);
+            const end = formatPeriod(source.history_end);
+            const cutoff = /^\d{4}$/.test(String(source.history_cutoff_year || ""))
+                ? String(source.history_cutoff_year) : "";
+            if (!start || !end) return cutoff ? `No history through ${cutoff}.` : "";
+            return `History: ${start} to ${end}`;
         };
 
         const applyPredictiveForecast = (forecast) => {
             const safeForecast = forecast && typeof forecast === "object" ? forecast : {};
-            const hasForecast = Boolean(safeForecast.has_forecast);
+            if (analyticsPredictiveHistory) {
+                analyticsPredictiveHistory.textContent = formatForecastHistory(safeForecast);
+                analyticsPredictiveHistory.hidden = !analyticsPredictiveHistory.textContent;
+            }
             const nextPeriodLabel = String(safeForecast.next_period_label || "").trim();
             const frequencyLabel = String(safeForecast.frequency_label || "").trim();
             const periodHasFrequency = /\bQ\d\b/.test(nextPeriodLabel) || /Annual/i.test(nextPeriodLabel);
@@ -1713,57 +1675,65 @@
                     ? `Next period: ${nextPeriodLabel}${frequencySuffix}`
                     : "Next period: --";
             }
-
-            if (analyticsPredictiveSalesValue) {
-                analyticsPredictiveSalesValue.textContent = hasForecast
-                    ? formatProjectionCurrency(safeForecast, "expected_sales")
-                    : "PHP --";
-            }
-            if (analyticsPredictiveExpensesValue) {
-                analyticsPredictiveExpensesValue.textContent = hasForecast
-                    ? formatProjectionCurrency(safeForecast, "expected_expenses")
-                    : "PHP --";
-            }
-            if (analyticsPredictiveTaxValue) {
-                analyticsPredictiveTaxValue.textContent = hasForecast
-                    ? formatProjectionCurrency(safeForecast, "expected_tax")
-                    : "PHP --";
-            }
-
-            const forecastCardNote = (category, valueKey) => {
-                if (projectionHasValue(safeForecast, valueKey)) {
-                    return getProjectionMethodLabel(safeForecast, category, valueKey);
-                }
-                return String(safeForecast[`${category}_readiness_note`] || "Needs historical data");
-            };
-            if (analyticsPredictiveSalesNote) {
-                analyticsPredictiveSalesNote.textContent = forecastCardNote("sales", "expected_sales");
-            }
-            if (analyticsPredictiveExpensesNote) {
-                analyticsPredictiveExpensesNote.textContent = forecastCardNote("expenses", "expected_expenses");
-            }
-            if (analyticsPredictiveTaxNote) {
-                analyticsPredictiveTaxNote.textContent = forecastCardNote("tax", "expected_tax");
-            }
-
-            if (analyticsPredictivePlaceholder) {
-                analyticsPredictivePlaceholder.textContent = hasForecast
-                    ? "SARIMA projection based on complete, regularly spaced transaction history."
-                    : "Historical movement shown. SARIMA starts after the required history is complete.";
-            }
-
-            renderPredictiveSparkline(safeForecast.sparkline || []);
         };
 
         const predictiveForecastTableBody = document.getElementById("predictiveForecastTableBody");
 
-        const renderPredictiveForecastReport = (futureProjections) => {
+        const formatForecastCell = (projection, category) => {
+            const periodParts = value => {
+                const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(value || ""));
+                const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return match ? {year: match[1], month: months[Number(match[2]) - 1]} : null;
+            };
+            const entries = projection.forecast_cells?.[category] || [{model: projection, frequency: ""}];
+            const values = entries.map(({model, frequency, comparison = false}) => {
+                const key = `expected_${category}`;
+                const valid = projectionHasValue(model, key);
+                const value = category === "net" && !valid && projectionCannotForecast(model, key)
+                    ? "Cannot calculate" : formatProjectionCurrency(model, key);
+                const note = category === "net" ? model.net_readiness_note : model[`${category}_readiness_note`];
+                const coverage = model.coverage_start && model.coverage_end
+                    ? `${model.coverage_start} to ${model.coverage_end}` : "";
+                const basis = category === "net" && valid && model.net_sales_basis != null && model.net_expenses_basis != null
+                    ? `Sales ${formatCurrency(model.net_sales_basis)} minus expenses ${formatCurrency(model.net_expenses_basis)}` : "";
+                const start = periodParts(model.coverage_start);
+                const end = periodParts(model.coverage_end);
+                const basisPeriod = start && end ? (model.coverage_start === model.coverage_end
+                    ? `${end.month} ${end.year}` : start.year === end.year
+                        ? `${start.month} to ${end.month} ${end.year}`
+                        : `${start.month} ${start.year} to ${end.month} ${end.year}`) : coverage;
+                const visibleBasis = basis ? `<small class="analytics-forecast-basis"><span>${escapeHtml(basisPeriod)}</span><span>${escapeHtml(formatCurrency(model.net_sales_basis))} − ${escapeHtml(formatCurrency(model.net_expenses_basis))}</span></small>` : "";
+                const comparisonNote = comparison ? "Combined quarter total includes monthly-derived amounts and native quarterly predictions; do not add it to the monthly values" : "";
+                const details = [frequency, coverage, basis, comparisonNote, model[`${category}_method`], note].filter(Boolean).join(". ");
+                const interval = comparison ? "Quarter total · Includes monthly"
+                    : frequency === "quarterly" ? "Quarterly" : frequency === "monthly" ? "Monthly" : "";
+                const missing = category === "net" && !valid ? /^(Sales|Expenses) \((monthly|quarterly)\):/.exec(String(note || "")) : null;
+                const issue = missing ? `Incomplete ${missing[2]} ${missing[1].toLowerCase()}`
+                    : category === "net" && valid ? "Calculated"
+                    : !valid && /Negative SARIMA prediction/.test(note || "") ? "Negative prediction"
+                    : !valid && /Non-finite SARIMA prediction/.test(note || "") ? "Invalid prediction"
+                    : !valid && /^(Review missing (monthly|quarterly) periods|\d+ of \d+ (monthly|quarterly) periods)$/.test(note || "") ? note
+                    : "";
+                const label = [interval, issue].filter(Boolean).join(" · ");
+                const color = category === "net" ? (valid
+                    ? (Number(model[key]) > 0 ? "text-success" : Number(model[key]) < 0 ? "text-danger" : "text-muted")
+                    : "text-muted") : "";
+                return `<span class="analytics-forecast-cell-value ${comparison ? "analytics-forecast-cell-comparison" : ""} ${color}" title="${escapeHtml(details)}"
+                    aria-label="${escapeHtml([value, label, coverage, basis, comparisonNote, note].filter(Boolean).join(". "))}">
+                    ${escapeHtml(value)}${label ? `<small class="analytics-forecast-interval">${escapeHtml(label)}</small>` : ""}${visibleBasis}
+                </span>`;
+            }).join("");
+            return `<span class="analytics-forecast-cell-values">${values}</span>`;
+        };
+
+
+        const renderPredictiveForecastReport = (futureProjections, emptyMessage = "Add more records to compute forecasts.") => {
             if (!predictiveForecastTableBody) return;
             const safeProjections = Array.isArray(futureProjections) ? futureProjections : [];
             if (!safeProjections.length) {
                 predictiveForecastTableBody.innerHTML = `
                     <tr class="analytics-predictive-empty-row">
-                        <td colspan="5" class="text-center text-muted py-4">Add more records to compute forecasts.</td>
+                        <td colspan="5" class="text-center text-muted py-4">${escapeHtml(emptyMessage)}</td>
                     </tr>
                 `;
                 return;
@@ -1772,30 +1742,21 @@
             predictiveForecastTableBody.innerHTML = safeProjections
                 .map((proj) => {
                     const period = String(proj.period_label || "-");
-                    const sales = formatProjectionCurrency(proj, "expected_sales");
-                    const expenses = formatProjectionCurrency(proj, "expected_expenses");
-                    const tax = formatProjectionCurrency(proj, "expected_tax");
-                    const net = formatProjectionCurrency(proj, "expected_net");
-
-                    const netNum = Number(proj.expected_net || 0);
-                    const netClass = projectionHasValue(proj, "expected_net")
-                        ? (netNum > 0 ? "text-success" : (netNum < 0 ? "text-danger" : "text-muted"))
-                        : "text-muted";
 
                     return `
                         <tr>
                             <td data-label="Period"><strong>${escapeHtml(period)}</strong></td>
-                            <td data-label="Sales">${escapeHtml(sales)}</td>
-                            <td data-label="Expenses">${escapeHtml(expenses)}</td>
-                            <td data-label="Tax">${escapeHtml(tax)}</td>
-                            <td data-label="Net Value"><strong class="${netClass}">${escapeHtml(net)}</strong></td>
+                            <td data-label="Sales">${formatForecastCell(proj, "sales")}</td>
+                            <td data-label="Expenses">${formatForecastCell(proj, "expenses")}</td>
+                            <td data-label="Tax">${formatForecastCell(proj, "tax")}</td>
+                            <td data-label="Net Sales">${formatForecastCell(proj, "net")}</td>
                         </tr>
                     `;
                 })
                 .join("");
         };
 
-        const renderForecastProjectionChart = (futureProjections) => {
+        const renderForecastProjectionChart = (futureProjections, frequencySeries = []) => {
             if (!analyticsForecastProjectionGrid || !analyticsForecastProjectionBridges || !analyticsForecastProjectionDots || !analyticsForecastProjectionLabels || !analyticsForecastProjectionEmpty) return;
 
             const rows = Array.isArray(futureProjections) ? futureProjections : [];
@@ -1803,7 +1764,7 @@
                 { key: "expected_sales", label: "Sales", className: "sales", lineElement: analyticsForecastProjectionSalesLine },
                 { key: "expected_expenses", label: "Expenses", className: "expenses", lineElement: analyticsForecastProjectionExpensesLine },
                 { key: "expected_tax", label: "Tax", className: "tax", lineElement: analyticsForecastProjectionTaxLine },
-                { key: "expected_net", label: "Net Value", className: "net", lineElement: analyticsForecastProjectionNetLine },
+                { key: "expected_net", label: "Net Sales", className: "net", lineElement: analyticsForecastProjectionNetLine },
             ];
 
             const clearChart = () => {
@@ -1816,23 +1777,29 @@
                 analyticsForecastProjectionBridges.innerHTML = "";
                 analyticsForecastProjectionDots.innerHTML = "";
                 analyticsForecastProjectionLabels.innerHTML = "";
+                if (typeof window !== "undefined") window.SafeBooksForecastPeriods?.alignLabels?.(analyticsForecastProjectionLabels, null, []);
                 if (analyticsForecastProjectionTooltip) analyticsForecastProjectionTooltip.hidden = true;
                 analyticsForecastProjectionEmpty.textContent = "Projection graph will appear after forecast values are available.";
                 analyticsForecastProjectionEmpty.hidden = false;
             };
+
+            const svg = analyticsForecastProjectionGrid.ownerSVGElement;
+            const { width, height } = svg && window.SafeBooksForecastPeriods?.projectionViewport?.(
+                svg, () => renderForecastProjectionChart(futureProjections, frequencySeries)
+            ) || { width: 720, height: 360 };
 
             if (!rows.length) {
                 clearChart();
                 return;
             }
 
-            const width = 720;
-            const height = 360;
-            const padding = { left: 94, right: 24, top: 20, bottom: 20 };
+            const padding = { left: 72, right: 32, top: 20, bottom: 20 };
             const laneGap = 16;
             const laneCount = series.length;
             const laneHeight = (height - padding.top - padding.bottom - laneGap * (laneCount - 1)) / laneCount;
             const chartWidth = width - padding.left - padding.right;
+            const periodKey = row => String(row.coverage_end || row.period_label || "");
+            const timeline = new Map(rows.map((row, index) => [periodKey(row), index]));
             const xForIndex = (index) => {
                 if (rows.length <= 1) return padding.left + chartWidth / 2;
                 return padding.left + (index / (rows.length - 1)) * chartWidth;
@@ -1841,23 +1808,23 @@
             const plottedSeries = series.map((item, laneIndex) => {
                 const laneTop = padding.top + laneIndex * (laneHeight + laneGap);
                 const laneBottom = laneTop + laneHeight;
-                const rawValues = rows.map((row) => {
-                    if (!projectionHasValue(row, item.key) || projectionCannotForecast(row, item.key)) return null;
-                    const value = Number(row[item.key]);
-                    return Number.isFinite(value) ? value : null;
-                });
-                let firstIndex = -1;
-                let lastIndex = -1;
-                rawValues.forEach((value, index) => {
-                    if (!Number.isFinite(value)) return;
-                    if (firstIndex === -1) firstIndex = index;
-                    lastIndex = index;
-                });
-
-                const points = rawValues
-                    .map((value, index) => {
-                        if (!Number.isFinite(value)) return null;
-                        return { index, value, period: String(rows[index].period_label || "-") };
+                const plotTop = laneTop + 22;
+                const plotHeight = laneBottom - plotTop;
+                const descriptor = Array.isArray(frequencySeries) ? frequencySeries.find(lane => lane?.category === item.className) : null;
+                const laneRows = descriptor ? (Array.isArray(descriptor.rows) ? descriptor.rows : []) : rows;
+                const frequency = descriptor ? descriptor.frequency : rows[0]?.frequency || "";
+                const frequencyLabel = frequency === "monthly" ? "Monthly" : frequency === "quarterly" ? "Quarterly" : "";
+                const points = laneRows
+                    .map((row, sequenceIndex) => {
+                        if (!projectionHasValue(row, item.key) || projectionCannotForecast(row, item.key)) return null;
+                        const value = Number(row[item.key]);
+                        const index = timeline.get(periodKey(row));
+                        if (!Number.isFinite(value) || index == null) return null;
+                        const coverage = row.coverage_start && row.coverage_end
+                            ? `${row.coverage_start} to ${row.coverage_end}` : "";
+                        const end = /^(\d{4})-(\d{2})$/.exec(String(row.coverage_end || ""));
+                        const monthIndex = end ? Number(end[1]) * 12 + Number(end[2]) : null;
+                        return { index, sequenceIndex, monthIndex, value, period: String(row.period_label || "-"), coverage };
                     })
                     .filter(Boolean);
                 const values = points.map((point) => point.value);
@@ -1867,17 +1834,19 @@
                 const minValue = rawMin < 0 ? rawMin - rawRange * 0.08 : 0;
                 const maxValue = rawMax + rawRange * 0.08;
                 const valueRange = maxValue - minValue || 1;
-                const yForValue = (value) => laneTop + ((maxValue - value) / valueRange) * laneHeight;
-                const filledValues = firstIndex === -1 ? [] : fillSeriesGaps(rawValues);
-                const bridgePoints = firstIndex === -1 ? [] : filledValues
-                    .map((value, index) => {
-                        if (index < firstIndex || index > lastIndex) return null;
-                        if (!Number.isFinite(value)) return null;
-                        return { index, value };
-                    })
-                    .filter(Boolean);
+                const yForValue = (value) => plotTop + ((maxValue - value) / valueRange) * plotHeight;
+                const segments = [];
+                points.forEach((point) => {
+                    const last = segments[segments.length - 1];
+                    const previous = last?.[last.length - 1];
+                    const interval = frequency === "quarterly" ? 3 : 1;
+                    const gap = previous && previous.monthIndex != null && point.monthIndex != null
+                        && point.monthIndex - previous.monthIndex !== interval;
+                    if (!previous || previous.sequenceIndex + 1 !== point.sequenceIndex || gap) segments.push([point]);
+                    else last.push(point);
+                });
 
-                return { ...item, laneTop, laneBottom, points, bridgePoints, minValue, maxValue, midValue: minValue + valueRange / 2, yForValue };
+                return { ...item, frequencyLabel, laneTop, laneBottom, plotTop, points, segments, bridgePoints: [], minValue, maxValue, midValue: minValue + valueRange / 2, yForValue };
             });
 
             if (!plottedSeries.some((item) => item.points.length > 0)) {
@@ -1887,7 +1856,7 @@
 
             analyticsForecastProjectionEmpty.hidden = true;
             if (analyticsForecastProjectionHint) {
-                analyticsForecastProjectionHint.textContent = "Sales, expenses, tax, and net value are shown together with separate scales.";
+                analyticsForecastProjectionHint.textContent = "Each lane keeps its labelled record frequency and peso scale. Net Sales is calculated from matching Sales and Expenses.";
             }
 
             const rectX = padding.left;
@@ -1899,7 +1868,7 @@
             }).join("");
 
             const gridAndLabelMarkup = plottedSeries.map((item) => {
-                const laneCenter = item.laneTop + laneHeight / 2;
+                const laneCenter = (item.plotTop + item.laneBottom) / 2;
                 const topLabel = formatCompactCurrency(item.maxValue);
                 const midLabel = formatCompactCurrency(item.midValue);
                 const bottomLabel = formatCompactCurrency(item.minValue);
@@ -1907,15 +1876,23 @@
                 const categoryColor = item.className === "sales" ? "#2563d8" :
                                       item.className === "expenses" ? "#e4872a" :
                                       item.className === "tax" ? "#805ad5" : "#14945b";
-                const categoryMarkup = `<text class="analytics-forecast-lane-label ${item.className}" fill="${categoryColor}" x="${padding.left + 12}" y="${textY.toFixed(2)}" text-anchor="start">${escapeHtml(item.label)}</text>`;
+                const laneLabel = [item.label, item.className === "net" ? "Calculated" : "", item.frequencyLabel].filter(Boolean).join(" · ");
+                const categoryMarkup = `<text class="analytics-forecast-lane-label ${item.className}" fill="${categoryColor}" x="${padding.left + 12}" y="${textY.toFixed(2)}" text-anchor="start">${escapeHtml(laneLabel)}</text>`;
+
+                if (!item.points.length) {
+                    const message = item.className === "net" ? "Incomplete Sales or Expenses" : "No forecast available";
+                    return `<rect class="analytics-forecast-lane-bg" fill="#f4f8ff" stroke="#eef4ff" stroke-width="1" x="${rectX}" y="${item.laneTop.toFixed(2)}" width="${rectWidth}" height="${laneHeight.toFixed(2)}" rx="8" ry="8"></rect>
+                        ${categoryMarkup}
+                        <text class="analytics-forecast-grid-label analytics-forecast-lane-empty ${item.className}" fill="#6c85b0" x="${(padding.left + chartWidth / 2).toFixed(2)}" y="${(laneCenter + 8).toFixed(2)}" text-anchor="middle">${escapeHtml(message)}</text>`;
+                }
 
                 return `
                     <rect class="analytics-forecast-lane-bg" fill="#f4f8ff" stroke="#eef4ff" stroke-width="1" x="${rectX}" y="${item.laneTop.toFixed(2)}" width="${rectWidth}" height="${laneHeight.toFixed(2)}" rx="8" ry="8"></rect>
                     ${categoryMarkup}
-                    <line class="analytics-forecast-grid-line" stroke="#dce7fa" stroke-width="1" x1="${padding.left}" y1="${item.laneTop.toFixed(2)}" x2="${width - padding.right}" y2="${item.laneTop.toFixed(2)}"></line>
+                    <line class="analytics-forecast-grid-line" stroke="#dce7fa" stroke-width="1" x1="${padding.left}" y1="${item.plotTop.toFixed(2)}" x2="${width - padding.right}" y2="${item.plotTop.toFixed(2)}"></line>
                     <line class="analytics-forecast-grid-line" stroke="#dce7fa" stroke-width="1" x1="${padding.left}" y1="${laneCenter.toFixed(2)}" x2="${width - padding.right}" y2="${laneCenter.toFixed(2)}"></line>
                     <line class="analytics-forecast-grid-line baseline" stroke="#cad8f1" stroke-width="1" x1="${padding.left}" y1="${item.laneBottom.toFixed(2)}" x2="${width - padding.right}" y2="${item.laneBottom.toFixed(2)}"></line>
-                    <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(item.laneTop + 4).toFixed(2)}" text-anchor="end">${escapeHtml(topLabel)}</text>
+                    <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(item.plotTop + 4).toFixed(2)}" text-anchor="end">${escapeHtml(topLabel)}</text>
                     <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(laneCenter + 4).toFixed(2)}" text-anchor="end">${escapeHtml(midLabel)}</text>
                     <text class="analytics-forecast-grid-label" fill="#6c85b0" x="${padding.left - 12}" y="${(item.laneBottom + 4).toFixed(2)}" text-anchor="end">${escapeHtml(bottomLabel)}</text>
                 `;
@@ -1926,6 +1903,9 @@
             analyticsForecastProjectionLabels.innerHTML = rows
                 .map((row) => `<span title="${escapeHtml(String(row.period_label || "-"))}">${escapeHtml(String(row.period_label || "-"))}</span>`)
                 .join("");
+            if (typeof window !== "undefined") window.SafeBooksForecastPeriods?.alignLabels?.(
+                analyticsForecastProjectionLabels, analyticsForecastProjectionGrid.ownerSVGElement,
+                rows.map((_, index) => xForIndex(index) / width));
 
             analyticsForecastProjectionBridges.innerHTML = plottedSeries
                 .map((item) => {
@@ -1938,35 +1918,32 @@
 
             const areasContainer = document.getElementById("analyticsForecastProjectionAreas");
             if (areasContainer) {
-                areasContainer.innerHTML = plottedSeries
-                    .map((item) => {
-                        if (item.points.length < 2) return "";
-                        const pointsXY = item.points.map((p) => ({ x: xForIndex(p.index), y: item.yForValue(p.value) }));
+                areasContainer.innerHTML = plottedSeries.flatMap((item) =>
+                    item.segments.filter(segment => segment.length >= 2).map((segment) => {
+                        const pointsXY = segment.map(p => ({x: xForIndex(p.index), y: item.yForValue(p.value)}));
                         const areaD = getAreaBezierPath(pointsXY, item.laneBottom);
                         const gradId = item.className === "sales" ? "salesGrad" :
-                                       item.className === "expenses" ? "expensesGrad" :
-                                       item.className === "tax" ? "taxGrad" : "netGrad";
+                            item.className === "expenses" ? "expensesGrad" :
+                            item.className === "tax" ? "taxGrad" : "netGrad";
                         return `<path class="analytics-forecast-projection-area ${item.className}" d="${areaD}" fill="url(#${gradId})"></path>`;
-                    })
-                    .join("");
+                    })).join("");
             }
 
             const dotMarkup = [];
-            plottedSeries.forEach((item, seriesIndex) => {
-                const pointsXY = item.points.map((p) => ({ x: xForIndex(p.index), y: item.yForValue(p.value) }));
-                const lineD = getBezierPath(pointsXY);
+            plottedSeries.forEach((item) => {
+                const lineD = item.segments.map(segment => getBezierPath(
+                    segment.map(p => ({x: xForIndex(p.index), y: item.yForValue(p.value)})))).join(" ");
 
                 if (item.lineElement) {
                     item.lineElement.setAttribute("d", lineD);
-                    if (item.points.length > 1) {
-                        animatePolyline(item.lineElement, { duration: 720, delay: seriesIndex * 70 });
-                    }
                 }
 
                 item.points.forEach((point) => {
                     const cx = xForIndex(point.index).toFixed(2);
                     const cy = item.yForValue(point.value).toFixed(2);
-                    const title = `${point.period} ${item.label}: ${formatCurrency(point.value)}`;
+                    const periodDescription = point.coverage ? `${point.period} (${point.coverage})` : point.period;
+                    const valueLabel = [item.label, item.className === "net" ? "Calculated" : "", item.frequencyLabel].filter(Boolean).join(" · ");
+                    const title = `${periodDescription} ${valueLabel}: ${formatCurrency(point.value)}`;
                     dotMarkup.push(`
                         <circle
                             class="analytics-forecast-projection-dot ${item.className}"
@@ -1976,8 +1953,8 @@
                             tabindex="0"
                             role="img"
                             aria-label="${escapeHtml(title)}"
-                            data-tooltip-title="${escapeHtml(point.period)}"
-                            data-tooltip-label="${escapeHtml(item.label)}"
+                            data-tooltip-title="${escapeHtml(periodDescription)}"
+                            data-tooltip-label="${escapeHtml(valueLabel)}"
                             data-tooltip-value="${escapeHtml(formatCurrency(point.value))}"
                         >
                             <title>${escapeHtml(title)}</title>
@@ -2004,11 +1981,12 @@
                     const rect = shellRect();
                     const clientX = event.clientX || (target.getBoundingClientRect().left + target.getBoundingClientRect().width / 2);
                     const clientY = event.clientY || target.getBoundingClientRect().top;
-                    const left = Math.min(Math.max(clientX - rect.left + 12, 8), rect.width - 152);
-                    const top = Math.min(Math.max(clientY - rect.top - 64, 8), rect.height - 88);
+                    analyticsForecastProjectionTooltip.hidden = false;
+                    const tooltipRect = analyticsForecastProjectionTooltip.getBoundingClientRect();
+                    const left = Math.max(8, Math.min(clientX - rect.left + 12, rect.width - tooltipRect.width - 8));
+                    const top = Math.max(8, Math.min(clientY - rect.top - 64, rect.height - tooltipRect.height - 8));
                     analyticsForecastProjectionTooltip.style.left = `${left}px`;
                     analyticsForecastProjectionTooltip.style.top = `${top}px`;
-                    analyticsForecastProjectionTooltip.hidden = false;
                 };
                 const hideTooltip = () => {
                     analyticsForecastProjectionTooltip.hidden = true;
@@ -2024,9 +2002,39 @@
             }
         };
 
+        const updateAnalyticsEmptyMessage = () => {
+            if (!analyticsEmptyMessage) return;
+            const year = String(analyticsYearFilter ? analyticsYearFilter.value : "all");
+            // Empty totals do not prove that the client has no saved records.
+            analyticsEmptyMessage.textContent = /^[0-9]{4}$/.test(year)
+                ? `No financial activity to display for ${year}. Choose another year, or review this client's financial records.`
+                : "No financial activity to display for this client. Review the financial records, or add records when the period is ready.";
+        };
+
+        const renderForecastView = (forecast) => {
+            applyPredictiveForecast(forecast);
+            const rows = Array.isArray(forecast.future_projections) ? forecast.future_projections : [];
+            renderPredictiveForecastReport(rows);
+            const chartRows = Array.isArray(forecast.chart_projections) ? forecast.chart_projections : rows;
+            renderForecastProjectionChart(chartRows, forecast.chart_series);
+            const chartTitle = document.getElementById("analyticsForecastProjectionTitle");
+            if (chartTitle) {
+                const frequency = String(forecast.graph_frequency_label || "");
+                chartTitle.textContent = "Projection Graph" + (frequency ? ` · ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}` : "");
+            }
+            if (analyticsForecastProjectionLabels) analyticsForecastProjectionLabels.style.gridTemplateColumns = `repeat(${chartRows.length || 1}, minmax(0, 1fr))`;
+        };
+        const showForecastPayload = (forecast) => {
+            renderForecastView(window.SafeBooksForecastPeriods
+                ? window.SafeBooksForecastPeriods.prepare(forecast) : forecast);
+        };
+
         const applyAnalyticsFallbackState = () => {
+            window.SafeBooksTaxBreakdown?.state(document.getElementById("analyticsTaxBreakdown"), "Tax breakdown unavailable. Please retry.");
             if (analyticsDataPanels) analyticsDataPanels.hidden = true;
             if (analyticsEmptyState) analyticsEmptyState.hidden = false;
+            const dashboardNotice = document.getElementById("analyticsDashboardEmptyNotice");
+            if (dashboardNotice) dashboardNotice.hidden = true;
             if (analyticsScopeHint) analyticsScopeHint.textContent = `Viewing: ${currentClientProfile.client_name}`;
             applyTimeframeCaptions({}, []);
 
@@ -2036,20 +2044,31 @@
             if (analyticsNetValueValue) analyticsNetValueValue.textContent = formatCurrency(0);
 
             renderTrend([]);
-            applyPredictiveForecast({ has_forecast: false });
-            renderForecastProjectionChart([]);
-            applyClientWorkflowStatus({});
+            showForecastPayload({ has_forecast: false });
+            setClientWorkflowUnavailable();
         };
 
         const applyAnalyticsPayload = (payload) => {
+            window.SafeBooksTaxBreakdown?.render(document.getElementById("analyticsTaxBreakdown"), payload);
             const hasData = Boolean(payload && payload.has_data);
+            const predictiveForecast = payload && payload.predictive_forecast ? payload.predictive_forecast : {};
+            const hasForecastContext = Boolean(predictiveForecast.has_forecast || predictiveForecast.history_start);
 
             if (!hasData) {
-                if (analyticsDataPanels) analyticsDataPanels.hidden = true;
-                if (analyticsEmptyState) analyticsEmptyState.hidden = false;
+                updateAnalyticsEmptyMessage();
+                if (analyticsDataPanels) analyticsDataPanels.hidden = !hasForecastContext;
+                if (analyticsEmptyState) analyticsEmptyState.hidden = hasForecastContext;
             } else {
                 if (analyticsDataPanels) analyticsDataPanels.hidden = false;
                 if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+            }
+            const dashboardNotice = document.getElementById("analyticsDashboardEmptyNotice");
+            if (dashboardNotice) {
+                dashboardNotice.hidden = hasData || !hasForecastContext;
+                const year = String(analyticsYearFilter ? analyticsYearFilter.value : "");
+                dashboardNotice.textContent = /^\d{4}$/.test(year)
+                    ? `No financial activity to display for ${year}. Forecast history is shown separately.`
+                    : "No financial activity to display. Forecast history is shown separately.";
             }
 
             const summary = payload && payload.summary ? payload.summary : {};
@@ -2065,11 +2084,7 @@
             const trendRows = payload && Array.isArray(payload.monthly_trend) ? payload.monthly_trend : [];
             renderTrend(trendRows);
 
-            const predictiveForecast = payload && payload.predictive_forecast ? payload.predictive_forecast : {};
-            const forecastProjections = Array.isArray(predictiveForecast.future_projections) ? predictiveForecast.future_projections : [];
-            applyPredictiveForecast(predictiveForecast);
-            renderPredictiveForecastReport(forecastProjections);
-            renderForecastProjectionChart(forecastProjections);
+            showForecastPayload(predictiveForecast);
 
             const scope = payload && payload.scope ? payload.scope : {};
             applyTimeframeCaptions(scope, trendRows);
@@ -2096,12 +2111,19 @@
         };
 
         const loadAnalyticsSummaryFromApi = async () => {
+            const forecastPane = document.getElementById("forecasting-tab-pane");
+            const forecastNotice = forecastPane?.querySelector("[data-forecast-year-notice]");
+            const showCurrentYearNotice = Boolean(analyticsYearFilter && analyticsYearFilter.value !== "{{ analytics_current_year }}");
+            forecastPane?.classList.toggle("forecast-current-year-only", showCurrentYearNotice);
+            if (forecastNotice) forecastNotice.hidden = !showCurrentYearNotice;
             const requestToken = ++analyticsRequestToken;
             if (analyticsAbortController) {
                 analyticsAbortController.abort();
             }
             analyticsAbortController = new AbortController();
             setAnalyticsLoadingState(true);
+            const loadError = document.getElementById("analyticsLoadError");
+            if (loadError) loadError.hidden = true;
 
             try {
                 const response = await fetch(buildAnalyticsSummaryApiUrl(), {
@@ -2122,10 +2144,14 @@
 
                 if (shared && typeof shared.parseJsonSafe === "function") {
                     const result = await shared.parseJsonSafe(response);
+                    if (requestToken !== analyticsRequestToken) return;
                     if (!response.ok || !result || !result.ok) {
                         setAnalyticsLoadingState(false);
                         applyAnalyticsFallbackState();
-                        showToast("Unable to load analytics right now. Please try again.", "danger");
+                        const message = result && result.message ? result.message : "Unable to load analytics right now. Please try again.";
+                        if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+                        if (loadError) { loadError.textContent = message; loadError.hidden = false; }
+                        showToast(message, "danger");
                         return;
                     }
 
@@ -2138,6 +2164,8 @@
 
                 setAnalyticsLoadingState(false);
                 applyAnalyticsFallbackState();
+                if (analyticsEmptyState) analyticsEmptyState.hidden = true;
+                if (loadError) { loadError.textContent = "Network issue detected while loading analytics. Please retry."; loadError.hidden = false; }
                 showToast("Network issue detected while loading analytics.", "warning");
             }
         };
@@ -2184,6 +2212,7 @@
                         client_name: document.getElementById("editDetailsClientName") ? document.getElementById("editDetailsClientName").value.trim() : "",
                         tin_number: editDetailsClientTinInput ? normalizeDigits(editDetailsClientTinInput.value) : "",
                         trade_name: document.getElementById("editDetailsClientTradeName") ? document.getElementById("editDetailsClientTradeName").value.trim() : "",
+                        tax_registration: document.getElementById("editDetailsClientTaxRegistration").value,
                         location: editDetailsClientLocationInput ? editDetailsClientLocationInput.value.trim() : "",
                         permit_number: document.getElementById("editDetailsClientPermitNumber") ? document.getElementById("editDetailsClientPermitNumber").value.trim() : "",
                         birthday: document.getElementById("editDetailsClientBirthday") ? document.getElementById("editDetailsClientBirthday").value.trim() : "",
@@ -2288,7 +2317,6 @@
                 analyticsHorizonFilter.addEventListener("change", loadAnalyticsSummaryFromApi);
             }
 
-            setupModalReportEvents();
             setupEditClientDetailsEvents();
             setupCloseAndReopenClientEvents();
 
@@ -2308,516 +2336,6 @@
             }
         };
 
-        // Modal report generation state and logic
-        const modalReportLoading = document.getElementById("modalReportLoading");
-        const modalReportError = document.getElementById("modalReportError");
-        const modalReportErrorMsg = document.getElementById("modalReportErrorMsg");
-        const modalReportWrapper = document.getElementById("modalReportWrapper");
-        const modalReportSheet = document.getElementById("modalReportSheet");
-        const modalPrintReportBtn = document.getElementById("modalPrintReportBtn");
-        const modalReportYearFilter = document.getElementById("modalReportYearFilter");
-        const modalReportYearHint = document.getElementById("modalReportYearHint");
-        
-        let modalLatestReport = null;
-        let modalReportSourcePayload = null;
-
-        const modalReportMonthNames = [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-        ];
-
-        const classifyModalReportLine = (typeCode, description) => {
-            const text = `${typeCode || ""} ${description || ""}`.toLowerCase();
-            if (/(expense|cost|payment|purchase)/.test(text)) {
-                return "expenses";
-            }
-            if (/(tax|bir|1701|2551|percentage|income return|return)/.test(text)) {
-                return "tax";
-            }
-            return "sales";
-        };
-
-        const getModalReportPeriod = (entryDate) => {
-            const cleaned = String(entryDate || "").trim();
-            const match = cleaned.match(/^(\d{4})-(\d{2})-\d{2}$/);
-            if (!match) {
-                return null;
-            }
-
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
-                return null;
-            }
-
-            return {
-                key: `${year}-${String(month).padStart(2, "0")}`,
-                label: `${modalReportMonthNames[month - 1]} ${year}`,
-            };
-        };
-
-        const getModalReportTaxLabel = (row) => {
-            const typeCode = String(row && row.type_code ? row.type_code : "").trim();
-            const description = String(row && row.description ? row.description : "").trim();
-            return typeCode || description || "Tax";
-        };
-
-        const getModalReportRowYear = (row) => {
-            const match = String(row && row.entry_date || "").trim().match(/^(\d{4})-\d{2}-\d{2}$/);
-            return match ? match[1] : "";
-        };
-
-        const populateModalReportYearOptions = (payload) => {
-            if (!modalReportYearFilter) return;
-
-            const currentYear = String(new Date().getFullYear());
-            const transactionRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-            const recordedYears = Array.from(new Set(
-                transactionRows.map(getModalReportRowYear).filter(Boolean)
-            )).sort((left, right) => Number(right) - Number(left));
-
-            modalReportYearFilter.replaceChildren();
-
-            const yearOptions = Array.from(new Set([currentYear, ...recordedYears]));
-            yearOptions.forEach((year) => {
-                const option = document.createElement("option");
-                option.value = year;
-                option.textContent = year === currentYear ? `${year} (Current Year)` : year;
-                modalReportYearFilter.appendChild(option);
-            });
-
-            const allYearsOption = document.createElement("option");
-            allYearsOption.value = "all";
-            allYearsOption.textContent = "All Years";
-            modalReportYearFilter.appendChild(allYearsOption);
-            modalReportYearFilter.value = currentYear;
-            modalReportYearFilter.disabled = false;
-        };
-
-        const getSelectedModalReportYear = () => {
-            const selectedValue = String(modalReportYearFilter && modalReportYearFilter.value || "").trim();
-            if (selectedValue === "all" || /^\d{4}$/.test(selectedValue)) {
-                return selectedValue;
-            }
-            return String(new Date().getFullYear());
-        };
-
-        const buildModalReportData = (payload, yearFilter) => {
-            const selectedYear = yearFilter === "all" || /^\d{4}$/.test(String(yearFilter || ""))
-                ? String(yearFilter)
-                : String(new Date().getFullYear());
-            const allTransactionRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-            const transactionRows = selectedYear === "all"
-                ? allTransactionRows
-                : allTransactionRows.filter((row) => getModalReportRowYear(row) === selectedYear);
-            const periodMap = new Map();
-            const taxLabelMap = new Map();
-
-            transactionRows.forEach((row) => {
-                const period = getModalReportPeriod(row && row.entry_date);
-                if (!period) return;
-
-                if (!periodMap.has(period.key)) {
-                    periodMap.set(period.key, {
-                        period: period.label,
-                        salesValue: 0,
-                        expensesValue: 0,
-                        taxValues: new Map(),
-                    });
-                }
-
-                const bucket = periodMap.get(period.key);
-                const amount = Number(row && row.amount ? row.amount : 0);
-                const category = classifyModalReportLine(row && row.type_code, row && row.description);
-
-                if (category === "expenses") {
-                    bucket.expensesValue += Number.isFinite(amount) ? amount : 0;
-                } else if (category === "tax") {
-                    const taxLabel = getModalReportTaxLabel(row);
-                    const taxKey = taxLabel.toLowerCase();
-                    if (!taxLabelMap.has(taxKey)) {
-                        taxLabelMap.set(taxKey, taxLabel);
-                    }
-                    bucket.taxValues.set(
-                        taxKey,
-                        (bucket.taxValues.get(taxKey) || 0) + (Number.isFinite(amount) ? amount : 0)
-                    );
-                } else {
-                    bucket.salesValue += Number.isFinite(amount) ? amount : 0;
-                }
-            });
-
-            const taxColumnMeta = Array.from(taxLabelMap.entries())
-                .sort((left, right) => left[1].localeCompare(right[1]))
-                .map(([key, label], index) => ({
-                    key: `tax_${index}`,
-                    taxKey: key,
-                    label,
-                }));
-
-            const rows = Array.from(periodMap.entries())
-                .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-                .map(([, values]) => {
-                    const netValue = values.salesValue - values.expensesValue;
-                    const taxValues = {};
-                    taxColumnMeta.forEach((column) => {
-                        taxValues[column.key] = formatCurrency(values.taxValues.get(column.taxKey) || 0);
-                    });
-                    return {
-                        period: values.period,
-                        sales: formatCurrency(values.salesValue),
-                        expenses: formatCurrency(values.expensesValue),
-                        ...taxValues,
-                        net_value: formatCurrency(netValue),
-                    };
-                });
-
-            const dateRangeLabel = selectedYear === "all" ? "All Years" : selectedYear;
-
-            return {
-                reportType: "financial_summary",
-                reportLabel: "Financial Summary Report",
-                dateRangeLabel,
-                generatedAt: new Date().toISOString(),
-                yearFilter: selectedYear,
-                clientId: CLIENT_ID,
-                scopeLabel: currentClientProfile.client_name,
-                columns: [
-                    { key: "period", label: "Period" },
-                    { key: "sales", label: "Sales" },
-                    { key: "expenses", label: "Expenses" },
-                    ...taxColumnMeta.map((column) => ({ key: column.key, label: column.label })),
-                    { key: "net_value", label: "Net Value" },
-                ],
-                rows,
-            };
-        };
-
-        const buildModalLedgerSheetHtml = (report) => {
-            if (!window.SafeBooksReportsShared || typeof window.SafeBooksReportsShared.buildReportSheetHtml !== "function") {
-                return "";
-            }
-
-            const clientName = currentClientProfile.client_name;
-            const clientTin = formatTin(currentClientProfile.tin_number);
-            const tradeName = currentClientProfile.trade_name;
-            const location = currentClientProfile.location;
-            const permitNumber = currentClientProfile.permit_number;
-            const birthday = currentClientProfile.birthday;
-            const email = currentClientProfile.email;
-            const emailPassword = currentClientProfile.email_password;
-            const orusAccount = currentClientProfile.orus_account;
-            const orusPassword = currentClientProfile.orus_password;
-
-            const customFields = [];
-            const customFieldsEl = document.getElementById("clientCustomFieldsData");
-            if (customFieldsEl) {
-                try {
-                    const parsed = JSON.parse(customFieldsEl.textContent);
-                    if (Array.isArray(parsed)) {
-                        customFields.push(...parsed);
-                    }
-                } catch (e) {
-                    console.error("Error parsing custom fields:", e);
-                }
-            }
-
-            const reportTypeLabel = "Financial Summary Report";
-            const generatedLabel = new Intl.DateTimeFormat("en-PH", {
-                year: "numeric", month: "short", day: "numeric",
-                hour: "2-digit", minute: "2-digit"
-            }).format(new Date());
-            const dateRangeLabel = report.dateRangeLabel || "All recorded entries";
-
-            const columns = report.columns.map((c) => c.label.toUpperCase());
-            const rows = report.rows.map((r) => {
-                return report.columns.map((c) => r[c.key]);
-            });
-
-            return window.SafeBooksReportsShared.buildReportSheetHtml({
-                reportTitle: "SafeBooks Client Report Sheet",
-                printedBy: "{{ current_user_name|default:'Bookkeeper User'|escapejs }}",
-                meta: {
-                    reportTypeLabel,
-                    dateRangeLabel,
-                    generatedLabel,
-                },
-                client: {
-                    clientName,
-                    tin: clientTin,
-                    tradeName,
-                    location,
-                    permitNumber,
-                    birthday,
-                    email,
-                    emailPassword,
-                    orusAccount,
-                    orusPassword,
-                    customFields,
-                },
-                table: {
-                    columns,
-                    rows,
-                    minRows: 14,
-                },
-                rowHint: rows.length
-                    ? "Prepared from generated report values."
-                    : report.yearFilter === "all"
-                        ? "No transactions were found for this client."
-                        : `No transactions were recorded for ${report.yearFilter}.`,
-            });
-        };
-
-        const renderModalReportForSelectedYear = () => {
-            if (!modalReportSourcePayload || !modalReportSheet) return;
-
-            const selectedYear = getSelectedModalReportYear();
-            modalLatestReport = buildModalReportData(modalReportSourcePayload, selectedYear);
-            modalReportSheet.innerHTML = buildModalLedgerSheetHtml(modalLatestReport);
-
-            if (modalReportYearHint) {
-                modalReportYearHint.textContent = selectedYear === "all"
-                    ? "Preview and print include transactions from all recorded years."
-                    : `Preview and print include only ${selectedYear} transactions.`;
-            }
-        };
-
-        const printModalLedgerLayout = () => {
-            if (!modalLatestReport) return;
-            const sheetMarkup = String(modalReportSheet.innerHTML || "").trim();
-            if (!sheetMarkup) return;
-
-            const reportLabel = "Financial Summary Report";
-            const documentMarkup = `
-                <!doctype html>
-                <html lang="en">
-                    <head>
-                        <meta charset="utf-8">
-                        <title>${reportLabel} - Print</title>
-                        <style>
-                            @page {
-                                size: A4 portrait;
-                                margin: 10mm;
-                            }
-                            * {
-                                box-sizing: border-box;
-                            }
-                            html, body {
-                                margin: 0;
-                                padding: 0;
-                                background: #ffffff;
-                                color: #1f3f74;
-                                font-family: Arial, "Helvetica Neue", sans-serif;
-                            }
-                            .reports-print-root {
-                                width: 100%;
-                            }
-                            .reports-ledger-sheet {
-                                border: 1px solid #c7d8f6;
-                                padding: 8px;
-                                width: 100%;
-                            }
-                            .reports-ledger-heading {
-                                display: flex;
-                                align-items: baseline;
-                                justify-content: space-between;
-                                gap: 16px;
-                            }
-                            .reports-ledger-title {
-                                margin: 0;
-                                color: #183365;
-                                font-size: 13px;
-                                font-weight: 700;
-                                text-transform: uppercase;
-                                letter-spacing: 0.04em;
-                            }
-                            .reports-ledger-printed-by {
-                                margin: 0;
-                                color: #607ca9;
-                                font-size: 10px;
-                                font-weight: 700;
-                                text-align: right;
-                                white-space: nowrap;
-                            }
-                            .reports-ledger-meta-row {
-                                margin: 6px 0;
-                            }
-                            .reports-ledger-meta-pill {
-                                display: inline-block;
-                                border: 1px solid #d8e4f8;
-                                border-radius: 999px;
-                                padding: 2px 8px;
-                                margin-right: 4px;
-                                margin-bottom: 4px;
-                                background: #f8fbff;
-                                color: #3f5e92;
-                                font-size: 10px;
-                                font-weight: 700;
-                            }
-                            .reports-ledger-client-table,
-                            .reports-ledger-grid-table {
-                                width: 100%;
-                                border-collapse: collapse;
-                                table-layout: fixed;
-                            }
-                            .reports-ledger-client-table th,
-                            .reports-ledger-client-table td,
-                            .reports-ledger-grid-table th,
-                            .reports-ledger-grid-table td {
-                                border: 1px solid #ccd9f0;
-                                padding: 4px 6px;
-                                color: #1f3f74;
-                                font-size: 10px;
-                            }
-                            .reports-ledger-client-table th,
-                            .reports-ledger-grid-table th {
-                                background: #f7fafe;
-                                color: #4d6896;
-                                text-transform: uppercase;
-                                letter-spacing: 0.04em;
-                                font-weight: 700;
-                            }
-                            .reports-ledger-grid-wrap {
-                                margin-top: 8px;
-                            }
-                            .reports-ledger-grid-table td {
-                                height: 24px;
-                                font-weight: 700;
-                            }
-                            .reports-ledger-note {
-                                margin-top: 6px;
-                                color: #607ca9;
-                                font-size: 10px;
-                                font-weight: 700;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <main class="reports-print-root">${sheetMarkup}</main>
-                    </body>
-                </html>
-            `;
-
-            const existingFrame = document.getElementById("reportsPrintFrame");
-            if (existingFrame) {
-                existingFrame.remove();
-            }
-
-            const printFrame = document.createElement("iframe");
-            printFrame.id = "reportsPrintFrame";
-            printFrame.setAttribute("title", "Reports Print Layout");
-            printFrame.setAttribute("aria-hidden", "true");
-            printFrame.style.position = "fixed";
-            printFrame.style.right = "0";
-            printFrame.style.bottom = "0";
-            printFrame.style.width = "0";
-            printFrame.style.height = "0";
-            printFrame.style.border = "0";
-            printFrame.style.opacity = "0";
-            printFrame.style.pointerEvents = "none";
-            document.body.appendChild(printFrame);
-
-            const frameWindow = printFrame.contentWindow;
-            const frameDocument = frameWindow ? frameWindow.document : null;
-            if (!frameDocument) {
-                showToast("Print preview could not be prepared.", "warning");
-                printFrame.remove();
-                return;
-            }
-
-            try {
-                frameDocument.open();
-                frameDocument.write(documentMarkup);
-                frameDocument.close();
-            } catch (error) {
-                showToast("Print preview could not be prepared.", "warning");
-                printFrame.remove();
-                return;
-            }
-
-            const triggerPrint = () => {
-                frameWindow.focus();
-                frameWindow.print();
-                window.setTimeout(() => {
-                    printFrame.remove();
-                }, 800);
-            };
-
-            if (frameDocument.readyState === "complete") {
-                window.setTimeout(triggerPrint, 60);
-            } else {
-                printFrame.addEventListener("load", () => {
-                    window.setTimeout(triggerPrint, 60);
-                }, { once: true });
-            }
-        };
-
-        const loadModalReport = async () => {
-            if (modalReportLoading) modalReportLoading.hidden = false;
-            if (modalReportError) modalReportError.hidden = true;
-            if (modalReportWrapper) modalReportWrapper.hidden = true;
-            if (modalPrintReportBtn) modalPrintReportBtn.disabled = true;
-            if (modalReportYearFilter) {
-                modalReportYearFilter.disabled = true;
-                modalReportYearFilter.replaceChildren();
-                const loadingOption = document.createElement("option");
-                loadingOption.value = "";
-                loadingOption.textContent = "Loading years...";
-                modalReportYearFilter.appendChild(loadingOption);
-            }
-            if (modalReportYearHint) {
-                modalReportYearHint.textContent = "Loading the available bookkeeping years...";
-            }
-
-            try {
-                const params = new URLSearchParams();
-                params.set("client_id", String(CLIENT_ID));
-                params.set("date_from", "2000-01-01");
-                params.set("date_to", "2100-12-31");
-
-                const url = `${REPORTS_PRINT_LAYOUT_API_URL}?${params.toString()}`;
-                const response = await fetch(url, {
-                    method: "GET",
-                    headers: { "Accept": "application/json" },
-                    credentials: "same-origin",
-                });
-
-                if (response.status === 401) {
-                    const nextPath = encodeURIComponent(window.location.pathname + window.location.search);
-                    window.location.assign(`{% url 'login' %}?next=${nextPath}`);
-                    return;
-                }
-
-                if (shared && typeof shared.parseJsonSafe === "function") {
-                    const result = await shared.parseJsonSafe(response);
-                    if (!response.ok || !result || !result.ok) {
-                        throw new Error(result && result.message ? result.message : "Unable to generate report data.");
-                    }
-
-                    modalReportSourcePayload = result;
-                    populateModalReportYearOptions(result);
-                    renderModalReportForSelectedYear();
-                    
-                    if (modalReportLoading) modalReportLoading.hidden = true;
-                    if (modalReportWrapper) modalReportWrapper.hidden = false;
-                    if (modalPrintReportBtn) modalPrintReportBtn.disabled = false;
-                }
-            } catch (err) {
-                if (modalReportLoading) modalReportLoading.hidden = true;
-                if (modalReportError) modalReportError.hidden = false;
-                if (modalReportErrorMsg) modalReportErrorMsg.textContent = err.message || "Failed to prepare report preview.";
-            }
-        };
-
-        const showReportModal = () => {
-            const modalEl = document.getElementById("formattedReportModal");
-            if (modalEl) {
-                const reportModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                reportModal.show();
-                loadModalReport();
-            }
-        };
-
         const setupCloseAndReopenClientEvents = () => {
             const closeClientModalEl = document.getElementById("closeClientModal");
             const reopenClientModalEl = document.getElementById("reopenClientModal");
@@ -2834,16 +2352,19 @@
 
             const updateClosedUiState = (clientData) => {
                 const isClosed = Boolean(clientData && clientData.remarks === "closed");
+                const remark = String(clientData && clientData.remarks || "new");
+                currentClientProfile.remarks = remark;
+                const statusLabel = formatRemarksLabel(remark);
+                const statusColors = { new: "info", active: "success", closed: "secondary" };
+                const statusColor = statusColors[remark] || "info";
                 const titleBadge = document.querySelector(".client-details-status-badge");
                 if (titleBadge) {
-                    titleBadge.className = isClosed
-                        ? "badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1-5 client-details-status-badge"
-                        : "badge bg-success-subtle text-success border border-success-subtle px-3 py-1-5 client-details-status-badge";
-                    titleBadge.textContent = isClosed ? "Closed" : "Active";
+                    titleBadge.className = `badge bg-${statusColor}-subtle text-${statusColor} border border-${statusColor}-subtle px-3 py-1-5 client-details-status-badge`;
+                    titleBadge.textContent = statusLabel;
                 }
                 const remarksField = document.querySelector('[data-client-profile-field="remarks"]');
                 if (remarksField) {
-                    remarksField.textContent = isClosed ? "Closed" : "Active";
+                    remarksField.textContent = statusLabel;
                 }
 
                 const banner = document.getElementById("clientClosedNoticeBanner");
@@ -3013,52 +2534,6 @@
                     }
                 });
             }
-        };
-
-        const setupModalReportEvents = () => {
-            const modalEl = document.getElementById("formattedReportModal");
-            const generateReportActionBtn = document.getElementById("generateReportActionBtn");
-            if (generateReportActionBtn) {
-                generateReportActionBtn.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    showReportModal();
-                });
-            }
-
-            if (modalPrintReportBtn) {
-                modalPrintReportBtn.addEventListener("click", () => {
-                    printModalLedgerLayout();
-                });
-            }
-
-            if (modalReportYearFilter) {
-                modalReportYearFilter.addEventListener("change", () => {
-                    renderModalReportForSelectedYear();
-                });
-            }
-
-            if (modalEl) {
-                modalEl.addEventListener("hidden.bs.modal", () => {
-                    if (modalReportLoading) modalReportLoading.hidden = true;
-                    if (modalReportError) modalReportError.hidden = true;
-
-                    window.setTimeout(() => {
-                        if (document.querySelector(".modal.show")) {
-                            return;
-                        }
-
-                        document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
-                        document.body.classList.remove("modal-open");
-                        document.body.style.removeProperty("overflow");
-                        document.body.style.removeProperty("padding-right");
-                    }, 50);
-                });
-            }
-        };
-
-        // Export globally for the inline click intercept handler
-        window.SafeBooksClientDetails = {
-            showReportModal: showReportModal
         };
 
         initializeClientDetailsPage();

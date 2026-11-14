@@ -1,355 +1,235 @@
-        // Public Philippine Standard Geographic Code (PSGC) data, limited to Davao Region XI.
-        // Stored values remain "Province, City/Municipality, Barangay" for API compatibility.
         const LOCATION_API_BASE_URL = "https://psgc.cloud/api/v2";
-        const DAVAO_REGION_XI_CODE = "1100000000";
-        const LOCATION_REQUEST_TIMEOUT_MS = 10000;
+        const DAVAO_REGION_CODE = "1100000000";
+        const DAVAO_REGION_PATH = `/regions/${DAVAO_REGION_CODE}`;
         const locationApiCache = new Map();
+        let locationCatalog;
 
-        const LOCATION_STAGE = {
-            province: "province",
-            city: "city",
-            barangay: "barangay",
-        };
-
-        const LOCATION_ACTIONS = {
-            backProvince: "__location_back_province",
-            backCity: "__location_back_city",
-            currentLocation: "__location_current",
-            retry: "__location_retry",
-        };
-
-        const normalizeLocationItem = (item) => ({
-            code: String(item && item.code ? item.code : "").trim(),
-            name: String(item && item.name ? item.name : "").trim(),
-        });
-
-        const sortLocationItems = (items) => items
-            .map(normalizeLocationItem)
-            .filter((item) => item.code && item.name)
-            .sort((first, second) => first.name.localeCompare(second.name));
-
-        const fetchLocationData = async (path) => {
-            if (locationApiCache.has(path)) return locationApiCache.get(path);
-
-            const controller = new AbortController();
-            const timeoutId = window.setTimeout(() => controller.abort(), LOCATION_REQUEST_TIMEOUT_MS);
-            try {
-                const response = await fetch(`${LOCATION_API_BASE_URL}${path}`, {
+        const fetchLocationData = (path) => {
+            if (!locationApiCache.has(path)) {
+                const controller = new AbortController();
+                const timeout = window.setTimeout(() => controller.abort(), 15000);
+                const request = fetch(LOCATION_API_BASE_URL + path, {
                     headers: { Accept: "application/json" },
                     cache: "force-cache",
                     signal: controller.signal,
-                });
-                if (!response.ok) throw new Error(`Location service returned ${response.status}.`);
-
-                const payload = await response.json();
-                if (!payload || !Array.isArray(payload.data)) {
-                    throw new Error("Location service returned an unexpected response.");
-                }
-
-                const data = sortLocationItems(payload.data);
-                locationApiCache.set(path, data);
-                return data;
-            } finally {
-                window.clearTimeout(timeoutId);
+                }).then(async (response) => {
+                    if (!response.ok) throw new Error("Location service unavailable");
+                    const payload = await response.json();
+                    if (!Array.isArray(payload.data)) throw new Error("Invalid location response");
+                    return payload.data;
+                }).catch((error) => {
+                    locationApiCache.delete(path);
+                    throw error;
+                }).finally(() => window.clearTimeout(timeout));
+                locationApiCache.set(path, request);
             }
+            return locationApiCache.get(path);
         };
 
-        const resetSelectOptions = (selectElement, placeholder) => {
-            if (!selectElement) return;
-            selectElement.innerHTML = "";
-            const option = document.createElement("option");
-            option.value = "";
-            option.textContent = placeholder;
-            option.disabled = true;
-            option.selected = true;
-            selectElement.appendChild(option);
+        const locationText = (value) => String(value ?? "").trim();
+        const locationSearchText = (value) => locationText(value).normalize("NFD")
+            .replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+        const locationKey = (...names) => names.map(locationSearchText).join("|");
+
+        const loadLocationCatalog = async () => {
+            const [regions, provinces, cities, barangays] = await Promise.all([
+                fetchLocationData("/regions"),
+                fetchLocationData(DAVAO_REGION_PATH + "/provinces"),
+                fetchLocationData(DAVAO_REGION_PATH + "/cities-municipalities"),
+                fetchLocationData(DAVAO_REGION_PATH + "/barangays").catch(() => null),
+            ]);
+            const region = regions.find((item) => item.code === DAVAO_REGION_CODE);
+            if (!region) throw new Error("Davao Region is unavailable");
+            const provinceByName = new Map(provinces.map((province) => [
+                locationKey(province.region, province.name), province,
+            ]));
+            const cityByCode = new Map(cities.map((city) => [city.code, city]));
+            const cityByName = new Map(cities.map((city) => [
+                locationKey(city.region, city.province, city.name), city,
+            ]));
+            const result = (item, level, region, province, city, barangay) => {
+                const names = [barangay?.name, city?.name, province?.name, region?.name]
+                    .map(locationText).filter(Boolean);
+                // Keep the legacy most-general-first order for the saved location string.
+                const value = [province?.name || region?.name, city?.name, barangay?.name]
+                    .map(locationText).filter(Boolean).join(", ");
+                return {
+                    code: item.code, name: locationText(item.name), level, region, province, city, barangay, value,
+                    hierarchy: names.slice(1).join(" → "),
+                    nameKey: locationSearchText(item.name),
+                    searchKey: locationSearchText(names.join(" ") + " " + level),
+                };
+            };
+            const results = [
+                result(region, "Region", region),
+                ...provinces.map((province) => result(province, "Province", region, province)),
+                ...cities.map((city) => result(
+                    city, city.type === "Mun" ? "Municipality" : "City", region,
+                    provinceByName.get(locationKey(region.name, city.province)), city
+                )),
+            ];
+
+            for (const barangay of barangays ?? []) {
+                const city = cityByName.get(locationKey(region.name, barangay.province, barangay.city_municipality))
+                    || cityByCode.get(barangay.code.slice(0, 7) + "000");
+                const province = provinceByName.get(locationKey(region.name, barangay.province));
+                results.push(result(
+                    barangay, "Barangay", region, province,
+                    city || { name: barangay.city_municipality }, barangay
+                ));
+            }
+            return { results, incomplete: barangays === null };
         };
 
-        const appendSelectOption = (selectElement, value, label) => {
-            if (!selectElement) return;
-            const option = document.createElement("option");
-            option.value = value;
-            option.textContent = label;
-            selectElement.appendChild(option);
+        const searchLocations = async (query) => {
+            locationCatalog ??= loadLocationCatalog().catch((error) => {
+                locationCatalog = null;
+                throw error;
+            });
+            const request = locationCatalog;
+            const { results, incomplete } = await request;
+            if (incomplete && locationCatalog === request) locationCatalog = null;
+            const words = query.split(" ");
+            const rank = (item) => item.nameKey === query ? 0 : item.nameKey.startsWith(query) ? 1
+                : words.every((word) => item.nameKey.includes(word)) ? 2 : 3;
+            const items = results
+                .filter((item) => words.every((word) => item.searchKey.includes(word)))
+                .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name) || a.hierarchy.localeCompare(b.hierarchy))
+                .slice(0, 20);
+            return { items, incomplete };
         };
 
         const createLocationState = ({ hiddenInput, select, summary }) => ({
-            hiddenInput,
-            select,
-            summary,
-            stage: LOCATION_STAGE.province,
-            selectedProvince: null,
-            selectedCity: null,
-            selectedBarangay: null,
-            provinces: [],
-            cities: [],
-            barangays: [],
-            legacyValue: "",
-            isLoading: false,
-            errorMessage: "",
-            requestId: 0,
-            isBound: false,
+            hiddenInput, select, summary, results: document.getElementById(select.id + "Results"),
+            selection: null, confirmedValue: "", requestId: 0, timer: null, active: -1,
         });
 
-        const getLocationSummaryParts = (state) => state.legacyValue
-            ? [state.legacyValue]
-            : [
-                state.selectedProvince && state.selectedProvince.name,
-                state.selectedCity && state.selectedCity.name,
-                state.selectedBarangay && state.selectedBarangay.name,
-            ].filter(Boolean);
-
-        const renderLocationSummary = (state) => {
-            if (!state || !state.summary) return;
-            if (state.errorMessage) {
-                state.summary.textContent = "Location data could not be loaded. Please retry.";
-                state.summary.dataset.locationStatus = "error";
-                state.summary.hidden = false;
-                return;
-            }
-
-            const parts = getLocationSummaryParts(state);
-            if (!parts.length) {
-                state.summary.textContent = "";
-                delete state.summary.dataset.locationStatus;
-                state.summary.hidden = true;
-                return;
-            }
-
-            state.summary.textContent = parts.join(", ");
-            delete state.summary.dataset.locationStatus;
-            state.summary.hidden = false;
+        const showLocationStatus = (state, message = "", error = false) => {
+            state.summary.textContent = message;
+            state.summary.hidden = !message;
+            if (error) state.summary.dataset.locationStatus = "error";
+            else delete state.summary.dataset.locationStatus;
         };
 
-        const updateLocationHiddenValue = (state) => {
-            if (!state || !state.hiddenInput) return;
-            if (state.legacyValue) {
-                state.hiddenInput.value = state.legacyValue;
-                return;
-            }
-            const parts = [
-                state.selectedProvince && state.selectedProvince.name,
-                state.selectedCity && state.selectedCity.name,
-                state.selectedBarangay && state.selectedBarangay.name,
-            ].filter(Boolean);
-            state.hiddenInput.value = parts.length === 3 ? parts.join(", ") : "";
-        };
-
-        const getStageConfiguration = (state) => {
-            if (state.stage === LOCATION_STAGE.province) {
-                return { items: state.provinces, placeholder: "Select province", ariaLabel: "Select province", backAction: "", backLabel: "", selected: state.selectedProvince };
-            }
-            if (state.stage === LOCATION_STAGE.city) {
-                return { items: state.cities, placeholder: "Select city/municipality", ariaLabel: "Select city or municipality", backAction: LOCATION_ACTIONS.backProvince, backLabel: "Change province", selected: state.selectedCity };
-            }
-            return { items: state.barangays, placeholder: "Select barangay", ariaLabel: "Select barangay", backAction: LOCATION_ACTIONS.backCity, backLabel: "Change city/municipality", selected: state.selectedBarangay };
-        };
-
-        const renderLocationSelect = (state) => {
-            if (!state || !state.select) return;
-            if (state.isLoading) {
-                resetSelectOptions(state.select, "Loading locations...");
-                if (state.legacyValue) {
-                    appendSelectOption(state.select, LOCATION_ACTIONS.currentLocation, `Current: ${state.legacyValue}`);
-                    state.select.value = LOCATION_ACTIONS.currentLocation;
-                }
-                // Keep the required control enabled so a partial selection cannot bypass form validation.
-                state.select.disabled = false;
-                state.select.setAttribute("aria-busy", "true");
-                return;
-            }
-
-            const configuration = getStageConfiguration(state);
-            resetSelectOptions(state.select, state.errorMessage ? "Unable to load locations" : configuration.placeholder);
-            state.select.disabled = false;
+        const closeLocationResults = (state) => {
+            window.clearTimeout(state.timer);
+            state.requestId++;
+            state.active = -1;
+            state.results.replaceChildren();
+            state.results.hidden = true;
+            state.select.setAttribute("aria-expanded", "false");
+            state.select.removeAttribute("aria-activedescendant");
             state.select.removeAttribute("aria-busy");
-
-            if (state.errorMessage) {
-                appendSelectOption(state.select, LOCATION_ACTIONS.retry, "Retry loading locations");
-                if (configuration.backAction) appendSelectOption(state.select, configuration.backAction, configuration.backLabel);
-            } else {
-                if (configuration.backAction) appendSelectOption(state.select, configuration.backAction, configuration.backLabel);
-                configuration.items.forEach((item) => appendSelectOption(state.select, item.code, item.name));
-                if (configuration.selected && configuration.selected.code) state.select.value = configuration.selected.code;
-            }
-
-            if (state.stage === LOCATION_STAGE.province && state.legacyValue) {
-                appendSelectOption(state.select, LOCATION_ACTIONS.currentLocation, `Current: ${state.legacyValue}`);
-                state.select.value = LOCATION_ACTIONS.currentLocation;
-            }
-            state.select.setAttribute("aria-label", configuration.ariaLabel);
-        };
-
-        const getLocationPathForStage = (state) => {
-            if (state.stage === LOCATION_STAGE.province) {
-                return `/regions/${DAVAO_REGION_XI_CODE}/provinces`;
-            }
-            if (state.stage === LOCATION_STAGE.city && state.selectedProvince) {
-                return `/regions/${DAVAO_REGION_XI_CODE}/provinces/${encodeURIComponent(state.selectedProvince.code)}/cities-municipalities`;
-            }
-            if (state.stage === LOCATION_STAGE.barangay && state.selectedProvince && state.selectedCity) {
-                return `/regions/${DAVAO_REGION_XI_CODE}/provinces/${encodeURIComponent(state.selectedProvince.code)}/cities-municipalities/${encodeURIComponent(state.selectedCity.code)}/barangays`;
-            }
-            return "";
-        };
-
-        const setStageItems = (state, items) => {
-            if (state.stage === LOCATION_STAGE.province) {
-                state.provinces = items;
-            } else if (state.stage === LOCATION_STAGE.city) {
-                state.cities = items;
-            } else {
-                state.barangays = items;
-            }
-        };
-
-        const updateLocationValidity = (state) => {
-            if (!state || !state.select) return;
-            const hasLocation = Boolean(state.hiddenInput && state.hiddenInput.value.trim());
-            state.select.setCustomValidity(hasLocation ? "" : "Select a complete Davao Region XI location.");
-        };
-
-        const loadLocationStage = async (state) => {
-            if (!state) return;
-            const path = getLocationPathForStage(state);
-            if (!path) {
-                state.errorMessage = "Location selection is incomplete.";
-                state.isLoading = false;
-                renderLocationSelect(state);
-                renderLocationSummary(state);
-                return;
-            }
-
-            const requestId = ++state.requestId;
-            state.isLoading = true;
-            state.errorMessage = "";
-            updateLocationHiddenValue(state);
-            updateLocationValidity(state);
-            renderLocationSelect(state);
-            renderLocationSummary(state);
-
-            try {
-                const items = await fetchLocationData(path);
-                if (requestId !== state.requestId) return;
-                setStageItems(state, items);
-                state.errorMessage = "";
-            } catch (error) {
-                if (requestId !== state.requestId) return;
-                state.errorMessage = error && error.name === "AbortError"
-                    ? "The location service timed out."
-                    : "The location service is unavailable.";
-            } finally {
-                if (requestId === state.requestId) {
-                    state.isLoading = false;
-                    renderLocationSelect(state);
-                    renderLocationSummary(state);
-                    updateLocationHiddenValue(state);
-                    updateLocationValidity(state);
-                }
-            }
-        };
-
-        const selectItemByCode = (items, code) => items.find((item) => item.code === code) || null;
-
-        const handleLocationSelectChange = (state) => {
-            if (!state || !state.select || state.isLoading) return;
-            const value = state.select.value;
-            if (value === LOCATION_ACTIONS.currentLocation) {
-                syncLocationState(state);
-                return;
-            }
-            if (value === LOCATION_ACTIONS.retry) {
-                loadLocationStage(state);
-                return;
-            }
-            if (value === LOCATION_ACTIONS.backProvince) {
-                state.stage = LOCATION_STAGE.province;
-                state.selectedProvince = null;
-                state.selectedCity = null;
-                state.selectedBarangay = null;
-                loadLocationStage(state);
-                return;
-            }
-            if (value === LOCATION_ACTIONS.backCity) {
-                state.stage = LOCATION_STAGE.city;
-                state.selectedCity = null;
-                state.selectedBarangay = null;
-                loadLocationStage(state);
-                return;
-            }
-
-            if (state.stage === LOCATION_STAGE.province) {
-                const province = selectItemByCode(state.provinces, value);
-                if (!province) return;
-                state.selectedProvince = province;
-                state.selectedCity = null;
-                state.selectedBarangay = null;
-                state.stage = LOCATION_STAGE.city;
-                loadLocationStage(state);
-                return;
-            }
-            if (state.stage === LOCATION_STAGE.city) {
-                const city = selectItemByCode(state.cities, value);
-                if (!city) return;
-                state.selectedCity = city;
-                state.selectedBarangay = null;
-                state.stage = LOCATION_STAGE.barangay;
-                loadLocationStage(state);
-                return;
-            }
-
-            const barangay = selectItemByCode(state.barangays, value);
-            if (!barangay) return;
-            state.selectedBarangay = barangay;
-            syncLocationState(state);
-        };
-
-        const resetLocationState = (state) => {
-            if (!state) return;
-            state.stage = LOCATION_STAGE.province;
-            state.selectedProvince = null;
-            state.selectedCity = null;
-            state.selectedBarangay = null;
-            state.legacyValue = "";
-            state.errorMessage = "";
-            loadLocationStage(state);
-        };
-
-        const bindLocationControls = (state) => {
-            if (!state || !state.select || !state.hiddenInput) return;
-            state.select.required = true;
-            if (!state.isBound) {
-                state.select.addEventListener("change", () => handleLocationSelectChange(state));
-                state.isBound = true;
-            }
-            resetLocationState(state);
-        };
-
-        const applyLocationSelection = (state, locationValue) => {
-            if (!state) return;
-            const rawLocation = String(locationValue || "").trim();
-            if (!rawLocation) {
-                resetLocationState(state);
-                return;
-            }
-
-            // Preserve older or renamed locations unless the user deliberately chooses a new API value.
-            state.stage = LOCATION_STAGE.province;
-            state.selectedProvince = null;
-            state.selectedCity = null;
-            state.selectedBarangay = null;
-            state.legacyValue = rawLocation;
-            state.errorMessage = "";
-            updateLocationHiddenValue(state);
-            updateLocationValidity(state);
-            renderLocationSelect(state);
-            renderLocationSummary(state);
-            if (!state.provinces.length && !state.isLoading) loadLocationStage(state);
+            showLocationStatus(state);
         };
 
         const syncLocationState = (state) => {
-            if (!state) return;
-            updateLocationHiddenValue(state);
-            updateLocationValidity(state);
-            renderLocationSummary(state);
+            const confirmed = state.select.value === state.confirmedValue;
+            state.hiddenInput.value = confirmed ? state.confirmedValue : "";
+            state.select.setCustomValidity(state.hiddenInput.value
+                ? "" : "Choose a location from the search results.");
+        };
+
+        const applyLocationSelection = (state, value) => {
+            closeLocationResults(state);
+            state.selection = null;
+            state.confirmedValue = locationText(value);
+            state.select.value = state.confirmedValue;
+            syncLocationState(state);
+        };
+
+        const resetLocationState = (state) => applyLocationSelection(state, "");
+
+        const chooseLocation = (state, item) => {
+            closeLocationResults(state);
+            state.selection = item;
+            state.confirmedValue = item.value;
+            state.select.value = item.value;
+            syncLocationState(state);
+            state.select.dispatchEvent(new Event("change", { bubbles: true }));
+        };
+
+        const renderLocationResults = (state, items) => {
+            items.forEach((item, index) => {
+                const option = document.createElement("div");
+                option.className = "list-group-item list-group-item-action";
+                option.id = state.results.id + "-" + index;
+                option.setAttribute("role", "option");
+                option.setAttribute("aria-selected", "false");
+                const name = document.createElement("strong");
+                name.textContent = item.name + " · " + item.level;
+                const hierarchy = document.createElement("span");
+                hierarchy.className = "d-block small";
+                hierarchy.textContent = item.hierarchy;
+                option.append(name, hierarchy);
+                option.addEventListener("pointerdown", (event) => event.preventDefault());
+                option.addEventListener("click", () => chooseLocation(state, item));
+                state.results.append(option);
+            });
+            state.results.hidden = !items.length;
+            state.select.setAttribute("aria-expanded", String(Boolean(items.length)));
+        };
+
+        const queueLocationSearch = (state) => {
+            closeLocationResults(state);
+            syncLocationState(state);
+            if (state.hiddenInput.value) return;
+            const query = locationSearchText(state.select.value);
+            if (query.length < 2) {
+                if (query) showLocationStatus(state, "Enter at least two characters.");
+                return;
+            }
+            const requestId = state.requestId;
+            state.select.setAttribute("aria-busy", "true");
+            showLocationStatus(state, "Searching locations…");
+            state.timer = window.setTimeout(async () => {
+                try {
+                    const { items, incomplete } = await searchLocations(query);
+                    if (requestId !== state.requestId) return;
+                    renderLocationResults(state, items);
+                    showLocationStatus(state, incomplete ? "Some locations could not load. Press Enter to retry."
+                        : items.length ? "" : "No matching locations.", incomplete);
+                } catch {
+                    if (requestId === state.requestId) {
+                        showLocationStatus(state, "Could not load locations. Press Enter to retry.", true);
+                    }
+                } finally {
+                    if (requestId === state.requestId) state.select.removeAttribute("aria-busy");
+                }
+            }, 250);
+        };
+
+        const bindLocationControls = (state) => {
+            state.select.addEventListener("input", () => queueLocationSearch(state));
+            state.select.addEventListener("focus", () => queueLocationSearch(state));
+            state.select.addEventListener("blur", () => closeLocationResults(state));
+            state.select.addEventListener("keydown", (event) => {
+                const options = state.results.children;
+                if (event.key === "Escape" && state.select.value !== state.confirmedValue) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeLocationResults(state);
+                    state.select.value = state.confirmedValue;
+                    syncLocationState(state);
+                } else if (event.key === "Enter" && !state.hiddenInput.value) {
+                    event.preventDefault();
+                    if (state.active >= 0) options[state.active].click();
+                    else if (state.summary.dataset.locationStatus === "error") queueLocationSearch(state);
+                } else if (options.length && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+                    event.preventDefault();
+                    const previous = state.active;
+                    state.active = event.key === "ArrowDown" ? Math.min(previous + 1, options.length - 1)
+                        : previous < 0 ? options.length - 1 : Math.max(previous - 1, 0);
+                    const option = options[state.active];
+                    if (previous >= 0) {
+                        options[previous].classList.remove("active");
+                        options[previous].setAttribute("aria-selected", "false");
+                    }
+                    option.classList.add("active");
+                    option.setAttribute("aria-selected", "true");
+                    state.select.setAttribute("aria-activedescendant", option.id);
+                    option.scrollIntoView({ block: "nearest" });
+                }
+            });
+            resetLocationState(state);
         };

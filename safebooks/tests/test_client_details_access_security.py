@@ -1,4 +1,9 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
+import re
+from html import unescape
+from urllib.parse import parse_qs, urlsplit
 
 from django.contrib.auth.hashers import make_password
 from django.test import TestCase
@@ -22,6 +27,7 @@ class ClientDetailsAccessSecurityTests(TestCase):
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _create_client(self, account: BookkeeperAccount) -> Client:
@@ -43,6 +49,32 @@ class ClientDetailsAccessSecurityTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_new_account_defaults_to_unlocked_and_can_opt_in(self):
+        account = BookkeeperAccount.objects.create(
+            full_name="Opt In Tester", username="opt_in_tester", email="opt-in@example.test",
+            password_hash=make_password("SafeBooks#123"), status=BookkeeperAccount.STATUS_APPROVED,
+        )
+        account.refresh_from_db()
+        self.assertFalse(account.client_details_password_required)
+        self._login_as(account)
+        client = self._create_client(account)
+        self.assertEqual(self.client.get(reverse("client_details", args=[client.id])).status_code, 200)
+        settings = self.client.get(reverse("settings"))
+        self.assertContains(settings, 'data-client-details-lock-enabled="false"')
+        endpoint = reverse("api_security_client_details_access_preference")
+        for password in ("", "Incorrect#123"):
+            response = self.client.post(endpoint, data=json.dumps({"enabled": True, "current_password": password}), content_type="application/json")
+            self.assertEqual(response.status_code, 400)
+            account.refresh_from_db()
+            self.assertFalse(account.client_details_password_required)
+        response = self.client.post(endpoint, data=json.dumps({"enabled": True, "current_password": "SafeBooks#123"}), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        account.refresh_from_db()
+        self.assertTrue(account.client_details_password_required)
+        self.assertContains(self.client.get(reverse("settings")), 'data-client-details-lock-enabled="true"')
+        locked = self.client.get(reverse("client_details", args=[client.id]))
+        self.assertEqual(locked.status_code, 302)
+
     def test_client_details_page_exposes_edit_client_details_modal(self):
         account = self._create_bookkeeper(lock_enabled=False)
         self._login_as(account)
@@ -62,6 +94,71 @@ class ClientDetailsAccessSecurityTests(TestCase):
         self.assertContains(response, reverse("api_client_detail", kwargs={"client_id": client.id}))
         self.assertContains(response, "syncClientProfileUi")
         self.assertNotContains(response, "window.location.reload")
+
+    def test_client_details_actions_keep_add_entry_without_redundant_records_link(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "base/client_details.html")
+        self.assertNotContains(response, "clientDetailsRecordsLink")
+        self.assertContains(response, 'id="editClientDetailsButton"')
+        self.assertNotContains(response, 'id="generateReportActionBtn"')
+        self.assertContains(response, 'id="closeClientActionBtn"')
+        self.assertContains(response, f'href="{reverse("financial_records")}"')
+        add_link = re.search(
+            r'<a href="([^"]+)"[^>]*id="clientDetailsAddEntryLink"',
+            response.content.decode(),
+        )
+        self.assertIsNotNone(add_link)
+        target = urlsplit(unescape(add_link.group(1)))
+        self.assertEqual(target.path, reverse("financial_records_client"))
+        self.assertEqual(parse_qs(target.query), {
+            "client_id": [str(client.id)],
+            "client": [client.client_name],
+            "tin": [client.tin_number],
+            "trade": [client.trade_name],
+            "action": ["add"],
+        })
+
+    def test_closed_client_actions_keep_reopen_without_records_or_report_button(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+        client.remarks = Client.REMARK_CLOSED
+        client.save(update_fields=["remarks"])
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "clientDetailsRecordsLink")
+        self.assertNotContains(response, 'id="clientDetailsAddEntryLink"')
+        self.assertNotContains(response, 'id="closeClientActionBtn"')
+        self.assertContains(response, 'id="editClientDetailsButton"')
+        self.assertNotContains(response, 'id="generateReportActionBtn"')
+        self.assertContains(response, 'id="reopenClientActionBtn"')
+        self.assertContains(response, f'href="{reverse("financial_records")}"')
+
+    def test_client_details_keeps_key_labels_without_repeated_explanations(self):
+        account = self._create_bookkeeper(lock_enabled=False)
+        self._login_as(account)
+        client = self._create_client(account)
+
+        response = self.client.get(reverse("client_details", args=[client.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Record Schedule Status")
+        self.assertContains(response, 'class="visually-hidden" id="clientPeriodReadinessText"')
+        self.assertContains(response, 'id="clientWorkflowScheduleList" aria-label="Record schedule status" hidden')
+        self.assertContains(response, "Projected Sales")
+        self.assertContains(response, 'id="analyticsPredictiveSalesNote"')
+        self.assertContains(response, 'for="analyticsYearFilter"')
+        self.assertContains(response, 'for="analyticsHorizonFilter"')
+        self.assertNotContains(response, "Checks each record frequency saved for this client.")
+        self.assertNotContains(response, 'class="client-panel-defense-labels"')
 
     def test_client_details_only_reminds_about_email_when_notifications_are_enabled(self):
         account = self._create_bookkeeper(lock_enabled=False)

@@ -48,6 +48,10 @@
     const approvalEmailDeliveryRow = document.getElementById("approvalEmailDeliveryRow");
     const approvalEmailDeliveryStatus = document.getElementById("approvalEmailDeliveryStatus");
     const approvalEmailRetryButton = document.getElementById("approvalEmailRetryButton");
+    const proofSummary = document.getElementById("approvalProofSummary");
+    const proofPreview = document.getElementById("approvalProofPreview");
+    const proofReviewWrap = document.getElementById("approvalProofReviewWrap");
+    const proofReviewed = document.getElementById("approvalProofReviewed");
 
     const uiToastContainer = document.getElementById("uiToastContainer");
 
@@ -71,6 +75,54 @@
 
         shared.showToast(uiToastContainer, message, variantClass, { delay: 2800 });
     };
+
+    const openProofPreview = async () => {
+        const proofUrl = proofPreview.dataset.proofUrl;
+        if (!proofUrl) return;
+
+        // Open during the click so the browser treats this as a user-initiated tab.
+        const previewTab = window.open("about:blank", "_blank");
+        if (!previewTab) {
+            showToast("Allow pop-ups for SafeBooks, then select View proof again.", "warning");
+            return;
+        }
+        previewTab.opener = null;
+        previewTab.document.title = "Bookkeeping proof";
+        previewTab.document.body.textContent = "Loading bookkeeping proof…";
+        proofPreview.disabled = true;
+        let previewUrl;
+        try {
+            const response = await fetch(proofUrl, {
+                mode: "same-origin",
+                credentials: "same-origin",
+                redirect: "error",
+                cache: "no-store",
+            });
+            const mediaType = response.headers.get("Content-Type");
+            if (!response.ok || !["image/jpeg", "image/png", "application/pdf"].includes(mediaType)) {
+                throw new Error("Proof unavailable");
+            }
+            const documentBytes = await response.blob();
+            if (previewTab.closed) return;
+            // The protected endpoint still serves an attachment. Only validated proof
+            // types are opened from a temporary browser URL for this admin preview.
+            previewUrl = URL.createObjectURL(documentBytes);
+            previewTab.location.replace(previewUrl);
+            const cleanup = window.setInterval(() => {
+                if (!previewTab.closed) return;
+                window.clearInterval(cleanup);
+                URL.revokeObjectURL(previewUrl);
+            }, 1000);
+        } catch {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewTab.close();
+            showToast("Unable to open proof. Refresh the request and try again.", "warning");
+        } finally {
+            proofPreview.disabled = false;
+        }
+    };
+
+    proofPreview?.addEventListener("click", openProofPreview);
 
     const dateFormatter = new Intl.DateTimeFormat("en-PH", {
         year: "numeric",
@@ -125,6 +177,14 @@
     };
 
     const setDetailState = (approval) => {
+        const proof = approval && approval.proof;
+        if (proofSummary) proofSummary.textContent = proof
+            ? `${proof.document_name} · Submitted ${formatDate(proof.submitted_at)}`
+            : approval ? "No proof submitted." : "Select a request.";
+        if (proofPreview) {
+            proofPreview.hidden = !proof?.download_url;
+            proofPreview.dataset.proofUrl = proof?.download_url || "";
+        }
         if (!approval) {
             if (approvalDetailEmpty) {
                 approvalDetailEmpty.hidden = false;
@@ -137,6 +197,12 @@
             }
             if (approvalEmailDeliveryRow) {
                 approvalEmailDeliveryRow.hidden = true;
+            }
+            if (approvalEmailDeliveryStatus) {
+                setChip(approvalEmailDeliveryStatus, "Not sent", "inactive");
+            }
+            if (approvalEmailRetryButton) {
+                approvalEmailRetryButton.hidden = true;
             }
             return;
         }
@@ -191,12 +257,16 @@
             approvalNotificationText.textContent = approval.notification_preview || "No notification prepared.";
         }
 
+        const accountStatus = String(approval.status || "").toLowerCase();
         const delivery = approval.email_delivery || {};
-        const deliveryStatus = String(delivery.status || "").toLowerCase();
+        const rawDeliveryStatus = String(delivery.status || "").toLowerCase();
+        const deliveryStatus = accountStatus === "pending"
+            ? "not_sent"
+            : (rawDeliveryStatus || (accountStatus === "approved" || accountStatus === "rejected" ? "sent" : "not_sent"));
         if (approvalEmailDeliveryRow) {
-            approvalEmailDeliveryRow.hidden = !deliveryStatus;
+            approvalEmailDeliveryRow.hidden = false;
         }
-        if (approvalEmailDeliveryStatus && deliveryStatus) {
+        if (approvalEmailDeliveryStatus) {
             const deliveryMeta = {
                 sent: { label: "Sent", className: "approved" },
                 skipped: { label: "Skipped", className: "suspended" },
@@ -206,7 +276,7 @@
             approvalEmailDeliveryStatus.title = delivery.reason || deliveryMeta.label;
         }
         if (approvalEmailRetryButton) {
-            approvalEmailRetryButton.hidden = deliveryStatus !== "failed";
+            approvalEmailRetryButton.hidden = rawDeliveryStatus !== "failed";
             approvalEmailRetryButton.dataset.approvalId = String(approval.id || "");
         }
     };
@@ -324,7 +394,10 @@
         pendingAction = {
             id: approval.id,
             action,
+            proofRevision: approval.proof && approval.proof.revision,
         };
+        if (proofReviewed) proofReviewed.checked = false;
+        if (proofReviewWrap) proofReviewWrap.hidden = action !== "approve";
 
         if (approvalsActionReasonInput) {
             approvalsActionReasonInput.value = "";
@@ -455,7 +528,7 @@
         }
     };
 
-    const runApprovalAction = async (approvalId, action, rejectionReason = "") => {
+    const runApprovalAction = async (approvalId, action, rejectionReason = "", proofRevision = null) => {
         const url = buildActionUrl(approvalId, action);
         if (!url) {
             showToast("Approval action is unavailable.", "warning");
@@ -465,6 +538,8 @@
         let payload = {};
         if (action === "reject") {
             payload = { rejection_reason: rejectionReason };
+        } else if (action === "approve") {
+            payload = { proof_revision: proofRevision, proof_reviewed: Boolean(proofReviewed && proofReviewed.checked) };
         }
 
         const csrfToken = shared && typeof shared.getCookieValue === "function"
@@ -571,7 +646,7 @@
         const rejectBtn = document.getElementById("approvalDetailRejectBtn");
 
         if (approveBtn) {
-            const canApprove = approval.status === "pending" || approval.status === "rejected";
+            const canApprove = Boolean(approval.email_verified && approval.proof && (approval.status === "pending" || approval.status === "rejected"));
             approveBtn.disabled = !canApprove;
             approveBtn.onclick = () => {
                 detailsModalInstance.hide();
@@ -709,7 +784,12 @@
                 return;
             }
 
-            const { id, action } = pendingAction;
+            const { id, action, proofRevision } = pendingAction;
+            if (action === "approve" && (!proofReviewed || !proofReviewed.checked)) {
+                showToast("View the proof, then confirm your review.", "warning");
+                if (proofReviewed) proofReviewed.focus();
+                return;
+            }
             const rejectionReason = approvalsActionReasonInput
                 ? approvalsActionReasonInput.value.trim()
                 : "";
@@ -724,7 +804,7 @@
             }
 
             approvalsActionConfirm.disabled = true;
-            const completed = await runApprovalAction(id, action, rejectionReason);
+            const completed = await runApprovalAction(id, action, rejectionReason, proofRevision);
             approvalsActionConfirm.disabled = false;
 
             if (completed) {

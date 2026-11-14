@@ -91,7 +91,7 @@
                                     <tr style="border-bottom: 1px solid #f1f5f9;">
                                         <td style="padding: 12px 14px; font-size: 13px; color: #1e293b;">{{ item.description }}</td>
                                         <td style="padding: 12px 14px; font-size: 13px; color: #64748b;">{{ item.type_code }}</td>
-                                        <td align="right" style="padding: 12px 14px; font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap;">{{ item.amount }}</td>
+                                        <td align="right" style="padding: 12px 14px; font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap;">{{ item.amount }}{% if item.coverage_label %}<div style="font-size: 12px; font-weight: 400;">{{ item.coverage_label }}</div>{% endif %}</td>
                                     </tr>
                                     {% empty %}
                                     <tr>

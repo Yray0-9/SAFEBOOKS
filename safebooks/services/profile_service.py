@@ -1,8 +1,10 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.db import IntegrityError, transaction
 
 from safebooks.models import BookkeeperAccount
 from safebooks.services.auth_service import send_email_verification_code
+from safebooks.validators.data_validator import model_text_errors
 
 
 def _normalize_text(value) -> str:
@@ -44,6 +46,8 @@ def update_profile_for_bookkeeper(bookkeeper: BookkeeperAccount, data: dict) -> 
     if not email:
         errors.append("Email is required.")
 
+    errors.extend(model_text_errors(BookkeeperAccount, data))
+
     if email:
         try:
             validate_email(email)
@@ -66,20 +70,7 @@ def update_profile_for_bookkeeper(bookkeeper: BookkeeperAccount, data: dict) -> 
     current_email = str(bookkeeper.email or "")
     email_changed = email.lower() != current_email.lower()
     verification_result = None
-    original_email = bookkeeper.email
-    original_verified = bookkeeper.email_verified
-
-    if email_changed:
-        bookkeeper.email = email
-        bookkeeper.email_verified = False
-        verification_result = send_email_verification_code(bookkeeper, force=True)
-        if not verification_result.get("ok"):
-            bookkeeper.email = original_email
-            bookkeeper.email_verified = original_verified
-            return {
-                "ok": False,
-                "message": verification_result.get("message") or "Unable to send verification email.",
-            }
+    original_values = {field: getattr(bookkeeper, field) for field in ("full_name", "username", "location", "email", "email_verified")}
 
     bookkeeper.full_name = full_name
     bookkeeper.username = username
@@ -87,9 +78,31 @@ def update_profile_for_bookkeeper(bookkeeper: BookkeeperAccount, data: dict) -> 
 
     update_fields = ["full_name", "username", "location"]
     if email_changed:
+        bookkeeper.email = email
+        bookkeeper.email_verified = False
         update_fields.extend(["email", "email_verified"])
 
-    bookkeeper.save(update_fields=update_fields)
+    try:
+        with transaction.atomic():
+            # Reserve the new unique values before any verification email is sent.
+            bookkeeper.save(update_fields=update_fields)
+            if email_changed:
+                verification_result = send_email_verification_code(bookkeeper, force=True)
+                if not verification_result.get("ok"):
+                    transaction.set_rollback(True)
+                    for field, value in original_values.items():
+                        setattr(bookkeeper, field, value)
+                    return {"ok": False, "message": verification_result.get("message") or "Unable to send verification email."}
+    except IntegrityError:
+        for field, value in original_values.items():
+            setattr(bookkeeper, field, value)
+        if BookkeeperAccount.objects.filter(email__iexact=email).exclude(id=bookkeeper.id).exists():
+            message = "Email already exists."
+        elif BookkeeperAccount.objects.filter(username__iexact=username).exclude(id=bookkeeper.id).exists():
+            message = "Username already exists."
+        else:
+            message = "Unable to update the profile. Refresh and try again."
+        return {"ok": False, "message": message, "errors": [message]}
 
     return {
         "ok": True,

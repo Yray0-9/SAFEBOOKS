@@ -1,9 +1,11 @@
 from django.db import models
 
+from .encrypted_password_field import EncryptedPasswordField
 from .user_model import BookkeeperAccount
 
 
 class Client(models.Model):
+    TAX_REGISTRATION_CHOICES = [("", "Not set"), ("vat", "VAT"), ("non_vat", "Non-VAT")]
     REMARK_NEW = "new"
     REMARK_ACTIVE = "active"
     REMARK_SEPARATED = "separated"
@@ -25,13 +27,14 @@ class Client(models.Model):
     client_name = models.CharField(max_length=160)
     tin_number = models.CharField(max_length=40, unique=True)
     trade_name = models.CharField(max_length=180, blank=True, default="")
+    tax_registration = models.CharField(max_length=16, choices=TAX_REGISTRATION_CHOICES, blank=True, default="")
     location = models.CharField(max_length=180)
     permit_number = models.CharField(max_length=80, blank=True, default="")
     birthday = models.DateField(null=True, blank=True)
     email = models.EmailField(blank=True, default="")
-    email_password = models.CharField(max_length=255, blank=True, default="")
+    email_password = EncryptedPasswordField(max_length=255, blank=True, default="")
     orus_account = models.CharField(max_length=255, blank=True, default="")
-    orus_password = models.CharField(max_length=255, blank=True, default="")
+    orus_password = EncryptedPasswordField(max_length=255, blank=True, default="")
     custom_fields = models.JSONField(blank=True, default=list)
     forecast_growth_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     remarks = models.CharField(

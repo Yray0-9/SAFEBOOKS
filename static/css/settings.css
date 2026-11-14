@@ -1422,44 +1422,6 @@ body.theme-dark .settings-danger-card .dashboard-tag {
     box-shadow: 0 4px 14px rgba(26, 86, 205, 0.04);
 }
 
-.admin-settings-overview-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 0.25rem;
-}
-
-.admin-settings-overview-item {
-    border-radius: 14px;
-    border: 1px solid #e2ecfa;
-    background: linear-gradient(145deg, #ffffff 0%, #f7faff 100%);
-    padding: 0.75rem 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.admin-settings-overview-item i {
-    font-size: 1.35rem;
-    color: #1a56cd;
-}
-
-.admin-settings-overview-meta small {
-    display: block;
-    color: #647fa9;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.admin-settings-overview-meta strong {
-    display: block;
-    color: #17376d;
-    font-size: 0.92rem;
-    font-weight: 800;
-}
-
 .admin-action-status-pill {
     display: inline-flex;
     align-items: center;
@@ -1481,19 +1443,6 @@ body.theme-dark .admin-settings-panel-box {
 body.theme-dark .admin-settings-panel-box:hover {
     background: #152442;
     border-color: #35507e;
-}
-
-body.theme-dark .admin-settings-overview-item {
-    background: #111e36;
-    border-color: #24385a;
-}
-
-body.theme-dark .admin-settings-overview-meta strong {
-    color: #dbe8ff;
-}
-
-body.theme-dark .admin-settings-overview-meta small {
-    color: #8da6cf;
 }
 
 .settings-section-footer .dashboard-action-btn:disabled,

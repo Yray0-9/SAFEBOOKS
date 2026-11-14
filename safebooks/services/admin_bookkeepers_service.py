@@ -6,6 +6,7 @@ from django.db.models.functions import Lower
 from django.utils import timezone
 
 from safebooks.models import AdminAuditLog, BookkeeperAccount, BookkeeperDeactivationRequest
+from safebooks.services.session_security_service import save_account_security_change
 
 
 STATUS_FILTER_MAP = {
@@ -254,7 +255,7 @@ def deactivate_bookkeeper(admin_account, bookkeeper_id: int, admin_password: str
                 )
 
         account.status = BookkeeperAccount.STATUS_SUSPENDED
-        account.save(update_fields=["status"])
+        save_account_security_change(account, ["status"])
         if deactivation_request is not None:
             deactivation_request.status = BookkeeperDeactivationRequest.STATUS_APPROVED
             deactivation_request.reviewed_at = timezone.now()
@@ -370,7 +371,7 @@ def reactivate_bookkeeper(admin_account, bookkeeper_id: int, admin_password: str
             )
 
         account.status = BookkeeperAccount.STATUS_APPROVED
-        account.save(update_fields=["status"])
+        save_account_security_change(account, ["status"])
         _create_bookkeeper_audit_log(
             admin_account,
             account,

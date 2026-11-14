@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -21,6 +23,7 @@ class AdminDashboardApiTests(TestCase):
     def _login_admin(self, account: AdminAccount) -> None:
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _create_bookkeeper(self, suffix: str, status: str) -> BookkeeperAccount:
@@ -44,6 +47,7 @@ class AdminDashboardApiTests(TestCase):
         bookkeeper = self._create_bookkeeper("blocked", BookkeeperAccount.STATUS_APPROVED)
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
+        bind_authenticated_session(session)
         session.save()
 
         response = self.client.get(reverse("api_admin_dashboard_summary"), HTTP_ACCEPT="application/json")

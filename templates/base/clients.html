@@ -9,8 +9,10 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/reports.css' %}">
-<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.1">
+<link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261101-badge">
+<link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261109-print-centered">
+<link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.2">
+<link rel="stylesheet" href="{% static 'css/client_location_selector.css' %}">
 {% endblock %}
 
 {% block skeleton %}
@@ -74,7 +76,7 @@
         <div class="clients-action-bar">
             <label class="dashboard-table-search clients-page-search" aria-label="Search clients by name or TIN">
                 <i class="bi bi-search"></i>
-                <input type="search" id="clientsSearchInput" placeholder="Search by client name or TIN" autocomplete="off">
+                <input type="search" id="clientsSearchInput" placeholder="Search by client name, trade name or TIN" aria-label="Search by client name, trade name or TIN" autocomplete="off">
             </label>
             <select id="clientsSortSelect" class="form-select dashboard-filter-select" aria-label="Sort clients list">
                 <option value="recent-activity">Recent Activity</option>
@@ -98,7 +100,7 @@
         </button>
         <button type="button" class="btn directory-tab-btn" id="tabClosed" aria-selected="false">
             <i class="bi bi-x-circle-fill"></i>
-            <span>Closed</span>
+            <span title="Clients marked Closed">Inactive</span>
         </button>
     </div>
 
@@ -165,29 +167,66 @@
                     <div class="client-form-section-head">
                         <h3>Client Information</h3>
                     </div>
+                    <p class="small text-muted mb-2">Fields marked with * are required.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientName">Client Name</label>
-                            <input class="form-control client-form-input" id="addClientName" name="client_name" type="text" required>
+                            <label class="form-label client-form-label" for="addClientLastName">Last Name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="addClientLastName" type="text" autocomplete="section-client family-name" pattern=".*\S.*" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientTin">TIN</label>
+                            <label class="form-label client-form-label" for="addClientFirstName">First Name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="addClientFirstName" type="text" autocomplete="section-client given-name" pattern=".*\S.*" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label client-form-label" for="addClientMiddleName">Middle Name</label>
+                            <input class="form-control client-form-input" id="addClientMiddleName" type="text" autocomplete="section-client additional-name" placeholder="Optional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label client-form-label" for="addClientSuffix">Suffix</label>
+                            <div class="client-select-wrap">
+                                <select class="form-select client-form-input client-select-input" id="addClientSuffix" autocomplete="section-client honorific-suffix">
+                                    <option value="">None</option>
+                                    <option value="Jr.">Jr.</option>
+                                    <option value="Sr.">Sr.</option>
+                                    <option value="II">II</option>
+                                    <option value="III">III</option>
+                                    <option value="IV">IV</option>
+                                    <option value="V">V</option>
+                                </select>
+                                <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label client-form-label" for="addClientTin">TIN <span class="text-danger" aria-hidden="true">*</span></label>
                             <input class="form-control client-form-input" id="addClientTin" name="tin" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="000-000-000-000" maxlength="15" autocomplete="off" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label client-form-label" for="addClientTradeName">Trade Name</label>
                             <input class="form-control client-form-input" id="addClientTradeName" name="trade_name" type="text" placeholder="Optional">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientLocationSelect">Location</label>
+                            <div class="col-md-6">
+                                <label class="form-label client-form-label" for="addClientTaxRegistration">Tax Registration <span class="text-danger" aria-hidden="true">*</span></label>
+                                <div class="client-select-wrap">
+                                    <select class="form-select client-form-input client-select-input" id="addClientTaxRegistration" name="tax_registration" required>
+                                        <option value="" disabled selected>Select tax registration</option>
+                                        <option value="vat">VAT</option>
+                                        <option value="non_vat">Non-VAT</option>
+                                    </select>
+                                    <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        <div class="col-12">
+                            <label class="form-label client-form-label" for="addClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                             <input id="addClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
-                                <select class="form-select client-form-input client-select-input" id="addClientLocationSelect" aria-label="Select province" required>
-                                    <option value="">Select province</option>
-                                </select>
-                                <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                <input type="text" class="form-control client-form-input client-select-input" id="addClientLocationSelect"
+                                    placeholder="Search Davao Region locations" autocomplete="off" spellcheck="false" required
+                                    role="combobox" aria-autocomplete="list" aria-expanded="false"
+                                    aria-controls="addClientLocationSelectResults" aria-describedby="addClientLocationSummary">
+                                <i class="bi bi-search client-select-icon" aria-hidden="true"></i>
                             </div>
-                            <div class="form-text text-muted client-location-summary" id="addClientLocationSummary" hidden></div>
+                            <div class="list-group overflow-auto client-location-results" id="addClientLocationSelectResults" role="listbox" aria-label="Location results" hidden></div>
+                            <div class="form-text text-muted client-location-summary" id="addClientLocationSummary" role="status" hidden></div>
                         </div>
                     </div>
                 </section>
@@ -202,8 +241,8 @@
                             <input class="form-control client-form-input" id="addClientPermitNumber" name="permit_number" type="text" placeholder="Optional">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="addClientBirthday">Birthday</label>
-                            <input class="form-control client-form-input" id="addClientBirthday" name="birthday" type="date">
+                            <label class="form-label client-form-label" for="addClientBirthday">Birthdate <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="addClientBirthday" name="birthday" type="date" required>
                         </div>
                     </div>
                 </section>
@@ -320,29 +359,43 @@
                     <div class="client-form-section-head">
                         <h3>Client Information</h3>
                     </div>
+                    <p class="small text-muted mb-2">Fields marked with * are required.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientName">Client Name</label>
+                            <label class="form-label client-form-label" for="editClientName">Client Name <span class="text-danger" aria-hidden="true">*</span></label>
                             <input class="form-control client-form-input" id="editClientName" name="client_name" type="text" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientTin">TIN</label>
+                            <label class="form-label client-form-label" for="editClientTin">TIN <span class="text-danger" aria-hidden="true">*</span></label>
                             <input class="form-control client-form-input" id="editClientTin" name="tin" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="000-000-000-000" maxlength="15" autocomplete="off" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label client-form-label" for="editClientTradeName">Trade Name</label>
                             <input class="form-control client-form-input" id="editClientTradeName" name="trade_name" type="text" placeholder="Optional">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientLocationSelect">Location</label>
+                            <div class="col-md-6">
+                                <label class="form-label client-form-label" for="editClientTaxRegistration">Tax Registration <span class="text-danger" aria-hidden="true">*</span></label>
+                                <div class="client-select-wrap">
+                                    <select class="form-select client-form-input client-select-input" id="editClientTaxRegistration" name="tax_registration" required>
+                                        <option value="" disabled selected>Select tax registration</option>
+                                        <option value="vat">VAT</option>
+                                        <option value="non_vat">Non-VAT</option>
+                                    </select>
+                                    <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        <div class="col-12">
+                            <label class="form-label client-form-label" for="editClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                             <input id="editClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
-                                <select class="form-select client-form-input client-select-input" id="editClientLocationSelect" aria-label="Select province" required>
-                                    <option value="">Select province</option>
-                                </select>
-                                <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                <input type="text" class="form-control client-form-input client-select-input" id="editClientLocationSelect"
+                                    placeholder="Search Davao Region locations" autocomplete="off" spellcheck="false" required
+                                    role="combobox" aria-autocomplete="list" aria-expanded="false"
+                                    aria-controls="editClientLocationSelectResults" aria-describedby="editClientLocationSummary">
+                                <i class="bi bi-search client-select-icon" aria-hidden="true"></i>
                             </div>
-                            <div class="form-text text-muted client-location-summary" id="editClientLocationSummary" hidden></div>
+                            <div class="list-group overflow-auto client-location-results" id="editClientLocationSelectResults" role="listbox" aria-label="Location results" hidden></div>
+                            <div class="form-text text-muted client-location-summary" id="editClientLocationSummary" role="status" hidden></div>
                         </div>
                     </div>
                 </section>
@@ -357,8 +410,8 @@
                             <input class="form-control client-form-input" id="editClientPermitNumber" name="permit_number" type="text" placeholder="Optional">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label client-form-label" for="editClientBirthday">Birthday</label>
-                            <input class="form-control client-form-input" id="editClientBirthday" name="birthday" type="date">
+                            <label class="form-label client-form-label" for="editClientBirthday">Birthdate <span class="text-danger" aria-hidden="true">*</span></label>
+                            <input class="form-control client-form-input" id="editClientBirthday" name="birthday" type="date" required>
                         </div>
                     </div>
                 </section>
@@ -467,7 +520,7 @@
                     <textarea id="modalCloseClientNotesInput" class="form-control client-form-input" rows="2" placeholder="Add additional details or context..."></textarea>
                 </div>
                 
-                <p class="clients-delete-note text-muted small mt-2 mb-0">This will mark their status as "Closed" and move them to the Closed tab.</p>
+                <p class="clients-delete-note text-muted small mt-2 mb-0">This will mark their status as "Closed" and move them to the Inactive tab.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn dashboard-action-btn outline" data-bs-dismiss="modal">Cancel</button>
@@ -509,15 +562,13 @@
 </div>
 {% endblock %}
 
-{% block toast_container %}
-<div class="toast-container position-fixed bottom-0 end-0 p-3 safebooks-toast-container" id="uiToastContainer" aria-live="polite" aria-atomic="true"></div>
-{% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/reports_shared.js' %}?v=1.0.6"></script>
+<script src="{% static 'js/reports_shared.js' %}?v=20261110-worksheet-tax-codes"></script>
 {% if client_details_access_target %}
 {{ client_details_access_target|json_script:"clientDetailsAccessTarget" }}
 {% endif %}
+<script src="{% static 'js/client_tax_registration.js' %}?v=20261027"></script>
 <script>
     (() => {
         const SIDEBAR_STATE_KEY = "safebooks.sidebarCollapsed";
@@ -638,6 +689,7 @@
         let CLIENTS_DATA = [];
         let clientsSearchDebounceTimer = null;
         let clientsListRequestToken = 0;
+        let clientProfileRequestToken = 0;
         let clientsListAbortController = null;
         let isClientsLoading = false;
         let addClientFormDirty = false;
@@ -1146,7 +1198,7 @@
 
         const logoutCurrentUser = async () => {
             if (!shared || typeof shared.logoutCurrentUser !== "function") {
-                return "{% url 'login' %}";
+                throw new Error("Logout is unavailable. Reload this page and try again.");
             }
 
             return shared.logoutCurrentUser({
@@ -1179,6 +1231,7 @@
                 tin: formatTin(rawTin),
                 tinRaw: rawTin,
                 tradeName: client.trade_name || "",
+                taxRegistration: client.tax_registration || "",
                 location: client.location || "",
                 permitNumber: client.permit_number || "",
                 birthday: client.birthday || "",
@@ -1263,6 +1316,7 @@
                 tin: row.dataset.tin || "",
                 tinRaw: row.dataset.tinRaw || normalizeDigits(row.dataset.tin || ""),
                 tradeName: row.dataset.tradeName || "",
+                taxRegistration: row.dataset.taxRegistration || "",
                 location: row.dataset.location || "",
                 permitNumber: row.dataset.permitNumber || "",
                 birthday: row.dataset.birthday || "",
@@ -1283,6 +1337,7 @@
             row.dataset.tin = data.tin;
             row.dataset.tinRaw = data.tinRaw || normalizeDigits(data.tin);
             row.dataset.tradeName = data.tradeName;
+            row.dataset.taxRegistration = data.taxRegistration || "";
             row.dataset.location = data.location;
             row.dataset.permitNumber = data.permitNumber;
             row.dataset.birthday = data.birthday;
@@ -1297,7 +1352,7 @@
 
             const cells = row.querySelectorAll("td");
             if (cells[0]) {
-                cells[0].textContent = data.clientName;
+                cells[0].innerHTML = `<div class="client-registration-identity">${escapeHtml(data.clientName)}${window.SafeBooksClientRegistration.badge(data.taxRegistration)}</div>`;
             }
             if (cells[1]) {
                 cells[1].textContent = data.tin;
@@ -1312,7 +1367,7 @@
 
         const renderClientRowHtml = (data) => {
             return `
-                <td class="client-name-cell" data-label="Client">${escapeHtml(data.clientName)}</td>
+                <td class="client-name-cell" data-label="Client"><div class="client-registration-identity">${escapeHtml(data.clientName)}${window.SafeBooksClientRegistration.badge(data.taxRegistration)}</div></td>
                 <td class="client-tin-cell" data-label="TIN">${escapeHtml(data.tin)}</td>
                 <td class="client-trade-cell" data-label="Trade Name">${escapeHtml(data.tradeName)}</td>
                 <td data-label="Location">${escapeHtml(data.location)}</td>
@@ -1554,8 +1609,8 @@
             const useTypeColumns = orderedTypeColumns.length > 0;
 
             const reportColumns = useTypeColumns
-                ? ["Period", ...orderedTypeColumns, "Net Value"]
-                : ["Period", "Sales", "Expenses", "Tax", "Net Value"];
+                ? ["Period", ...orderedTypeColumns, "Net Sales"]
+                : ["Period", "Sales", "Expenses", "Tax", "Net Sales"];
 
             const reportRows = rows
                 .filter((row) => isTrendMonthWithinRange(row.year, row.month, filters))
@@ -1600,9 +1655,7 @@
             const permitNumber = toReportValue(clientData.permitNumber);
             const birthday = toReportValue(clientData.birthday);
             const email = toReportValue(clientData.email);
-            const emailPassword = toReportValue(clientData.emailPassword);
             const orusAccount = toReportValue(clientData.orusAccount);
-            const orusPassword = toReportValue(clientData.orusPassword);
             const customFields = Array.isArray(clientData.customFields) ? clientData.customFields : [];
 
             const reportTypeLabel = "Financial Summary Report";
@@ -1611,7 +1664,7 @@
 
             const columns = reportData && Array.isArray(reportData.columns)
                 ? reportData.columns
-                : ["Period", "Sales", "Expenses", "Tax", "Net Value"];
+                : ["Period", "Sales", "Expenses", "Tax", "Net Sales"];
             const rows = reportData && Array.isArray(reportData.rows)
                 ? reportData.rows
                 : [];
@@ -1636,9 +1689,7 @@
                     permitNumber,
                     birthday,
                     email,
-                    emailPassword,
                     orusAccount,
-                    orusPassword,
                     customFields,
                 },
                 table: {
@@ -1775,6 +1826,8 @@
             if (editClientTradeName) {
                 editClientTradeName.value = data.tradeName;
             }
+            const registrationSelect = document.getElementById("editClientTaxRegistration");
+            if (registrationSelect) registrationSelect.value = data.taxRegistration || "";
             if (editClientRemarks) {
                 editClientRemarks.value = data.remarks || "new";
             }
@@ -1825,9 +1878,11 @@
             }
         };
 
-        const openClientAccessConfirmModal = (clientData, targetUrl) => {
+        const openClientAccessConfirmModal = (clientData, targetUrl, onConfirmed = null) => {
             pendingClientDetailsTarget = {
                 url: targetUrl,
+                clientId: clientData ? clientData.clientId : null,
+                onConfirmed,
                 clientName: clientData && clientData.clientName ? clientData.clientName : "selected client",
             };
 
@@ -1848,7 +1903,7 @@
 
         const confirmClientDetailsAccess = async () => {
             const target = pendingClientDetailsTarget;
-            if (!target || !target.url) {
+            if (!target || (!target.url && !target.onConfirmed)) {
                 return;
             }
 
@@ -1862,7 +1917,7 @@
             }
 
             setClientAccessLoading(true);
-            setClientAccessStatus("Checking password...", "success");
+            setClientAccessStatus("Checking password...", "");
 
             try {
                 const csrfToken = getCookieValue("csrftoken");
@@ -1878,7 +1933,7 @@
                     method: "POST",
                     headers,
                     credentials: "same-origin",
-                    body: JSON.stringify({ current_password: currentPassword }),
+                    body: JSON.stringify({ current_password: currentPassword, client_id: target.clientId }),
                 });
 
                 if (response.status === 401) {
@@ -1897,7 +1952,17 @@
 
                 clientDetailsVerifiedUntil = 0;
                 setClientAccessStatus("Access confirmed.", "success");
-                window.location.assign(target.url);
+                if (target.onConfirmed) {
+                    setClientAccessLoading(false);
+                    if (clientAccessConfirmModal && clientAccessConfirmModalElement) {
+                        clientAccessConfirmModalElement.addEventListener("hidden.bs.modal", target.onConfirmed, { once: true });
+                        clientAccessConfirmModal.hide();
+                    } else {
+                        await target.onConfirmed();
+                    }
+                } else {
+                    window.location.assign(target.url);
+                }
             } catch (error) {
                 if (pendingClientDetailsTarget === target) {
                     setClientAccessStatus(error && error.message ? String(error.message) : "Unable to confirm access.", "danger");
@@ -1925,16 +1990,44 @@
             }
         };
 
-        const openEditModal = (row) => {
+        const openEditModal = async (row) => {
             if (!row || !editClientModal) {
                 return;
             }
-            editingRow = row;
-            const clientData = getClientDataFromRow(row);
-            setEditFormData(row, clientData);
-            renderCustomFields(editClientCustomFields, clientData.customFields, "edit");
-            editClientModal.show();
-            editClientFormDirty = false;
+            const selectedClient = getClientDataFromRow(row);
+            const requestToken = ++clientProfileRequestToken;
+            showToast("Loading client details...");
+            try {
+                // Never fill an edit form from a redacted directory response.
+                const response = await fetch(buildClientDetailApiUrl(selectedClient.clientId), {
+                    method: "GET",
+                    headers: { Accept: "application/json" },
+                    credentials: "same-origin",
+                });
+                const result = await parseJsonSafe(response);
+                if (requestToken !== clientProfileRequestToken || !row.isConnected) return;
+                if (response.status === 401) {
+                    redirectToLogin();
+                    return;
+                }
+                if (response.status === 403 && result && result.client_access_required) {
+                    openClientAccessConfirmModal(selectedClient, "", () => openEditModal(row));
+                    return;
+                }
+                if (!response.ok || !result || !result.ok) {
+                    throw new Error(result && result.message ? result.message : "Unable to load client details.");
+                }
+                const clientData = mapClientFromApi(result.client);
+                editingRow = row;
+                setEditFormData(row, clientData);
+                renderCustomFields(editClientCustomFields, clientData.customFields, "edit");
+                editClientFormDirty = false;
+                editClientModal.show();
+            } catch (error) {
+                if (requestToken === clientProfileRequestToken) {
+                    showToast(error && error.message ? error.message : "Unable to load client details. Please try again.");
+                }
+            }
         };
 
         const openDeleteModal = (row) => {
@@ -2082,13 +2175,14 @@
             rows.forEach((row) => {
                 const tinDigits = normalizeDigits(row.dataset.tinRaw || row.dataset.tin || "");
                 const matchesTin = queryDigits ? tinDigits.includes(queryDigits) : false;
-                const matchesQuery = !query || normalize(row.dataset.clientName).includes(query) || matchesTin;
+                const matchesQuery = !query || normalize(row.dataset.clientName).includes(query)
+                    || normalize(row.dataset.tradeName).includes(query) || matchesTin;
                 const remarksVal = normalize(row.dataset.remarks || "");
                 let matchesRemarksTab = false;
                 if (directoryTabFilter === "active") {
-                    matchesRemarksTab = remarksVal !== "closed" && remarksVal !== "separated";
+                    matchesRemarksTab = remarksVal !== "closed";
                 } else {
-                    matchesRemarksTab = remarksVal === "closed" || remarksVal === "separated";
+                    matchesRemarksTab = remarksVal === "closed";
                 }
                 const matchesRemarks = matchesRemarksTab && (activeRemarksFilter === "all" || remarksVal === activeRemarksFilter);
                 const isVisible = matchesQuery && matchesRemarks;
@@ -2200,32 +2294,17 @@
                 return;
             }
 
-            const payload = {
-                client_name: clientData.clientName,
-                tin_number: clientData.tinRaw || clientData.tin,
-                trade_name: clientData.tradeName,
-                location: clientData.location,
-                permit_number: clientData.permitNumber,
-                birthday: clientData.birthday,
-                email: clientData.email,
-                email_password: clientData.emailPassword,
-                orus_account: clientData.orusAccount,
-                orus_password: clientData.orusPassword,
-                custom_fields: clientData.customFields,
-                forecast_growth_percent: 0,
-                remarks: "active"
-            };
-
             const csrfToken = getCookieValue("csrftoken");
             try {
-                const response = await fetch(buildClientDetailApiUrl(clientData.clientId), {
-                    method: "PUT",
+                // Restore status only; redacted list values must not overwrite a profile.
+                const response = await fetch(`${buildClientDetailApiUrl(clientData.clientId)}reopen/`, {
+                    method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRFToken": csrfToken
                     },
                     credentials: "same-origin",
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({})
                 });
 
                 const result = await parseJsonSafe(response);
@@ -2299,11 +2378,12 @@
                 const matchingCount = rows.filter((row) => {
                     const tinDigits = normalizeDigits(row.dataset.tinRaw || row.dataset.tin || "");
                     const matchesTin = queryDigits ? tinDigits.includes(queryDigits) : false;
-                    const matchesQuery = !query || normalize(row.dataset.clientName).includes(query) || matchesTin;
+                    const matchesQuery = !query || normalize(row.dataset.clientName).includes(query)
+                        || normalize(row.dataset.tradeName).includes(query) || matchesTin;
                     const remarksVal = normalize(row.dataset.remarks || "");
                     const matchesRemarksTab = directoryTabFilter === "active"
-                        ? (remarksVal !== "closed" && remarksVal !== "separated")
-                        : (remarksVal === "closed" || remarksVal === "separated");
+                        ? (remarksVal !== "closed")
+                        : (remarksVal === "closed");
                     return matchesQuery && matchesRemarksTab && (activeRemarksFilter === "all" || remarksVal === activeRemarksFilter);
                 }).length;
                 const totalPages = Math.ceil(matchingCount / CLIENTS_PAGE_SIZE) || 1;
@@ -2356,10 +2436,16 @@
                     return;
                 }
 
+                const lastName = document.getElementById("addClientLastName").value.trim();
+                const givenNames = ["addClientFirstName", "addClientMiddleName", "addClientSuffix"]
+                    .map((id) => document.getElementById(id).value.trim())
+                    .filter(Boolean)
+                    .join(" ");
                 const payload = {
-                    client_name: document.getElementById("addClientName") ? document.getElementById("addClientName").value.trim() : "",
+                    client_name: lastName + ", " + givenNames,
                     tin_number: addClientTinInput ? normalizeDigits(addClientTinInput.value) : "",
                     trade_name: document.getElementById("addClientTradeName") ? document.getElementById("addClientTradeName").value.trim() : "",
+                    tax_registration: document.getElementById("addClientTaxRegistration").value,
                     location: addClientLocationInput ? addClientLocationInput.value.trim() : "",
                     permit_number: document.getElementById("addClientPermitNumber") ? document.getElementById("addClientPermitNumber").value.trim() : "",
                     birthday: document.getElementById("addClientBirthday") ? document.getElementById("addClientBirthday").value.trim() : "",
@@ -2426,6 +2512,7 @@
                     client_name: document.getElementById("editClientName") ? document.getElementById("editClientName").value.trim() : "",
                     tin_number: editClientTinInput ? normalizeDigits(editClientTinInput.value) : "",
                     trade_name: document.getElementById("editClientTradeName") ? document.getElementById("editClientTradeName").value.trim() : "",
+                    tax_registration: document.getElementById("editClientTaxRegistration").value,
                     location: editClientLocationInput ? editClientLocationInput.value.trim() : "",
                     permit_number: document.getElementById("editClientPermitNumber") ? document.getElementById("editClientPermitNumber").value.trim() : "",
                     birthday: document.getElementById("editClientBirthday") ? document.getElementById("editClientBirthday").value.trim() : "",
@@ -2692,6 +2779,8 @@
                     const redirectUrl = await logoutCurrentUser();
                     showToast("Logging out...");
                     window.location.assign(redirectUrl);
+                } catch (error) {
+                    showToast(error.message || "Logout was not confirmed. Please retry.", "danger");
                 } finally {
                     dashboardLogoutAction.disabled = false;
                 }
@@ -2710,7 +2799,7 @@
             const clientsListHeading = document.getElementById("clientsListHeading");
             if (clientsListHeading) {
                 if (directoryTabFilter === "closed") {
-                    clientsListHeading.textContent = "Closed Client Businesses";
+                    clientsListHeading.textContent = "Inactive Clients";
                 } else {
                     clientsListHeading.textContent = "Registered Clients";
                 }
@@ -2744,13 +2833,13 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         if (normalize(urlParams.get("report_scope")) === "client") {
-            showToast("Reports are prepared from each client page. Open a client, then use Preview Report.");
+            showToast("Open Financial Records for a client, then choose Preview Report.");
         }
 
         const requestedRemarksFilter = normalize(urlParams.get("remark") || "all");
-        if (requestedRemarksFilter === "new" || requestedRemarksFilter === "active" || requestedRemarksFilter === "separated" || requestedRemarksFilter === "closed") {
+        if (requestedRemarksFilter === "new" || requestedRemarksFilter === "active" || requestedRemarksFilter === "closed") {
             activeRemarksFilter = requestedRemarksFilter;
-            if (requestedRemarksFilter === "closed" || requestedRemarksFilter === "separated") {
+            if (requestedRemarksFilter === "closed") {
                 directoryTabFilter = "closed";
                 if (tabActiveDirectory && tabClosed) {
                     tabClosed.classList.add("active");

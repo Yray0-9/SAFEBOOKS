@@ -1,15 +1,16 @@
 from django.db import models
+from django.db.models.functions import Upper
 
 
 class AdminAccount(models.Model):
     full_name = models.CharField(max_length=120)
     email = models.EmailField(unique=True)
     password_hash = models.CharField(max_length=255)
+    session_version = models.PositiveBigIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(blank=True, null=True)
-    # Authenticator setup is optional. Login enforcement remains a separate
-    # rollout step so enabling the stored preference cannot lock out an admin.
+    # Optional setup; once enabled, every sign-in must complete the second factor.
     two_factor_enabled = models.BooleanField(default=False)
     two_factor_secret = models.CharField(max_length=64, blank=True, default="")
     two_factor_confirmed_at = models.DateTimeField(blank=True, null=True)
@@ -18,6 +19,9 @@ class AdminAccount(models.Model):
     class Meta:
         db_table = "admin_accounts"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(Upper("email"), name="admin_email_ci_unique"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.email})"

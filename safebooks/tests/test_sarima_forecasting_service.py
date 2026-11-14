@@ -219,6 +219,25 @@ class SarimaForecastingServiceTests(SimpleTestCase):
                 self.assertEqual(result["status"], "unreliable_result")
                 self.assertEqual(result["forecast_by_period"], {})
 
+    @patch('safebooks.services.forecasting_service._fit_sarima', return_value=[-1.0, 25.0, float('nan'), 0.0])
+    def test_invalid_periods_do_not_hide_valid_later_quarters_or_become_zero(self, fit):
+        history = self._quarterly_history()
+        before = dict(history)
+        result = build_sarima_forecast(period_totals=history, frequency='quarterly', forecast_through=(2026, 12))
+        self.assertEqual(result['status'], 'partial_forecast')
+        self.assertEqual(result['forecast_by_period'], {(2026, 6): Decimal('25.0'), (2026, 12): Decimal('0.0')})
+        self.assertEqual(result['rejected_periods'], {(2026, 3): 'negative_prediction', (2026, 9): 'non_finite_prediction'})
+        self.assertEqual(result['minimum_observations'], 8)
+        self.assertEqual(before, history)
+        fit.assert_called_once()
+
+    def test_a_later_invalid_prediction_does_not_change_valid_earlier_values(self):
+        for through, predictions in (((2026, 1), [12.0]), ((2026, 3), [12.0, -1.0, 14.0])):
+            with self.subTest(through=through), patch('safebooks.services.forecasting_service._fit_sarima', return_value=predictions):
+                result = build_sarima_forecast(period_totals=self._monthly_history(), frequency='monthly', forecast_through=through)
+                self.assertEqual(result['forecast_by_period'][(2026, 1)], Decimal('12.0'))
+                self.assertNotIn((2026, 2), result['forecast_by_period'])
+
     @patch("safebooks.services.forecasting_service._fit_sarima", side_effect=ValueError("fit failed"))
     def test_model_failure_returns_controlled_status(self, _mock_fit):
         result = build_sarima_forecast(

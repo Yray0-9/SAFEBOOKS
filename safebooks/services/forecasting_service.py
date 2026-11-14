@@ -4,6 +4,7 @@ import math
 import logging
 import warnings
 from decimal import Decimal, InvalidOperation
+from safebooks.services.workload_limits import MAX_FORECAST_OBSERVATIONS, WorkloadLimitExceeded
 
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,11 @@ logger = logging.getLogger(__name__)
 SARIMA_ORDER = (0, 1, 0)
 SARIMA_OPTIMIZER = "powell"
 SARIMA_MAX_ITERATIONS = 250
+FORECAST_READY_STATUSES = frozenset({'forecast', 'partial_forecast'})
+REJECTED_PREDICTION_NOTES = {
+    'negative_prediction': 'Negative SARIMA prediction',
+    'non_finite_prediction': 'Non-finite SARIMA prediction',
+}
 FREQUENCY_CONFIG = {
     "monthly": {"interval": 1, "seasonal_period": 12, "minimum_observations": 24},
     "quarterly": {"interval": 3, "seasonal_period": 4, "minimum_observations": 8},
@@ -44,11 +50,13 @@ def _future_periods(
     current = last_period
     through_index = _period_index(forecast_through)
 
-    for _ in range(240):
+    for _ in range(241):
         current = _next_period(current, frequency)
         if _period_index(current) > through_index:
             break
         periods.append(current)
+        if len(periods) > 240:
+            raise WorkloadLimitExceeded("This forecast spans more than 240 scheduled periods. Select one client or a narrower year range. No partial forecast was returned.")
 
     return periods
 
@@ -93,6 +101,11 @@ def _validate_regular_periods(periods: list[tuple[int, int]], frequency: str) ->
         if actual != expected:
             return False
     return True
+
+
+def rejected_prediction_note(model: dict, period: tuple[int, int]) -> str:
+    reason = model.get('rejected_periods', {}).get(period)
+    return REJECTED_PREDICTION_NOTES.get(reason, '')
 
 
 def _fit_sarima(values: list[float], seasonal_period: int, steps: int) -> list[float]:
@@ -140,12 +153,28 @@ def _fit_sarima(values: list[float], seasonal_period: int, steps: int) -> list[f
     return predicted_values
 
 
+def requires_sarima_fit(*, period_totals, frequency, forecast_through):
+    """Plan synchronous work without fitting or changing forecast decisions."""
+    config = FREQUENCY_CONFIG.get(frequency)
+    periods = sorted(period_totals)
+    if not config or len(periods) < config["minimum_observations"]:
+        return False
+    if not _validate_regular_periods(periods, frequency) or not _future_periods(periods[-1], frequency, forecast_through):
+        return False
+    try:
+        return all(Decimal(period_totals[period]).is_finite() for period in periods)
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+
+
 def build_sarima_forecast(
     *,
     period_totals: dict[tuple[int, int], Decimal],
     frequency: str,
     forecast_through: tuple[int, int],
 ) -> dict | None:
+    if len(period_totals) > MAX_FORECAST_OBSERVATIONS:
+        raise WorkloadLimitExceeded("This forecast exceeds 240 observations. Select a narrower year range. No historical values were truncated.")
     periods = sorted(period_totals)
     if not periods:
         return None
@@ -239,15 +268,19 @@ def build_sarima_forecast(
         })
         return result
 
-    if any(not math.isfinite(value) or value < 0 for value in predicted_values):
+    valid_predictions, rejected_periods = {}, {}
+    for period, value in zip(scheduled_periods, predicted_values):
+        if not math.isfinite(value):
+            rejected_periods[period] = 'non_finite_prediction'
+        elif value < 0:
+            rejected_periods[period] = 'negative_prediction'
+        else:
+            valid_predictions[period] = Decimal(str(value))
+    result['rejected_periods'] = rejected_periods
+    result['forecast_by_period'] = valid_predictions
+    if rejected_periods:
         result.update({
-            "status": "unreliable_result",
-            "message": "The SARIMA result was negative or non-finite and was not displayed.",
+            "status": "partial_forecast" if valid_predictions else "unreliable_result",
+            "message": "Negative or non-finite SARIMA predictions were withheld; valid periods remain available.",
         })
-        return result
-
-    result["forecast_by_period"] = {
-        period: Decimal(str(value))
-        for period, value in zip(scheduled_periods, predicted_values)
-    }
     return result

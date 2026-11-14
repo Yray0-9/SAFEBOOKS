@@ -2,11 +2,13 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.test import Client as TestClient, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from safebooks.models import AdminAccount, BookkeeperAccount
+from safebooks.tests.session_helpers import bind_authenticated_session
 from safebooks.views import (
     SESSION_ADMIN_AUTHENTICATED_AT_KEY,
     SESSION_ADMIN_ID_KEY,
@@ -16,6 +18,10 @@ from safebooks.views import (
 
 
 class SessionSecurityTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
     def _create_admin(self, suffix: str = "session") -> AdminAccount:
         return AdminAccount.objects.create(
             full_name="Session Admin",
@@ -106,6 +112,7 @@ class SessionSecurityTests(TestCase):
         bookkeeper = self._create_bookkeeper()
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = bookkeeper.id
+        bind_authenticated_session(session)
         session.set_expiry(60 * 60 * 24)
         session.save()
 
@@ -124,6 +131,7 @@ class SessionSecurityTests(TestCase):
         now_timestamp = int(timezone.now().timestamp())
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = admin.id
+        bind_authenticated_session(session)
         session[SESSION_ADMIN_AUTHENTICATED_AT_KEY] = now_timestamp - 30
         session[SESSION_ADMIN_LAST_ACTIVITY_AT_KEY] = now_timestamp - 61
         session.save()
@@ -142,6 +150,7 @@ class SessionSecurityTests(TestCase):
         now_timestamp = int(timezone.now().timestamp())
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = admin.id
+        bind_authenticated_session(session)
         session[SESSION_ADMIN_AUTHENTICATED_AT_KEY] = now_timestamp - 61
         session[SESSION_ADMIN_LAST_ACTIVITY_AT_KEY] = now_timestamp - 1
         session.save()
@@ -154,7 +163,7 @@ class SessionSecurityTests(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertNotIn(SESSION_ADMIN_ID_KEY, self.client.session)
 
-    def test_existing_admin_session_is_bootstrapped_without_forced_logout(self):
+    def test_legacy_admin_session_requires_fresh_authentication(self):
         admin = self._create_admin("legacy")
         session = self.client.session
         session[SESSION_ADMIN_ID_KEY] = admin.id
@@ -165,6 +174,7 @@ class SessionSecurityTests(TestCase):
             HTTP_ACCEPT="application/json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(SESSION_ADMIN_AUTHENTICATED_AT_KEY, self.client.session)
-        self.assertIn(SESSION_ADMIN_LAST_ACTIVITY_AT_KEY, self.client.session)
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn(SESSION_ADMIN_ID_KEY, self.client.session)
+        self.assertNotIn(SESSION_ADMIN_AUTHENTICATED_AT_KEY, self.client.session)
+        self.assertNotIn(SESSION_ADMIN_LAST_ACTIVITY_AT_KEY, self.client.session)

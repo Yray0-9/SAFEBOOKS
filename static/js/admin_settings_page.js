@@ -1,6 +1,5 @@
 (() => {
     const navLinks = Array.from(document.querySelectorAll(".settings-nav-link"));
-    const saveButtons = Array.from(document.querySelectorAll(".btn-save-settings"));
     const resetButtons = Array.from(document.querySelectorAll(".btn-reset-settings"));
     const toastContainer = document.getElementById("uiToastContainer") || document.querySelector(".toast-container");
     const shared = window.SafeBooksShared || null;
@@ -18,7 +17,7 @@
 
         // Fallback UI toast if SafeBooksShared is not present
         const toast = document.createElement("div");
-        toast.className = `alert alert-${level === "success" ? "success" : "primary"} position-fixed bottom-0 end-0 m-3 shadow-lg`;
+        toast.className = `alert alert-${level === "success" ? "success" : "primary"} position-fixed top-0 end-0 m-3 shadow-sm`;
         toast.style.zIndex = "9999";
         toast.style.borderRadius = "12px";
         toast.style.fontSize = "0.88rem";
@@ -31,26 +30,6 @@
             setTimeout(() => toast.remove(), 300);
         }, 2800);
     };
-
-    // ── Save buttons interaction (UI simulation mode) ─────────────────────
-    saveButtons.forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...`;
-            btn.disabled = true;
-
-            setTimeout(() => {
-                btn.innerHTML = `<i class="bi bi-check2 me-1"></i> Saved!`;
-                showNotification("System settings preview saved locally (UI Preview Mode).", "success");
-
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 1500);
-            }, 500);
-        });
-    });
 
     // ── Smooth scroll & active navigation ─────────────────────────────────
     if (!navLinks.length) {

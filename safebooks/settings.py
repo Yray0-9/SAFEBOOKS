@@ -17,7 +17,12 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# Production must use hosting secrets, never accidentally inherit a developer's
+# local database, SMTP, or OAuth credentials from a copied .env file.
+if os.environ.get("DJANGO_SETTINGS_MODULE") != "safebooks.settings_production":
+    load_dotenv(BASE_DIR / ".env")
+
+CLIENT_CREDENTIAL_KEY = os.environ.get("SAFEBOOKS_CLIENT_CREDENTIAL_KEY", "").strip()
 
 
 # Quick-start development settings - unsuitable for production
@@ -52,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'safebooks.middleware.BrowserNotFoundMiddleware',
 ]
 
 ROOT_URLCONF = 'safebooks.urls'
@@ -189,26 +195,6 @@ EMAIL_USE_TLS = _env_bool("SAFEBOOKS_EMAIL_USE_TLS", "1")
 EMAIL_USE_SSL = _env_bool("SAFEBOOKS_EMAIL_USE_SSL", "0")
 SAFEBOOKS_CLIENT_RECORD_EMAILS_ENABLED = _env_bool("SAFEBOOKS_CLIENT_RECORD_EMAILS_ENABLED", "1")
 SAFEBOOKS_APPROVAL_DECISION_EMAILS_ENABLED = _env_bool("SAFEBOOKS_APPROVAL_DECISION_EMAILS_ENABLED", "1")
-
-# Temporary remote-beta feedback. Keep the real recipient in environment
-# configuration so the feature can be disabled or redirected without code edits.
-SAFEBOOKS_FEEDBACK_ENABLED = _env_bool("SAFEBOOKS_FEEDBACK_ENABLED", "0")
-SAFEBOOKS_FEEDBACK_RECIPIENT_EMAIL = _first_env(
-    "SAFEBOOKS_FEEDBACK_RECIPIENT_EMAIL",
-    default="",
-)
-SAFEBOOKS_FEEDBACK_EMAIL_TIMEOUT_SECONDS = _env_int(
-    "SAFEBOOKS_FEEDBACK_EMAIL_TIMEOUT_SECONDS",
-    "10",
-)
-SAFEBOOKS_FEEDBACK_RATE_LIMIT_COUNT = _env_int(
-    "SAFEBOOKS_FEEDBACK_RATE_LIMIT_COUNT",
-    "5",
-)
-SAFEBOOKS_FEEDBACK_RATE_LIMIT_WINDOW_SECONDS = _env_int(
-    "SAFEBOOKS_FEEDBACK_RATE_LIMIT_WINDOW_SECONDS",
-    str(10 * 60),
-)
 
 # Google OAuth sign-in. Keep real credentials in .env or deployment secrets.
 SAFEBOOKS_GOOGLE_OAUTH_CLIENT_ID = _first_env("SAFEBOOKS_GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID", default="")

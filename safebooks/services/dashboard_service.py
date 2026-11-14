@@ -1,10 +1,9 @@
-from datetime import date
 from decimal import Decimal
 
 from django.db.models import Count, Max, OuterRef, Q, Subquery
 from django.utils import timezone
 
-from safebooks.models import Client, FinancialRecord, Period
+from safebooks.models import Client, FinancialRecord, FinancialRecordLine, Period
 
 
 MONTH_NUMBER_TO_NAME = dict(Period.MONTH_CHOICES)
@@ -93,7 +92,7 @@ def _build_client_activity_payload(client, current_period_label: str, reference_
         current_period = current_period_label
 
     remarks = client.remarks or Client.REMARK_NEW
-    if remarks not in {Client.REMARK_NEW, Client.REMARK_ACTIVE, Client.REMARK_SEPARATED, Client.REMARK_CLOSED}:
+    if remarks not in {Client.REMARK_NEW, Client.REMARK_ACTIVE, Client.REMARK_CLOSED}:
         remarks = Client.REMARK_NEW
 
     deadline_date = deadline_date.isoformat() if deadline_date else ""
@@ -101,10 +100,9 @@ def _build_client_activity_payload(client, current_period_label: str, reference_
     deadline_completed = False
     if getattr(client, "last_deadline_date", None):
         days_remaining = (client.last_deadline_date - reference_date).days
-        deadline_completed = FinancialRecord.objects.filter(
-            client=client,
-            entry_date__gte=date(client.last_deadline_date.year, client.last_deadline_date.month, 1),
-        ).exists()
+        deadline_completed = bool(
+            client.last_entry_date and client.last_entry_date >= client.last_deadline_date.replace(day=1)
+        )
 
     return {
         "client_id": client.id,
@@ -135,10 +133,7 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
     current_month = today.month
     current_period_label = _period_label(current_month, current_year)
 
-    # Dynamic Client Promotion & Status Checks
-    from safebooks.services.client_service import check_and_promote_new_client
-    for client in Client.objects.filter(bookkeeper=bookkeeper).exclude(remarks=Client.REMARK_CLOSED):
-        check_and_promote_new_client(client)
+    from safebooks.services.client_service import resolve_client_remarks, with_status_activity
 
     latest_record_for_client = (
         FinancialRecord.objects.filter(
@@ -149,7 +144,8 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
     )
 
     clients = list(
-        Client.objects.filter(bookkeeper=bookkeeper)
+        with_status_activity(Client.objects.filter(bookkeeper=bookkeeper), today=today)
+        .defer("email_password", "orus_password", "custom_fields")
         .annotate(
             record_count=Count(
                 "financial_records",
@@ -169,6 +165,7 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
             last_period_month=Subquery(latest_record_for_client.values("period__month")[:1]),
             last_period_year=Subquery(latest_record_for_client.values("period__year")[:1]),
             last_frequency=Subquery(latest_record_for_client.values("frequency")[:1]),
+            last_record_id=Subquery(latest_record_for_client.values("id")[:1]),
             last_deadline_date=Subquery(latest_record_for_client.values("deadline_date")[:1]),
             latest_record_updated_at=Max(
                 "financial_records__updated_at",
@@ -177,6 +174,24 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
         )
         .order_by("-created_at", "-id")
     )
+    # Lightweight distinct coverage metadata, never one line-history query per client.
+    coverage_by_record = {}
+    latest_ids = {client.last_record_id for client in clients if client.last_record_id}
+    for record_id, coverage in (
+        FinancialRecordLine.objects.filter(record_id__in=latest_ids, record__bookkeeper=bookkeeper)
+        .filter(Q(type_code__iexact="sales") | Q(type_code__iexact="expenses"))
+        .order_by().values_list("record_id", "coverage_frequency").distinct()
+    ):
+        coverage_by_record.setdefault(record_id, set()).add(coverage)
+    for client in clients:
+        coverages = coverage_by_record.get(client.last_record_id, set())
+        if any(coverage is not None for coverage in coverages):
+            # A monthly component remains due monthly; all-quarterly amounts do not.
+            client.last_frequency = min(
+                (coverage or client.last_frequency or "monthly" for coverage in coverages),
+                key=lambda coverage: FREQUENCY_INTERVALS.get(coverage, 1),
+            )
+        client.remarks = resolve_client_remarks(client, today=today)
 
     recent_client_activity = [
         _build_client_activity_payload(client, current_period_label, today)
@@ -201,7 +216,6 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
 
     remark_new_count = sum(1 for client in clients if client.remarks == Client.REMARK_NEW)
     remark_active_count = sum(1 for client in clients if client.remarks == Client.REMARK_ACTIVE)
-    remark_separated_count = sum(1 for client in clients if client.remarks == Client.REMARK_SEPARATED)
     remark_closed_count = sum(1 for client in clients if client.remarks == Client.REMARK_CLOSED)
 
     filed_count = sum(1 for row in recent_client_activity if row["compliance"] == "filed")
@@ -222,7 +236,7 @@ def get_dashboard_summary_for_bookkeeper(bookkeeper) -> dict:
         "remarks_summary": {
             "new": remark_new_count,
             "active": remark_active_count,
-            "separated": remark_separated_count,
+            "separated": 0,  # Compatibility for older dashboard consumers.
             "closed": remark_closed_count,
         },
         "compliance_summary": {

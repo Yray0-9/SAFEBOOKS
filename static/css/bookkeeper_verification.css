@@ -1,0 +1,27 @@
+.verification-proof {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    border: 1px solid #d9e5ff;
+    border-radius: 16px;
+    background: #f8fbff;
+    color: #15315f;
+}
+.verification-proof-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.verification-proof-heading h3 { margin: 0; font-size: 1rem; font-weight: 700; }
+.verification-proof-status { padding: 0.2rem 0.55rem; border-radius: 999px; background: #e8eef8; color: #47608c; font-size: 0.75rem; font-weight: 600; }
+.verification-proof-copy, .verification-file-hint { color: #5d739e; font-size: 0.85rem; line-height: 1.5; }
+.verification-proof-copy { margin-bottom: 1rem; }
+.verification-file-hint { margin: 0.5rem 0 0; }
+.verification-proof .auth-input { min-height: 44px; max-width: 100%; font-size: 0.9rem; }
+.verification-proof select.auth-input { padding-right: 2.5rem; cursor: pointer; background-color: #fbfdff; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%234a68a0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.9rem center; background-size: 14px 10px; }
+.verification-proof input[type="file"] { padding: 0.5rem; overflow: hidden; }
+.verification-proof-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.verification-proof-actions .auth-submit-btn { flex: 1 1 150px; width: auto; margin: 0; min-height: 44px; }
+.verification-clear-selection { min-height: 44px; color: #315b9f; border: 1px solid #c6d8fd; background: #fff; }
+.verification-clear-selection:hover { color: #173f84; background: #edf3ff; }
+.verification-proof :focus-visible { outline: 3px solid #8fb8ff; outline-offset: 2px; }
+.verification-proof [hidden] { display: none !important; }
+@media (max-width: 575.98px) {
+    .verification-proof { padding: 0.85rem; }
+    .verification-proof-actions > .btn { flex-basis: 100%; width: 100%; }
+}

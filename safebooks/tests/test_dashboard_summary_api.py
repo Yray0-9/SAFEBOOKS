@@ -1,5 +1,8 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -10,6 +13,29 @@ from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
 
 
 class DashboardSummaryApiTests(TestCase):
+    def test_explicit_amount_coverage_controls_reminders_without_retagging_entry(self):
+        owner = self._create_bookkeeper("coverage-reminder")
+        ledger = self._create_client(bookkeeper=owner, tin_suffix="coverage-reminder", remarks=Client.REMARK_ACTIVE)
+        self._login_as(owner)
+        record = self._create_record(bookkeeper=owner, client=ledger, entry_date=date(2026, 3, 31), amount=Decimal("75000"))
+        line = record.line_items.get()
+        line.type_code = "Sales"
+        line.description = "Sales"
+        line.coverage_frequency = "quarterly"
+        line.save()
+        with patch("safebooks.services.dashboard_service.timezone.localdate", return_value=date(2026, 5, 1)):
+            response = self.client.get(reverse("api_dashboard_summary"))
+        self.assertEqual(response.status_code, 200, response.content)
+        row = next(item for item in response.json()["recent_client_activity"] if item["client_id"] == ledger.id)
+        self.assertEqual(row["status"], "updated")
+        record.refresh_from_db()
+        self.assertEqual(record.frequency, "monthly", "Reads must not rewrite the compatibility field")
+        FinancialRecordLine.objects.create(record=record, type_code="Expenses", description="Expenses", amount=0, coverage_frequency="monthly")
+        with patch("safebooks.services.dashboard_service.timezone.localdate", return_value=date(2026, 5, 1)):
+            response = self.client.get(reverse("api_dashboard_summary"))
+        row = next(item for item in response.json()["recent_client_activity"] if item["client_id"] == ledger.id)
+        self.assertEqual(row["status"], "needs-attention", "A monthly component keeps monthly reminders")
+
     def _create_bookkeeper(self, suffix: str) -> BookkeeperAccount:
         return BookkeeperAccount.objects.create(
             full_name=f"Bookkeeper {suffix}",
@@ -22,6 +48,7 @@ class DashboardSummaryApiTests(TestCase):
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _build_tin(self, token: str) -> str:
@@ -131,11 +158,11 @@ class DashboardSummaryApiTests(TestCase):
         self.assertEqual(payload["metrics"]["total_clients"], 3)
         self.assertEqual(payload["metrics"]["total_entries_this_month"], 1)
         self.assertEqual(payload["metrics"]["pending_compliance"], 1)
-        self.assertEqual(payload["metrics"]["new_clients"], 1)
+        self.assertEqual(payload["metrics"]["new_clients"], 2)
 
-        self.assertEqual(payload["remarks_summary"]["new"], 1)
+        self.assertEqual(payload["remarks_summary"]["new"], 2)
         self.assertEqual(payload["remarks_summary"]["active"], 0)
-        self.assertEqual(payload["remarks_summary"]["separated"], 1)
+        self.assertEqual(payload["remarks_summary"]["separated"], 0)
         self.assertEqual(payload["remarks_summary"]["closed"], 1)
 
         self.assertEqual(payload["compliance_summary"]["filed"]["count"], 1)

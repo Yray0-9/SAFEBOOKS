@@ -1,12 +1,14 @@
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from safebooks.models import AdminAccount, AdminAuditLog
 from safebooks.services.admin_audit_service import ACTION_LABELS
 from safebooks.services.admin_security_service import get_admin_two_factor_status
+from safebooks.services.session_security_service import save_account_security_change
 from safebooks.validators.password_validator import missing_password_requirements
+from safebooks.validators.data_validator import model_text_errors
 
 
 def _normalize_text(value) -> str:
@@ -105,6 +107,8 @@ def update_admin_profile(admin_account: AdminAccount, payload: dict) -> dict:
     if not email:
         errors.append("Email is required.")
 
+    errors.extend(model_text_errors(AdminAccount, payload))
+
     if email:
         try:
             validate_email(email)
@@ -137,19 +141,21 @@ def update_admin_profile(admin_account: AdminAccount, payload: dict) -> dict:
             "recent_activity": get_admin_profile(admin_account)["recent_activity"],
         }
 
-    with transaction.atomic():
-        admin_account.full_name = full_name
-        admin_account.email = email
-        admin_account.save(update_fields=["full_name", "email"])
-        _create_admin_profile_audit_log(
-            admin_account,
-            AdminAuditLog.ACTION_ADMIN_PROFILE_UPDATED,
-            "Updated admin profile details.",
-            {
-                "changed_fields": changed_fields,
-                "old_email": old_email,
-            },
-        )
+    old_name = admin_account.full_name
+    try:
+        with transaction.atomic():
+            admin_account.full_name = full_name
+            admin_account.email = email
+            admin_account.save(update_fields=["full_name", "email"])
+            _create_admin_profile_audit_log(
+                admin_account, AdminAuditLog.ACTION_ADMIN_PROFILE_UPDATED, "Updated admin profile details.",
+                {"changed_fields": changed_fields, "old_email": old_email},
+            )
+    except IntegrityError:
+        admin_account.full_name = old_name
+        admin_account.email = old_email
+        message = "Email already exists." if AdminAccount.objects.filter(email__iexact=email).exclude(id=admin_account.id).exists() else "Unable to update the profile. Refresh and try again."
+        return {"ok": False, "message": message, "errors": [message]}
 
     return {
         "ok": True,
@@ -203,7 +209,7 @@ def change_admin_password(admin_account: AdminAccount, payload: dict) -> dict:
 
     with transaction.atomic():
         admin_account.password_hash = make_password(new_password)
-        admin_account.save(update_fields=["password_hash"])
+        save_account_security_change(admin_account, ["password_hash"])
         _create_admin_profile_audit_log(
             admin_account,
             AdminAuditLog.ACTION_ADMIN_PASSWORD_CHANGED,

@@ -1,3 +1,5 @@
+from safebooks.tests.session_helpers import bind_authenticated_session
+
 import json
 
 from django.test import TestCase
@@ -20,6 +22,7 @@ class BookkeeperAuditLogApiTests(TestCase):
     def _login_as(self, account: BookkeeperAccount) -> None:
         session = self.client.session
         session[SESSION_BOOKKEEPER_ID_KEY] = account.id
+        bind_authenticated_session(session)
         session.save()
 
     def _create_client(self, owner: BookkeeperAccount, suffix: str) -> Client:

@@ -324,11 +324,16 @@
                 });
             }
 
-            if (logoutLink && shared && typeof shared.logoutCurrentUser === "function") {
+            if (logoutLink) {
                 logoutLink.addEventListener("click", async (event) => {
                     event.preventDefault();
-
+                    if (logoutLink.dataset.logoutPending === "1") return;
+                    logoutLink.dataset.logoutPending = "1";
+                    logoutLink.setAttribute("aria-disabled", "true");
                     try {
+                        if (!shared || typeof shared.logoutCurrentUser !== "function") {
+                            throw new Error("Logout is unavailable. Reload this page and try again.");
+                        }
                         const redirectUrl = await shared.logoutCurrentUser({
                             logoutUrl: "{% url 'api_logout' %}",
                             loginUrl: "{% url 'login' %}",
@@ -337,7 +342,10 @@
                         });
                         window.location.assign(redirectUrl);
                     } catch (logoutError) {
-                        window.location.assign("{% url 'login' %}");
+                        setFeedback(logoutError.message || "Logout was not confirmed. Please retry.", "error");
+                    } finally {
+                        logoutLink.dataset.logoutPending = "0";
+                        logoutLink.removeAttribute("aria-disabled");
                     }
                 });
             }
