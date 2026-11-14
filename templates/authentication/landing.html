@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=landing-record-status">
     <link rel="stylesheet" href="{% static 'css/animations.css' %}">
     <link rel="stylesheet" href="{% static 'css/skeleton.css' %}">
 </head>
@@ -124,9 +124,10 @@
                 <div class="collapse navbar-collapse" id="mainNav">
                     <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
                         <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#about">How It Works</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
                         <li class="nav-item ms-lg-2">
-                            <a class="btn btn-safe-nav" href="/login/">Login</a>
+                            <a class="btn btn-safe-nav" href="{% url 'login' %}">Login</a>
                         </li>
                     </ul>
                 </div>
@@ -141,38 +142,34 @@
             <div class="container position-relative">
                 <div class="row align-items-center g-5">
                     <div class="col-lg-6">
-                        <div class="animate-fade-in d-inline-flex align-items-center gap-2 mb-3 px-3 py-1.5 rounded-pill" style="background: rgba(43, 108, 176, 0.1); border: 1px solid rgba(43, 108, 176, 0.2); font-size: 0.85rem; font-weight: 600; color: #2b6cb0;">
-                            <i class="bi bi-shield-check-fill"></i>
-                            <span>Official Platform of the Bookkeepers Guild of Panabo City Inc</span>
-                        </div>
-                        <p class="eyebrow animate-fade-in">Secure Financial Intelligence</p>
-                        <h1 class="hero-title animate-fade-in delay-1">Manage Financial Records with Confidence</h1>
+                        <p class="eyebrow animate-fade-in">Bookkeeping Workspace</p>
+                        <h1 class="hero-title animate-fade-in delay-1">Manage Client Records in One Place</h1>
                         <p class="hero-subtext animate-fade-in delay-2">
-                            SafeBooks helps bookkeepers organize client data, track tax compliance, and gain insights through analytics and forecasting.
+                            Keep client profiles and financial records together, see which records need follow-up, and review trends, forecasts, and printable reports.
                         </p>
                         <div class="d-flex flex-wrap gap-3 animate-fade-in delay-3">
-                            <a href="#cta" class="btn btn-safe-primary">Get Started</a>
-                            <a href="/login/" class="btn btn-safe-outline">Login</a>
+                            <a href="{% url 'signup' %}" class="btn btn-safe-primary">Create an Account</a>
+                            <a href="{% url 'login' %}" class="btn btn-safe-outline">Login</a>
                         </div>
                     </div>
                     <div class="col-lg-6 hero-preview-column">
                         <div class="animate-fade-in delay-2">
-                            <div class="dashboard-mockup hero-overview-card floating-element" aria-label="Client overview preview table">
+                            <div class="dashboard-mockup hero-overview-card" aria-label="Sample client work queue">
                                 <div class="hero-overview-header">
-                                    <h3 class="hero-overview-title">Client Overview</h3>
-                                    <p class="hero-overview-subtitle">Monitor financial status and compliance in real time</p>
+                                    <h2 class="hero-overview-title">Client Work Queue</h2>
+                                    <p class="hero-overview-subtitle">Try the search and filters with sample records.</p>
                                     
                                     <!-- Dynamic controls for the interactive preview -->
                                     <div class="hero-preview-controls">
                                         <div class="hero-search-wrap">
                                             <i class="bi bi-search hero-search-icon"></i>
-                                            <input type="text" id="mockSearchInput" class="form-control hero-search-input" placeholder="Search client name or TIN...">
+                                            <input type="text" id="mockSearchInput" class="form-control hero-search-input" placeholder="Search client name or TIN…" aria-label="Search sample clients by name or TIN">
                                         </div>
                                         <div class="hero-filter-group" id="mockFilterGroup">
-                                            <button type="button" class="btn btn-sm hero-filter-btn is-active" data-filter="all">All</button>
-                                            <button type="button" class="btn btn-sm hero-filter-btn" data-filter="filed">Filed</button>
-                                            <button type="button" class="btn btn-sm hero-filter-btn" data-filter="pending">Pending</button>
-                                            <button type="button" class="btn btn-sm hero-filter-btn" data-filter="late">Late</button>
+                                            <button type="button" class="btn btn-sm hero-filter-btn is-active" data-filter="all" aria-pressed="true">All</button>
+                                            <button type="button" class="btn btn-sm hero-filter-btn" data-filter="current" aria-pressed="false">Up to date</button>
+                                            <button type="button" class="btn btn-sm hero-filter-btn" data-filter="follow-up" aria-pressed="false">Needs follow-up</button>
+                                            <button type="button" class="btn btn-sm hero-filter-btn" data-filter="empty" aria-pressed="false">No entries</button>
                                         </div>
                                     </div>
                                 </div>
@@ -182,35 +179,27 @@
                                             <tr>
                                                 <th scope="col">Client Name</th>
                                                 <th scope="col">TIN</th>
-                                                <th scope="col">Monthly Revenue</th>
-                                                <th scope="col">Compliance Status</th>
-                                                <th scope="col">Risk Level</th>
+                                                <th scope="col">Record Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr class="mock-table-row" data-client-name="ABC Trading" data-tin="123-456-789" data-revenue="₱120,000" data-status="filed" data-risk="low" data-notes="All VAT and Percentage taxes filed successfully for the current month. Stable revenue trends.">
+                                            <tr class="mock-table-row" data-client-name="ABC Trading" data-tin="000-000-001-000" data-status="current">
                                                 <td>ABC Trading</td>
-                                                <td>123-456-789</td>
-                                                <td>&#8369;120,000</td>
-                                                <td><span class="status-badge status-filed">Filed</span></td>
-                                                <td><span class="status-badge risk-low">Low</span></td>
+                                                <td>000-000-001-000</td>
+                                                <td><span class="status-badge status-filed">Up to date</span></td>
                                             </tr>
-                                            <tr class="mock-table-row" data-client-name="JMN Store" data-tin="987-654-321" data-revenue="₱80,000" data-status="pending" data-risk="medium" data-notes="Income Tax returns pending review. Needs invoice checks for the current quarter.">
+                                            <tr class="mock-table-row" data-client-name="JMN Store" data-tin="000-000-002-000" data-status="follow-up">
                                                 <td>JMN Store</td>
-                                                <td>987-654-321</td>
-                                                <td>&#8369;80,000</td>
-                                                <td><span class="status-badge status-pending">Pending</span></td>
-                                                <td><span class="status-badge risk-medium">Medium</span></td>
+                                                <td>000-000-002-000</td>
+                                                <td><span class="status-badge status-pending">Needs follow-up</span></td>
                                             </tr>
-                                            <tr class="mock-table-row" data-client-name="KRL Services" data-tin="456-789-123" data-revenue="₱50,000" data-status="late" data-risk="high" data-notes="VAT return is overdue. Revenue discrepancy detected in ledger. Requires priority auditing.">
+                                            <tr class="mock-table-row" data-client-name="KRL Services" data-tin="000-000-003-000" data-status="empty">
                                                 <td>KRL Services</td>
-                                                <td>456-789-123</td>
-                                                <td>&#8369;50,000</td>
-                                                <td><span class="status-badge status-late">Late</span></td>
-                                                <td><span class="status-badge risk-high">High</span></td>
+                                                <td>000-000-003-000</td>
+                                                <td><span class="status-badge status-late">No entries</span></td>
                                             </tr>
                                             <tr id="mockNoResultsRow" class="d-none">
-                                                <td colspan="5" class="text-center py-4 text-muted font-medium">
+                                                <td colspan="3" class="text-center py-4 text-muted font-medium">
                                                     <i class="bi bi-info-circle me-1"></i>No matching clients found
                                                 </td>
                                             </tr>
@@ -224,44 +213,10 @@
             </div>
         </section>
 
-        <!-- Trust Banner Section -->
-        <section class="trust-banner-section scroll-reveal">
-            <div class="container">
-                <div class="trust-banner-content">
-                    <div class="trust-banner-main">
-                        <div class="trust-banner-icon">
-                            <i class="bi bi-award-fill"></i>
-                        </div>
-                        <div>
-                            <h4>Endorsed Platform</h4>
-                            <p>Cooperative development for professional compliance management</p>
-                        </div>
-                    </div>
-                    <div class="trust-banner-divider"></div>
-                    <div class="trust-banner-copy">
-                        <p>
-                            Official Compliance Portal of the 
-                            <span>Bookkeepers Guild of Panabo City Inc.</span>
-                        </p>
-                    </div>
-                    <div class="trust-banner-divider"></div>
-                    <div class="trust-banner-badges">
-                        <span class="trust-badge trust-badge-success">
-                            <i class="bi bi-shield-check"></i> Verified Security
-                        </span>
-                        <span class="trust-badge trust-badge-primary">
-                            <i class="bi bi-patch-check"></i> Authorized Access
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <section id="features" class="section-spacing">
             <div class="container">
                 <div class="section-heading text-center scroll-reveal">
                     <h2>Key Features</h2>
-                    <p>Designed in partnership with the <strong>Bookkeepers Guild of Panabo City Inc</strong> for bookkeepers who handle multiple businesses with precision and confidence.</p>
                 </div>
                 <div class="row g-4">
                     <div class="col-md-6 col-lg-4">
@@ -274,8 +229,8 @@
                     <div class="col-md-6 col-lg-4">
                         <article class="feature-card card-interactive scroll-reveal">
                             <span class="feature-icon"><i class="bi bi-search"></i></span>
-                            <h3>TIN-Based Search</h3>
-                            <p>Locate taxpayer records instantly with accurate TIN lookup tools.</p>
+                            <h3>Client Search</h3>
+                            <p>Find clients by name, trade name, or TIN.</p>
                         </article>
                     </div>
                     <div class="col-md-6 col-lg-4">
@@ -289,14 +244,14 @@
                         <article class="feature-card card-interactive scroll-reveal">
                             <span class="feature-icon"><i class="bi bi-bar-chart-steps"></i></span>
                             <h3>Predictive Forecasting</h3>
-                            <p>Anticipate upcoming financial outcomes through data-driven forecasts.</p>
+                            <p>Project sales, expenses, and tax when enough consecutive records are available.</p>
                         </article>
                     </div>
                     <div class="col-md-6 col-lg-4">
                         <article class="feature-card card-interactive scroll-reveal">
-                            <span class="feature-icon"><i class="bi bi-shield-check"></i></span>
-                            <h3>Risk Classification</h3>
-                            <p>Identify high-risk records early and prioritize actions with clarity.</p>
+                            <span class="feature-icon"><i class="bi bi-printer"></i></span>
+                            <h3>Printable Reports</h3>
+                            <p>Print financial summaries, record status reports, or detailed client worksheets.</p>
                         </article>
                     </div>
                     <div class="col-md-6 col-lg-4">
@@ -314,7 +269,6 @@
             <div class="container">
                 <div class="section-heading text-center scroll-reveal">
                     <h2>How It Works</h2>
-                    <p>A simple process that keeps your workflow organized from data entry to reporting.</p>
                 </div>
                 <div class="row g-4">
                     <div class="col-lg-4">
@@ -330,7 +284,7 @@
                             <span class="step-number">2</span>
                             <span class="step-icon"><i class="bi bi-journal-text"></i></span>
                             <h3>Record Financial Data</h3>
-                            <p>Input transactions and compliance records using a structured workflow.</p>
+                            <p>Record sales, expenses, and tax entries for the periods they cover.</p>
                         </article>
                     </div>
                     <div class="col-lg-4">
@@ -338,52 +292,8 @@
                             <span class="step-number">3</span>
                             <span class="step-icon"><i class="bi bi-pie-chart"></i></span>
                             <h3>View Insights and Reports</h3>
-                            <p>Review trends, compliance status, and risk indicators in one view.</p>
+                            <p>Check which records need follow-up and generate reports for review.</p>
                         </article>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="section-spacing dashboard-preview-section">
-            <div class="container text-center">
-                <div class="section-heading scroll-reveal">
-                    <h2>Dashboard Preview</h2>
-                    <p>View financial trends, compliance status, and risk levels in one dashboard.</p>
-                </div>
-                <div class="preview-board mx-auto scroll-reveal" aria-label="Dashboard preview panel">
-                    <div class="preview-header">
-                        <span class="dot dot-red"></span>
-                        <span class="dot dot-yellow"></span>
-                        <span class="dot dot-green"></span>
-                    </div>
-                    <div class="preview-content">
-                        <div class="preview-column">
-                            <h4>Compliance Timeline</h4>
-                            <div class="timeline-item">
-                                <span></span>
-                                VAT Filing Updated
-                            </div>
-                            <div class="timeline-item">
-                                <span></span>
-                                Income Tax Due in 5 Days
-                            </div>
-                            <div class="timeline-item">
-                                <span></span>
-                                Risk Alert Flagged
-                            </div>
-                        </div>
-                        <div class="preview-column">
-                            <h4>Financial Trend</h4>
-                            <div class="sparkline">
-                                <span class="spark spark-1"></span>
-                                <span class="spark spark-2"></span>
-                                <span class="spark spark-3"></span>
-                                <span class="spark spark-4"></span>
-                                <span class="spark spark-5"></span>
-                            </div>
-                            <p class="preview-note">Forecast confidence: 89%</p>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -394,7 +304,6 @@
             <div class="container">
                 <div class="section-heading text-center">
                     <h2>Frequently Asked Questions</h2>
-                    <p>Learn more about onboarding, administrative review, and data privacy safeguards.</p>
                 </div>
                 
                 <div class="row justify-content-center">
@@ -410,7 +319,7 @@
                                 </h2>
                                 <div id="faqCollapseOne" class="accordion-collapse collapse" aria-labelledby="faqHeadingOne" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body faq-body">
-                                        To protect client records, SafeBooks enforces a strict onboarding verification. After signing up and confirming your email address, your account status is set to <strong class="text-primary-emphasis">Pending Approval</strong>. The Guild administration console manually reviews each application. Once verified, you will be active and can immediately manage clients.
+                                        To protect client records, SafeBooks enforces a strict onboarding verification. After signing up, verify your email and submit proof of bookkeeping qualifications or experience. An administrator reviews your application before you can manage client records.
                                     </div>
                                 </div>
                             </div>
@@ -424,7 +333,7 @@
                                 </h2>
                                 <div id="faqCollapseTwo" class="accordion-collapse collapse" aria-labelledby="faqHeadingTwo" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body faq-body">
-                                        SafeBooks implements strict schema-level data separation. Every client and tax transaction is scoped exclusively under the bookkeeper who registered them. System administrators can manage and review bookkeeper account active states, but they have <strong>no technical access</strong> to view client profiles or financial transactions.
+                                        Your bookkeeper account provides access to the client profiles and financial records you manage. You can also enable the Client Details Lock in Settings to require password confirmation before opening a client profile.
                                     </div>
                                 </div>
                             </div>
@@ -433,12 +342,12 @@
                             <div class="accordion-item border-0">
                                 <h2 class="accordion-header" id="faqHeadingThree">
                                     <button class="accordion-button collapsed faq-button" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseThree" aria-expanded="false" aria-controls="faqCollapseThree">
-                                        What formats of compliance reports are available for export?
+                                        Which reports can I print?
                                     </button>
                                 </h2>
                                 <div id="faqCollapseThree" class="accordion-collapse collapse" aria-labelledby="faqHeadingThree" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body faq-body">
-                                        Bookkeepers can instantly generate and print audit-ready compliance summaries, risk reports, and monthly financial ledger reports. Export formats include standardized printable PDF worksheets and spreadsheets to match standard bookkeeping documentation procedures.
+                                        You can print financial summaries, record status reports, and client status reports from Reports. Open a client’s Financial Records to print their worksheet. Use Print / Save PDF to save a copy.
                                     </div>
                                 </div>
                             </div>
@@ -451,8 +360,8 @@
 
         <section id="cta" class="cta-section section-spacing-sm">
             <div class="container text-center">
-                <h2 class="scroll-reveal">Start managing your financial records efficiently today.</h2>
-                <a href="/login/" class="btn btn-cta scroll-reveal">Get Started</a>
+                <h2 class="scroll-reveal">Set up your bookkeeper account</h2>
+                <a href="{% url 'signup' %}" class="btn btn-cta scroll-reveal">Create an Account</a>
             </div>
         </section>
     </main>
@@ -462,70 +371,22 @@
             <div class="row g-4 align-items-start">
                 <div class="col-md-7">
                     <h3>SafeBooks</h3>
-                    <p>A secure financial records monitoring system with tax compliance tracking and predictive risk analytics.</p>
+                    <p>A bookkeeping workspace for client records, reports, and financial forecasts.</p>
                     <p class="mt-2 footer-org-attribution" style="font-size: 0.85rem; opacity: 0.75; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="bi bi-award-fill"></i>
-                        <span>Official Platform of the <strong>Bookkeepers Guild of Panabo City Inc</strong></span>
+                        <span>Prepared in cooperation with the <strong>Bookkeepers Guild of Panabo City Inc</strong></span>
                     </p>
                 </div>
                 <div class="col-md-5 footer-links-wrap">
-                    <a href="/login/">Login</a>
-                    <a href="#about">About</a>
+                    <a href="{% url 'login' %}">Login</a>
+                    <a href="#about">How It Works</a>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; {% now "Y" %} SafeBooks. Prepared in cooperation with the Bookkeepers Guild of Panabo City Inc. All rights reserved.</p>
+                <p>&copy; {% now "Y" %} SafeBooks. All rights reserved.</p>
             </div>
         </div>
     </footer>
-
-    <!-- Mock Client Preview Modal -->
-    <div class="modal fade" id="heroPreviewModal" tabindex="-1" aria-labelledby="heroPreviewModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content hero-preview-modal-content">
-                <div class="modal-header hero-preview-modal-header">
-                    <h5 class="modal-title hero-preview-modal-title" id="heroPreviewModalLabel">
-                        <i class="bi bi-briefcase-fill me-2"></i>Client Details
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body hero-preview-modal-body">
-                    <div class="modal-detail-stack">
-                        <div class="modal-detail-item">
-                            <span class="modal-detail-label">Client Name</span>
-                            <span class="modal-detail-value" id="modalClientName">-</span>
-                        </div>
-                        <div class="modal-detail-item">
-                            <span class="modal-detail-label">Taxpayer TIN</span>
-                            <span class="modal-detail-value modal-detail-mono" id="modalClientTIN">-</span>
-                        </div>
-                        <div class="modal-detail-item">
-                            <span class="modal-detail-label">Monthly Revenue</span>
-                            <span class="modal-detail-value" id="modalClientRevenue">-</span>
-                        </div>
-                        <div class="modal-detail-item">
-                            <span class="modal-detail-label">Filing Status</span>
-                            <span id="modalClientStatus">-</span>
-                        </div>
-                        <div class="modal-detail-item">
-                            <span class="modal-detail-label">Risk Assessment</span>
-                            <span id="modalClientRisk">-</span>
-                        </div>
-                        <div class="modal-detail-notes">
-                            <span class="modal-detail-label">Audit Advisory Notes</span>
-                            <div class="modal-detail-note" id="modalClientNotes">
-                                -
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer hero-preview-modal-footer">
-                    <span class="modal-footer-note"><i class="bi bi-shield-lock-fill me-1"></i>Secure Guild Portal</span>
-                    <button type="button" class="btn btn-sm close-preview-btn" data-bs-dismiss="modal">Close Preview</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="{% static 'js/skeleton.js' %}"></script>
@@ -581,14 +442,15 @@
             const filterTable = () => {
                 if (!searchInput) return;
                 const query = searchInput.value.toLowerCase().trim();
+                const digits = query.replace(/-/g, "");
                 let visibleCount = 0;
 
                 rows.forEach(row => {
                     const name = row.dataset.clientName.toLowerCase();
-                    const tin = row.dataset.tin.toLowerCase();
+                    const tin = row.dataset.tin;
                     const status = row.dataset.status;
 
-                    const matchesSearch = name.includes(query) || tin.includes(query);
+                    const matchesSearch = name.includes(query) || (/^\d+$/.test(digits) && tin.replace(/-/g, "").includes(digits));
                     const matchesFilter = activeFilter === "all" || status === activeFilter;
 
                     if (matchesSearch && matchesFilter) {
@@ -615,48 +477,16 @@
                     e.preventDefault();
                     filterButtons.forEach(b => {
                         b.classList.remove("is-active");
+                        b.setAttribute("aria-pressed", "false");
                     });
                     btn.classList.add("is-active");
+                    btn.setAttribute("aria-pressed", "true");
 
                     activeFilter = btn.dataset.filter;
                     filterTable();
                 });
             });
 
-            // Modal Trigger Logic
-            const modalElement = document.getElementById("heroPreviewModal");
-            const modalInstance = modalElement ? new bootstrap.Modal(modalElement) : null;
-
-            rows.forEach(row => {
-                row.addEventListener("click", () => {
-                    if (!modalInstance) return;
-                    
-                    document.getElementById("modalClientName").textContent = row.dataset.clientName;
-                    document.getElementById("modalClientTIN").textContent = row.dataset.tin;
-                    document.getElementById("modalClientRevenue").textContent = row.dataset.revenue;
-                    document.getElementById("modalClientNotes").textContent = row.dataset.notes;
-
-                    // Setup status badge
-                    const statusVal = row.dataset.status;
-                    const statusSpan = document.getElementById("modalClientStatus");
-                    statusSpan.className = "status-badge";
-                    statusSpan.textContent = statusVal.charAt(0).toUpperCase() + statusVal.slice(1);
-                    if (statusVal === "filed") statusSpan.classList.add("status-filed");
-                    else if (statusVal === "pending") statusSpan.classList.add("status-pending");
-                    else if (statusVal === "late") statusSpan.classList.add("status-late");
-
-                    // Setup risk badge
-                    const riskVal = row.dataset.risk;
-                    const riskSpan = document.getElementById("modalClientRisk");
-                    riskSpan.className = "status-badge";
-                    riskSpan.textContent = riskVal.charAt(0).toUpperCase() + riskVal.slice(1);
-                    if (riskVal === "low") riskSpan.classList.add("risk-low");
-                    else if (riskVal === "medium") riskSpan.classList.add("risk-medium");
-                    else if (riskVal === "high") riskSpan.classList.add("risk-high");
-
-                    modalInstance.show();
-                });
-            });
         })();
 
     </script>

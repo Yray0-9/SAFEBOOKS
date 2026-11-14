@@ -22,6 +22,15 @@ def encrypt_password(value):
     return _cipher(settings.CLIENT_CREDENTIAL_KEY).encrypt(value.encode("utf-8")).decode("ascii")
 
 
+def decrypt_password(value):
+    if not value:
+        return value
+    try:
+        return _cipher(settings.CLIENT_CREDENTIAL_KEY).decrypt(value.encode("ascii")).decode("utf-8")
+    except (InvalidToken, UnicodeError):
+        raise ValueError("Could not decrypt a saved client credential.") from None
+
+
 class EncryptedPasswordField(models.CharField):
     """Keep the plaintext input limit while using a text column for ciphertext."""
 
@@ -32,9 +41,4 @@ class EncryptedPasswordField(models.CharField):
         return encrypt_password(super().get_prep_value(value))
 
     def from_db_value(self, value, expression, connection):
-        if not value:
-            return value
-        try:
-            return _cipher(settings.CLIENT_CREDENTIAL_KEY).decrypt(value.encode("ascii")).decode("utf-8")
-        except (InvalidToken, UnicodeError):
-            raise ValueError("Could not decrypt a saved client credential.") from None
+        return decrypt_password(value)

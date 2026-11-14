@@ -3,7 +3,11 @@ from safebooks.tests.session_helpers import bind_authenticated_session
 import json
 from datetime import date, timedelta
 from decimal import Decimal
+from importlib import import_module
+from types import SimpleNamespace
 
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -348,6 +352,7 @@ class ClientsApiTests(TestCase):
         self.assertEqual(create_response.status_code, 201)
         created_client = create_response.json()["client"]
         self.assertEqual(created_client["custom_fields"], [])
+        self._assert_custom_password_at_rest(created_client["id"], 1, "secure-pin")
         detail_response = self.client.get(reverse("api_client_detail", args=[created_client["id"]]))
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(
@@ -361,6 +366,7 @@ class ClientsApiTests(TestCase):
         update_payload = self._client_payload("custom-updated", tin=self._build_tin("custom-updated"))
         update_payload["custom_fields"] = [
             {"label": "RDO Code", "value": "112", "type": "number"},
+            {"label": "Portal PIN", "value": "updated-pin", "type": "password"},
         ]
 
         update_response = self.client.put(
@@ -373,8 +379,39 @@ class ClientsApiTests(TestCase):
         updated_client = update_response.json()["client"]
         self.assertEqual(
             updated_client["custom_fields"],
-            [{"label": "RDO Code", "value": "112", "type": "number"}],
+            update_payload["custom_fields"],
         )
+        self._assert_custom_password_at_rest(created_client["id"], 1, "updated-pin")
+        self.assertEqual(Client.objects.get(pk=created_client["id"]).custom_fields, update_payload["custom_fields"])
+
+    def _assert_custom_password_at_rest(self, client_id, index, plaintext):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT custom_fields FROM clients WHERE id = %s", [client_id])
+            stored = cursor.fetchone()[0]
+        fields = json.loads(stored) if isinstance(stored, str) else stored
+        self.assertNotEqual(fields[index]["value"], plaintext)
+
+    def test_custom_password_migration_preserves_existing_field_values(self):
+        owner = self._create_bookkeeper("owner-legacy-custom")
+        apps = MigrationExecutor(connection).loader.project_state(
+            [("safebooks", "0041_encrypt_client_passwords")]
+        ).apps
+        fields = [
+            {"label": "Portal", "value": "legacy-pin", "type": "password"},
+            {"label": "Unused", "value": "", "type": "password"},
+            {"label": "RDO Code", "value": "112", "type": "number"},
+        ]
+        legacy_client = apps.get_model("safebooks", "Client").objects.create(
+            bookkeeper_id=owner.pk,
+            client_name="Legacy custom fields",
+            tin_number=self._build_tin("legacy-custom"),
+            custom_fields=fields,
+        )
+        migration = import_module("safebooks.migrations.0042_encrypt_custom_client_passwords")
+        migration.encrypt_existing_custom_passwords(apps, SimpleNamespace(connection=connection))
+
+        self._assert_custom_password_at_rest(legacy_client.pk, 0, "legacy-pin")
+        self.assertEqual(Client.objects.get(pk=legacy_client.pk).custom_fields, fields)
 
     def test_clients_api_can_restore_closed_client_without_losing_details(self):
         owner = self._create_bookkeeper("owner-restore")

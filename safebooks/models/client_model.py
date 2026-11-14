@@ -1,5 +1,6 @@
 from django.db import models
 
+from .encrypted_custom_fields import EncryptedCustomFields
 from .encrypted_password_field import EncryptedPasswordField
 from .user_model import BookkeeperAccount
 
@@ -35,7 +36,7 @@ class Client(models.Model):
     email_password = EncryptedPasswordField(max_length=255, blank=True, default="")
     orus_account = models.CharField(max_length=255, blank=True, default="")
     orus_password = EncryptedPasswordField(max_length=255, blank=True, default="")
-    custom_fields = models.JSONField(blank=True, default=list)
+    custom_fields = EncryptedCustomFields(blank=True, default=list)
     forecast_growth_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     remarks = models.CharField(
         max_length=20,
