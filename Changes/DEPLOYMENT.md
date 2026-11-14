@@ -598,3 +598,26 @@ schema application/startup, not complete user-workflow verification.
 
 References: [Render deployments](https://render.com/docs/deploys) and
 [Render environment variables](https://render.com/docs/configure-environment-variables).
+
+### Release 0041: Encrypt client email and ORUS passwords
+
+1. Generate a **new** Fernet key privately in a trusted terminal with
+   `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+   after installing the pinned requirements. Save it as the Render secret
+   `SAFEBOOKS_CLIENT_CREDENTIAL_KEY` and keep a secure recovery copy. Use a
+   different key for local development. Keep each database paired with its key.
+2. Plan a maintenance window and stop client writes while applying this
+   release. Keep a protected pre-migration database backup. It contains the
+   original readable passwords and needs restricted access.
+3. Build the release with its updated requirements and apply
+   `python manage.py migrate --noinput --settings=safebooks.settings_production`
+   against the hosted database with the key set. If using the temporary Start
+   Command procedure above, keep the original Gunicorn command after the
+   migration command with `&&`. Restore the original Start Command after the
+   migration succeeds. Start the updated application code only after applying
+   migration 0041.
+4. Verify Client Details with an authorized bookkeeper using a test credential.
+   Check that the database contains ciphertext and that the application can
+   save and reveal the test value. Migration 0041 is irreversible through Django.
+   Preserve the configured key for recovery and follow the database recovery
+   procedure if rollback is needed.

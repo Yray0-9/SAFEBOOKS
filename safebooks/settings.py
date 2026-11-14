@@ -22,6 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if os.environ.get("DJANGO_SETTINGS_MODULE") != "safebooks.settings_production":
     load_dotenv(BASE_DIR / ".env")
 
+CLIENT_CREDENTIAL_KEY = os.environ.get("SAFEBOOKS_CLIENT_CREDENTIAL_KEY", "").strip()
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

@@ -1724,7 +1724,7 @@
                 typeValues[column.key] = recorded ? formatCurrency(typeBreakdown[column.sourceLabel]) : "-";
                 const remarks = row.tax_remarks?.[column.sourceLabel] || [];
                 cellRemarks[column.key] = remarks.filter((item) => item.remarks).map((item) =>
-                    Math.round(Number(item.amount) * 100) === Math.round(Number(typeBreakdown[column.sourceLabel]) * 100)
+                    remarks.length === 1
                         ? item.remarks : `${item.remarks} · ${formatCurrency(item.amount)}`);
             });
 
@@ -1855,7 +1855,7 @@
                 { key: "compliance", label: "Record Status" },
                 { key: "last_entry_date", label: "Last Entry Date" },
                 { key: "current_period", label: "Current Period" },
-                { key: "remarks", label: "Remarks" },
+                { key: "remarks", label: "Client Status" },
             ],
             rows,
         };

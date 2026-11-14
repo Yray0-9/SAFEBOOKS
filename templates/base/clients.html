@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261101-badge">
 <link rel="stylesheet" href="{% static 'css/reports.css' %}?v=20261109-print-centered">
 <link rel="stylesheet" href="{% static 'css/clients.css' %}?v=1.2">
+<link rel="stylesheet" href="{% static 'css/client_location_selector.css' %}">
 {% endblock %}
 
 {% block skeleton %}
@@ -218,12 +219,14 @@
                             <label class="form-label client-form-label" for="addClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                             <input id="addClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
-                                <select class="form-select client-form-input client-select-input" id="addClientLocationSelect" aria-label="Select province" required>
-                                    <option value="">Select province</option>
-                                </select>
-                                <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                <input type="text" class="form-control client-form-input client-select-input" id="addClientLocationSelect"
+                                    placeholder="Search Davao Region locations" autocomplete="off" spellcheck="false" required
+                                    role="combobox" aria-autocomplete="list" aria-expanded="false"
+                                    aria-controls="addClientLocationSelectResults" aria-describedby="addClientLocationSummary">
+                                <i class="bi bi-search client-select-icon" aria-hidden="true"></i>
                             </div>
-                            <div class="form-text text-muted client-location-summary" id="addClientLocationSummary" hidden></div>
+                            <div class="list-group overflow-auto client-location-results" id="addClientLocationSelectResults" role="listbox" aria-label="Location results" hidden></div>
+                            <div class="form-text text-muted client-location-summary" id="addClientLocationSummary" role="status" hidden></div>
                         </div>
                     </div>
                 </section>
@@ -385,12 +388,14 @@
                             <label class="form-label client-form-label" for="editClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                             <input id="editClientLocation" name="location" type="hidden">
                             <div class="client-select-wrap">
-                                <select class="form-select client-form-input client-select-input" id="editClientLocationSelect" aria-label="Select province" required>
-                                    <option value="">Select province</option>
-                                </select>
-                                <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                <input type="text" class="form-control client-form-input client-select-input" id="editClientLocationSelect"
+                                    placeholder="Search Davao Region locations" autocomplete="off" spellcheck="false" required
+                                    role="combobox" aria-autocomplete="list" aria-expanded="false"
+                                    aria-controls="editClientLocationSelectResults" aria-describedby="editClientLocationSummary">
+                                <i class="bi bi-search client-select-icon" aria-hidden="true"></i>
                             </div>
-                            <div class="form-text text-muted client-location-summary" id="editClientLocationSummary" hidden></div>
+                            <div class="list-group overflow-auto client-location-results" id="editClientLocationSelectResults" role="listbox" aria-label="Location results" hidden></div>
+                            <div class="form-text text-muted client-location-summary" id="editClientLocationSummary" role="status" hidden></div>
                         </div>
                     </div>
                 </section>

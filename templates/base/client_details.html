@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="{% static 'css/client_tax_registration.css' %}?v=20261101-badge">
 <link rel="stylesheet" href="{% static 'css/analytics.css' %}?v=1.11">
 <link rel="stylesheet" href="{% static 'css/client_details.css' %}?v=2.7">
+<link rel="stylesheet" href="{% static 'css/client_location_selector.css' %}">
 {% endblock %}
 
 {% block skeleton %}
@@ -526,12 +527,14 @@
                                 <label class="form-label client-form-label" for="editDetailsClientLocationSelect">Location <span class="text-danger" aria-hidden="true">*</span></label>
                                 <input id="editDetailsClientLocation" name="location" type="hidden" value="{{ client.location }}">
                                 <div class="client-select-wrap">
-                                    <select class="form-select client-form-input client-select-input" id="editDetailsClientLocationSelect" aria-label="Select province" required>
-                                        <option value="">Select province</option>
-                                    </select>
-                                    <i class="bi bi-chevron-down client-select-icon" aria-hidden="true"></i>
+                                    <input type="text" class="form-control client-form-input client-select-input" id="editDetailsClientLocationSelect"
+                                        placeholder="Search Davao Region locations" autocomplete="off" spellcheck="false" required
+                                        role="combobox" aria-autocomplete="list" aria-expanded="false"
+                                        aria-controls="editDetailsClientLocationSelectResults" aria-describedby="editDetailsClientLocationSummary">
+                                    <i class="bi bi-search client-select-icon" aria-hidden="true"></i>
                                 </div>
-                                <div class="form-text text-muted client-location-summary" id="editDetailsClientLocationSummary" hidden></div>
+                                <div class="list-group overflow-auto client-location-results" id="editDetailsClientLocationSelectResults" role="listbox" aria-label="Location results" hidden></div>
+                                <div class="form-text text-muted client-location-summary" id="editDetailsClientLocationSummary" role="status" hidden></div>
                             </div>
                         </div>
                     </section>
