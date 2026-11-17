@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from safebooks.models import BookkeeperAccount, Client, FinancialRecord, FinancialRecordLine, Period
+from safebooks.models.encrypted_password_field import encrypt_password
 from safebooks.views import SESSION_BOOKKEEPER_ID_KEY
 
 
@@ -385,11 +386,13 @@ class ClientsApiTests(TestCase):
         self.assertEqual(Client.objects.get(pk=created_client["id"]).custom_fields, update_payload["custom_fields"])
 
     def _assert_custom_password_at_rest(self, client_id, index, plaintext):
+        self.assertNotEqual(self._stored_custom_fields(client_id)[index]["value"], plaintext)
+
+    def _stored_custom_fields(self, client_id):
         with connection.cursor() as cursor:
             cursor.execute("SELECT custom_fields FROM clients WHERE id = %s", [client_id])
             stored = cursor.fetchone()[0]
-        fields = json.loads(stored) if isinstance(stored, str) else stored
-        self.assertNotEqual(fields[index]["value"], plaintext)
+        return json.loads(stored) if isinstance(stored, str) else stored
 
     def test_custom_password_migration_preserves_existing_field_values(self):
         owner = self._create_bookkeeper("owner-legacy-custom")
@@ -398,20 +401,28 @@ class ClientsApiTests(TestCase):
         ).apps
         fields = [
             {"label": "Portal", "value": "legacy-pin", "type": "password"},
+            {"label": "Existing", "value": "already-encrypted-pin", "type": "password"},
             {"label": "Unused", "value": "", "type": "password"},
             {"label": "RDO Code", "value": "112", "type": "number"},
         ]
+        encrypted_value = encrypt_password(fields[1]["value"])
+        stored_fields = [fields[0], {**fields[1], "value": encrypted_value}, *fields[2:]]
         legacy_client = apps.get_model("safebooks", "Client").objects.create(
             bookkeeper_id=owner.pk,
             client_name="Legacy custom fields",
             tin_number=self._build_tin("legacy-custom"),
-            custom_fields=fields,
+            custom_fields=stored_fields,
         )
         migration = import_module("safebooks.migrations.0042_encrypt_custom_client_passwords")
         migration.encrypt_existing_custom_passwords(apps, SimpleNamespace(connection=connection))
 
         self._assert_custom_password_at_rest(legacy_client.pk, 0, "legacy-pin")
+        migrated_fields = self._stored_custom_fields(legacy_client.pk)
+        self.assertEqual(migrated_fields[1]["value"], encrypted_value)
         self.assertEqual(Client.objects.get(pk=legacy_client.pk).custom_fields, fields)
+
+        migration.encrypt_existing_custom_passwords(apps, SimpleNamespace(connection=connection))
+        self.assertEqual(self._stored_custom_fields(legacy_client.pk), migrated_fields)
 
     def test_clients_api_can_restore_closed_client_without_losing_details(self):
         owner = self._create_bookkeeper("owner-restore")
