@@ -85,7 +85,7 @@
                 <option value="name-asc">Alphabetical (A-Z)</option>
                 <option value="name-desc">Alphabetical (Z-A)</option>
             </select>
-            <button type="button" class="btn dashboard-action-btn primary clients-add-btn" data-bs-toggle="modal" data-bs-target="#addClientModal">
+            <button type="button" class="btn dashboard-action-btn primary clients-add-btn" id="openAddClientFromToolbar" data-bs-toggle="modal" data-bs-target="#addClientModal">
                 <i class="bi bi-plus-lg"></i>
                 <span>Add Client</span>
             </button>
@@ -147,7 +147,7 @@
         </nav>
 
         <div class="clients-empty-state" id="clientsEmptyState" hidden>
-            <p>No clients in this list yet. Add a client when their record is ready.</p>
+            <p id="clientsEmptyMessage">No clients in the active directory yet.</p>
             <button type="button" class="btn dashboard-action-btn primary" id="openAddClientFromEmpty" data-bs-toggle="modal" data-bs-target="#addClientModal">Add Client</button>
         </div>
     </article>
@@ -620,6 +620,9 @@
         const clientsSortSelect = document.getElementById("clientsSortSelect");
         const clientsCountTag = document.getElementById("clientsCountTag");
         const clientsEmptyState = document.getElementById("clientsEmptyState");
+        const clientsEmptyMessage = document.getElementById("clientsEmptyMessage");
+        const openAddClientFromToolbar = document.getElementById("openAddClientFromToolbar");
+        const openAddClientFromEmpty = document.getElementById("openAddClientFromEmpty");
         const uiToastContainer = document.getElementById("uiToastContainer");
         const clientsPagination = document.getElementById("clientsPagination");
         const clientsPageRange = document.getElementById("clientsPageRange");
@@ -2220,6 +2223,18 @@
 
             if (clientsEmptyState) {
                 clientsEmptyState.hidden = totalMatching !== 0;
+                const isInactive = directoryTabFilter === "closed";
+                const isFiltered = Boolean(query) || (!isInactive && activeRemarksFilter !== "all");
+                if (isFiltered) {
+                    clientsEmptyMessage.textContent = isInactive
+                        ? "No inactive clients match your search."
+                        : "No clients match your filters.";
+                } else {
+                    clientsEmptyMessage.textContent = isInactive
+                        ? "No inactive clients."
+                        : "No clients in the active directory yet.";
+                }
+                openAddClientFromEmpty.classList.toggle("d-none", isInactive || isFiltered);
             }
 
             updateClientsCount(totalMatching);
@@ -2796,6 +2811,7 @@
         });
 
         const updateHeadingText = () => {
+            openAddClientFromToolbar.classList.toggle("d-none", directoryTabFilter === "closed");
             const clientsListHeading = document.getElementById("clientsListHeading");
             if (clientsListHeading) {
                 if (directoryTabFilter === "closed") {
@@ -2812,6 +2828,12 @@
         if (tabActiveDirectory && tabClosed) {
             tabActiveDirectory.addEventListener("click", () => {
                 directoryTabFilter = "active";
+                if (activeRemarksFilter === "closed") {
+                    activeRemarksFilter = "all";
+                    if (clientsRemarksPreviewNote) {
+                        clientsRemarksPreviewNote.hidden = true;
+                    }
+                }
                 tabActiveDirectory.classList.add("active");
                 tabActiveDirectory.setAttribute("aria-selected", "true");
                 tabClosed.classList.remove("active");
